@@ -4,6 +4,8 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-08-13
+
 ### Added
 - Added receiver methods on `*App` (`a.PrintGlobalUsage()`, `a.PrintCommandUsage(path...)`, `a.PrintUsage(path...)`, `a.LookupCommand(path...)`) for a clean, object-oriented Go API surface.
 - Added comprehensive Go doc comments across all exported structs, fields, and functions in `clihelp.go`.
