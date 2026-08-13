@@ -66,9 +66,14 @@ make run
 ## Version Management
 
 - Version is stored in `VERSION` file (semver: `major.minor.patch`)
-- Current version: `0.1.0`
-- Run `make bump` to bump patch version, commit, and push version in one step
+- Current version: `0.1.1`
+- Run `make bump` to bump patch version, commit, tag, and push version in one step
 - `VERSION` file is the single source of truth for release versioning
+
+## API Stability & Backward Compatibility
+
+- **Stable Interface**: Preserve backward compatibility for all exported types, methods, and package functions (`App`, `Command`, `Option`, `Example`, `PrintUsage`, `PrintGlobalUsage`, `PrintCommandUsage`).
+- **Additive Changes**: Adding new fields, structs, or methods is encouraged. Avoid breaking existing function signatures or struct field semantics in future development.
 
 ## File Sizing
 
@@ -104,4 +109,5 @@ make run
 3. **Exploration**: Run `make map` before introducing new types or functions to inspect existing API signatures.
 4. **Checkpointing**: Run `make checkpoint` after passing checks to preserve working states during long sessions.
 5. **No Direct ANSI Codes**: Do not hardcode ANSI escape sequences (`\033`, `\x1b`) in source or test files — use `fatih/color` or `stripansi`.
-6. **Commit Messages**: Use conventional commits format (`feat:`, `fix:`, `chore:`, `docs:`, `test:`).
+6. **Backward Compatibility**: Maintain strict backward compatibility for exported APIs. Introduce non-breaking additive fields or methods rather than modifying existing public signatures.
+7. **Commit Messages**: Use conventional commits format (`feat:`, `fix:`, `chore:`, `docs:`, `test:`).
