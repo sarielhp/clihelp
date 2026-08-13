@@ -1,33 +1,42 @@
+// Package clihelp provides width-aware, colorized CLI help text formatting
+// for Go applications with single or multi-level subcommand hierarchies.
 package clihelp
 
 import (
 	"fmt"
 	"os"
 	"strings"
-	"unicode"
 
+	"github.com/acarl005/stripansi"
 	"github.com/fatih/color"
 	"golang.org/x/term"
 )
 
+// Option represents a command-line flag or option definition (e.g., "-o, --output PATH").
 type Option struct {
 	Flags       string
 	Description string
 }
 
+// Example represents a usage line demonstration in command help text.
 type Example struct {
 	Line        string
 	Description string
 }
 
+// Command represents a single CLI command or subcommand.
+// Commands can contain nested Subcommands recursively (e.g., "config set location").
 type Command struct {
 	Name        string
 	Description string
 	UsageLine   string
 	Options     []Option
 	Examples    []Example
+	Subcommands []Command
 }
 
+// App represents a top-level CLI application containing application metadata,
+// registered commands, and global notes.
 type App struct {
 	Name        string
 	Description string
@@ -37,10 +46,11 @@ type App struct {
 
 var (
 	section = color.New(color.FgYellow, color.Bold).Sprint
+	command = color.New(color.FgGreen, color.Bold).Sprint
 	label   = color.New(color.FgCyan).Sprint
-	emph    = color.New(color.Bold).Sprint
 )
 
+// termWidth returns the current stdout terminal width, defaulting to 80 cols when non-TTY or small.
 func termWidth() int {
 	w, _, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil || w < 40 {
@@ -49,29 +59,26 @@ func termWidth() int {
 	return w
 }
 
-func stripANCI(s string) string {
-	var b strings.Builder
-	in := false
-	for _, r := range s {
-		if r == '\033' {
-			in = true
-			continue
-		}
-		if in {
-			if r == 'm' {
-				in = false
-			}
-			continue
-		}
-		b.WriteRune(r)
-	}
-	return b.String()
+// stripANSI removes ANSI control escape codes using the stripansi package.
+func stripANSI(s string) string {
+	return stripansi.Strip(s)
 }
 
+// visualLen calculates the visible character length of a string, ignoring ANSI control codes.
 func visualLen(s string) int {
-	return len([]rune(stripANCI(s)))
+	return len([]rune(stripANSI(s)))
 }
 
+// formatPadded pads string s to the target visual width, taking ANSI control codes into account.
+func formatPadded(s string, width int) string {
+	vis := visualLen(s)
+	if vis >= width {
+		return s
+	}
+	return s + strings.Repeat(" ", width-vis)
+}
+
+// wrapText wraps string text into lines of at most avail visible characters.
 func wrapText(text string, avail int) string {
 	if avail < 20 {
 		avail = 20
@@ -111,6 +118,7 @@ func wrapText(text string, avail int) string {
 	return buf.String()
 }
 
+// indentLines indents each line in s by specified spaces.
 func indentLines(s string, indent int) string {
 	pad := strings.Repeat(" ", indent)
 	lines := strings.Split(s, "\n")
@@ -122,35 +130,44 @@ func indentLines(s string, indent int) string {
 	return strings.Join(lines, "\n")
 }
 
+// PrintSection prints a yellow bold section header (e.g. USAGE, COMMANDS, OPTIONS).
 func PrintSection(name string) {
 	fmt.Printf("\n%s\n", section(name))
 }
 
 func describeLabel(left, right string, leftWidth int) {
-	visLeft := visualLen(left)
-	indent := visLeft + 2
-	if indent < leftWidth+2 {
-		indent = leftWidth + 2
-	}
+	paddedLeft := formatPadded(left, leftWidth)
+	visLeftLen := 2 + leftWidth
 
 	w := termWidth()
-	avail := w - 2
-	oneline := fmt.Sprintf("  %-*s%s", leftWidth, left, right)
+	oneline := fmt.Sprintf("  %s%s", paddedLeft, right)
 
-	if visualLen(oneline) <= avail {
+	if visualLen(oneline) <= w {
 		fmt.Println(oneline)
 		return
 	}
 
-	descWidth := w - indent
+	descWidth := w - visLeftLen
+	if descWidth < 20 {
+		fmt.Printf("  %s\n%s\n", paddedLeft, indentLines(wrapText(right, w-4), 4))
+		return
+	}
 	wrapped := wrapText(right, descWidth)
-	fmt.Printf("  %-*s\n%s\n", leftWidth, left, indentLines(wrapped, indent))
+	lines := strings.Split(wrapped, "\n")
+	fmt.Printf("  %s%s\n", paddedLeft, lines[0])
+	for _, l := range lines[1:] {
+		if l != "" {
+			fmt.Printf("%s%s\n", strings.Repeat(" ", visLeftLen), l)
+		}
+	}
 }
 
 func describeFlags(flags, desc string) {
 	w := termWidth()
 	indent := 32
-	flagLine := fmt.Sprintf("  %-27s ", label(flags))
+	lbl := label(flags)
+	paddedFlags := formatPadded(lbl, 27)
+	flagLine := fmt.Sprintf("  %s ", paddedFlags)
 	visFlagsLen := visualLen(flagLine)
 
 	oneline := flagLine + desc
@@ -174,13 +191,14 @@ func describeFlags(flags, desc string) {
 	}
 }
 
-func PrintGlobalUsage(a *App) {
+// PrintGlobalUsage prints the top-level application help overview.
+func (a *App) PrintGlobalUsage() {
 	fmt.Printf("\n%s\n\n", section("USAGE"))
 	fmt.Printf("  %s\n", a.Name+" [command] [options]")
 
 	PrintSection("COMMANDS")
 	for _, c := range a.Commands {
-		describeLabel(emph(c.Name), c.Description, 36)
+		describeLabel(command(c.Name), c.Description, 24)
 	}
 
 	if a.GlobalNote != "" {
@@ -189,22 +207,68 @@ func PrintGlobalUsage(a *App) {
 	}
 }
 
-func PrintCommandUsage(a *App, cmdName string) bool {
-	var cmd *Command
-	for i := range a.Commands {
-		if a.Commands[i].Name == cmdName {
-			cmd = &a.Commands[i]
-			break
-		}
+// LookupCommand traverses the command hierarchy and returns the matching Command pointer, or nil if not found.
+func (a *App) LookupCommand(path ...string) *Command {
+	if len(path) == 0 {
+		return nil
 	}
-	if cmd == nil {
+	currentSlice := a.Commands
+	var found *Command
+	for _, p := range path {
+		found = nil
+		for i := range currentSlice {
+			if currentSlice[i].Name == p {
+				found = &currentSlice[i]
+				break
+			}
+		}
+		if found == nil {
+			return nil
+		}
+		currentSlice = found.Subcommands
+	}
+	return found
+}
+
+// PrintCommandUsage prints help text for a specific command or nested subcommand path (e.g. "config", "set", "location").
+// Returns true if the command path was found, or false if not found.
+func (a *App) PrintCommandUsage(path ...string) bool {
+	if len(path) == 0 {
 		return false
 	}
 
-	fmt.Printf("\n%s\n", section(a.Name+" "+cmd.Name+" - "+cmd.Description))
+	var cmd *Command
+	currentSlice := a.Commands
+	fullPath := []string{a.Name}
+
+	for _, p := range path {
+		var found *Command
+		for i := range currentSlice {
+			if currentSlice[i].Name == p {
+				found = &currentSlice[i]
+				break
+			}
+		}
+		if found == nil {
+			return false
+		}
+		cmd = found
+		fullPath = append(fullPath, cmd.Name)
+		currentSlice = cmd.Subcommands
+	}
+
+	cmdFullName := strings.Join(fullPath, " ")
+	fmt.Printf("\n%s\n", section(cmdFullName+" - "+cmd.Description))
 
 	PrintSection("USAGE")
 	fmt.Printf("  %s\n", cmd.UsageLine)
+
+	if len(cmd.Subcommands) > 0 {
+		PrintSection("COMMANDS")
+		for _, sub := range cmd.Subcommands {
+			describeLabel(command(sub.Name), sub.Description, 24)
+		}
+	}
 
 	if len(cmd.Options) > 0 {
 		PrintSection("OPTIONS")
@@ -223,19 +287,21 @@ func PrintCommandUsage(a *App, cmdName string) bool {
 	return true
 }
 
-func clean(str string) string {
-	var b strings.Builder
-	prevSpace := true
-	for _, r := range str {
-		if unicode.IsSpace(r) {
-			if !prevSpace {
-				b.WriteByte(' ')
-			}
-			prevSpace = true
-		} else {
-			b.WriteRune(r)
-			prevSpace = false
-		}
+// PrintUsage prints global application help if path is empty, or command help if a command path is provided.
+func (a *App) PrintUsage(path ...string) bool {
+	if len(path) == 0 {
+		a.PrintGlobalUsage()
+		return true
 	}
-	return strings.TrimSpace(b.String())
+	return a.PrintCommandUsage(path...)
+}
+
+// PrintGlobalUsage prints top-level application help overview for App a.
+func PrintGlobalUsage(a *App) {
+	a.PrintGlobalUsage()
+}
+
+// PrintCommandUsage prints help text for a command path within App a.
+func PrintCommandUsage(a *App, path ...string) bool {
+	return a.PrintCommandUsage(path...)
 }
