@@ -1,3 +1,7 @@
+---
+title: mail_cli calendar
+---
+
 # mail\_cli calendar
 
 Manage calendar events extracted from email attachments.

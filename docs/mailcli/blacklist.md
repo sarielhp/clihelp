@@ -1,3 +1,7 @@
+---
+title: mail_cli blacklist
+---
+
 # mail\_cli blacklist
 
 Manage the personal sender blacklist to instantly classify messages as spam.

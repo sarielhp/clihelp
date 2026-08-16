@@ -1,3 +1,7 @@
+---
+title: podctl — Navigation
+---
+
 # podctl — Navigation
 
 ## Commands

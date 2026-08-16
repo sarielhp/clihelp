@@ -1,3 +1,7 @@
+---
+title: mail_cli labels cache
+---
+
 # mail\_cli labels cache
 
 Manage the labels cache used by the search subcommand.

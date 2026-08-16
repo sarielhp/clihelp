@@ -1,3 +1,7 @@
+---
+title: mail_cli rule add_by_title
+---
+
 # mail\_cli rule add\_by\_title
 
 Add an auto-labeling rule by subject prefix. Emails with subjects starting with the specified title prefix will automatically be labeled with the target label and archived (the "received" label will be removed).

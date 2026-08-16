@@ -1,3 +1,7 @@
+---
+title: mail_cli download
+---
+
 # mail\_cli download
 
 Download all messages in the specified label (which must match a unique label) to a local mbox file.

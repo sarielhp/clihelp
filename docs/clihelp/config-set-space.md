@@ -1,3 +1,7 @@
+---
+title: podctl config set space
+---
+
 # podctl config set space
 
 Set maximum disk space allocation or cache budget in MB

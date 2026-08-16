@@ -1,3 +1,7 @@
+---
+title: mail_cli rule del
+---
+
 # mail\_cli rule del
 
 Remove an auto-labeling rule for a sender email address or subject prefix.

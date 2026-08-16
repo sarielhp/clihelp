@@ -1,3 +1,7 @@
+---
+title: mail_cli cache
+---
+
 # mail\_cli cache
 
 Manage the local email download cache.

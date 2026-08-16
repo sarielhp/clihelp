@@ -1,3 +1,7 @@
+---
+title: mail_cli ss
+---
+
 # mail\_cli ss
 
 Shortcut alias for: scan spam

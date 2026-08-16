@@ -1,3 +1,7 @@
+---
+title: podctl deploy
+---
+
 # podctl deploy
 
 Publish RSS feed & audio files to cloud storage / CDN

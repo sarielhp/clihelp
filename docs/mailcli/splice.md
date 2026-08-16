@@ -1,3 +1,7 @@
+---
+title: mail_cli splice
+---
+
 # mail\_cli splice
 
 Move messages from a folder into the keep/YYYY/MM/<folder> structure. The root "keep" is fixed. Use -f to change the target folder name, or -F to change the target folder name and automatically suffix it with the year and month.

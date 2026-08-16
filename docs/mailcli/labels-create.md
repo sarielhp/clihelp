@@ -1,3 +1,7 @@
+---
+title: mail_cli labels create
+---
+
 # mail\_cli labels create
 
 Create a new label on the server.

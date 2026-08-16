@@ -1,3 +1,7 @@
+---
+title: podctl status
+---
+
 # podctl status
 
 Check RSS feed health, CDN metrics, and download stats

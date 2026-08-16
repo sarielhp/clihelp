@@ -1,3 +1,7 @@
+---
+title: mail_cli — Navigation
+---
+
 # mail\_cli — Navigation
 
 ## Commands

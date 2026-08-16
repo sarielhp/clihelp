@@ -1,3 +1,7 @@
+---
+title: mail_cli rule delete_all
+---
+
 # mail\_cli rule delete\_all
 
 Delete all custom routing rules for the selected account.

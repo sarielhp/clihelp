@@ -1,3 +1,7 @@
+---
+title: mail_cli spam
+---
+
 # mail\_cli spam
 
 Manage Spam folder, train filters, and unsubscribe from political mail.

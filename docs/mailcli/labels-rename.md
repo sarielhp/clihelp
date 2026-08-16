@@ -1,3 +1,7 @@
+---
+title: mail_cli labels rename
+---
+
 # mail\_cli labels rename
 
 Rename an existing label and move all corresponding emails.

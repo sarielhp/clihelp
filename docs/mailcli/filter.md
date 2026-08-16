@@ -1,3 +1,7 @@
+---
+title: mail_cli filter
+---
+
 # mail\_cli filter
 
 Manage remote filters on Gmail.

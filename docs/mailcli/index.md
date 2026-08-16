@@ -1,3 +1,7 @@
+---
+title: mail_cli
+---
+
 # mail\_cli
 
 ## Commands

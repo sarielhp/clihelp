@@ -1,3 +1,7 @@
+---
+title: mail_cli config
+---
+
 # mail\_cli config
 
 Show or manage configuration options.

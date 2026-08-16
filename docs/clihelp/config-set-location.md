@@ -1,3 +1,7 @@
+---
+title: podctl config set location
+---
+
 # podctl config set location
 
 Set geographic storage region or default output zone ID

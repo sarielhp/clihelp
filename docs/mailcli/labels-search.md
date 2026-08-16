@@ -1,3 +1,7 @@
+---
+title: mail_cli labels search
+---
+
 # mail\_cli labels search
 
 Search labels whose full path contains the given substring (case-insensitive). Uses the cached labels list; refreshes asynchronously if the cache is older than 24 hours.

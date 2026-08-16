@@ -1,3 +1,7 @@
+---
+title: mail_cli unspam
+---
+
 # mail\_cli unspam
 
 Mark a message as not being spam: train bogofilter as ham and move it from Spam back to Inbox on the server.

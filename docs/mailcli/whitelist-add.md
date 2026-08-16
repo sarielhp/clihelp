@@ -1,3 +1,7 @@
+---
+title: mail_cli whitelist add
+---
+
 # mail\_cli whitelist add
 
 Add a sender email address to your personal whitelist. Senders on the whitelist bypass all language, script, and spam filters.

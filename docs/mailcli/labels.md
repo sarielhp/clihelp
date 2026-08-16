@@ -1,3 +1,7 @@
+---
+title: mail_cli labels
+---
+
 # mail\_cli labels
 
 Manage and organize folders/labels.

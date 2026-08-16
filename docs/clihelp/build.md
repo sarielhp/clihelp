@@ -1,3 +1,7 @@
+---
+title: podctl build
+---
+
 # podctl build
 
 Compile & package audio episodes with metadata

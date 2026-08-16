@@ -1,3 +1,7 @@
+---
+title: mail_cli whitelist
+---
+
 # mail\_cli whitelist
 
 Manage the personal sender whitelist to bypass spam checks.

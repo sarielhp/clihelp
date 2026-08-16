@@ -1,3 +1,7 @@
+---
+title: mail_cli rule add_domain
+---
+
 # mail\_cli rule add\_domain
 
 Add an auto-labeling rule for all emails from the sender's domain. Extracts the domain of the sender of the specified cached email and creates a rule to auto-label all emails from that domain.

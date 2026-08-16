@@ -1,3 +1,7 @@
+---
+title: mail_cli archive
+---
+
 # mail\_cli archive
 
 Move message(s) by ID from their current folder to the Archive or Received folder. Or archive all messages in Inbox (default) or the specified label (by prefix).

@@ -1,3 +1,7 @@
+---
+title: mail_cli rule list
+---
+
 # mail\_cli rule list
 
 List custom routing and auto-labeling rules for the selected account.

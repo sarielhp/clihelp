@@ -1,3 +1,7 @@
+---
+title: mail_cli labels cache update
+---
+
 # mail\_cli labels cache update
 
 Force an immediate update of the labels cache from the server.

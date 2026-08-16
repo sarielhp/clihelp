@@ -1,3 +1,7 @@
+---
+title: mail_cli learn-ham
+---
+
 # mail\_cli learn-ham
 
 Train Bogofilter on ham (non-spam) emails in a folder. The folder must be an exact match and cannot have subfolders.

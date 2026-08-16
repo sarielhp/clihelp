@@ -1,3 +1,7 @@
+---
+title: mail_cli rule add
+---
+
 # mail\_cli rule add
 
 Add an auto-labeling rule by sender. Emails from the specified sender address will automatically be labeled with the target label and archived (the "received" label will be removed).

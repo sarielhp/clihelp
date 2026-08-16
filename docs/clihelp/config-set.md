@@ -1,3 +1,7 @@
+---
+title: podctl config set
+---
+
 # podctl config set
 
 Set configuration attribute values

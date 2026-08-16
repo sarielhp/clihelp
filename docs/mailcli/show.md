@@ -1,3 +1,7 @@
+---
+title: mail_cli show
+---
+
 # mail\_cli show
 
 Show the contents of emails in folders matching a label prefix, or show a specific email's details and body without running spam checks.

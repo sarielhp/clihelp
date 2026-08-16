@@ -1,3 +1,7 @@
+---
+title: mail_cli cache prune
+---
+
 # mail\_cli cache prune
 
 Prune cached emails and scores older than a certain number of days.

@@ -1,3 +1,7 @@
+---
+title: mail_cli labels del
+---
+
 # mail\_cli labels del
 
 Delete an existing label by its name.

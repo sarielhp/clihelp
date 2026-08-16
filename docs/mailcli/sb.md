@@ -1,3 +1,7 @@
+---
+title: mail_cli sb
+---
+
 # mail\_cli sb
 
 Shortcut alias for: spam bye

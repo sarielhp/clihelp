@@ -1,3 +1,7 @@
+---
+title: mail_cli account
+---
+
 # mail\_cli account
 
 Manage and list configured mail accounts.

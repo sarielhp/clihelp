@@ -1,3 +1,7 @@
+---
+title: mail_cli test
+---
+
 # mail\_cli test
 
 Run system and integration self-tests to verify API credentials and mail flow.

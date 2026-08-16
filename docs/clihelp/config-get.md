@@ -1,3 +1,7 @@
+---
+title: podctl config get
+---
+
 # podctl config get
 
 Display current value for a configuration attribute

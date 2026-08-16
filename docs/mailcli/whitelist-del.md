@@ -1,3 +1,7 @@
+---
+title: mail_cli whitelist del
+---
+
 # mail\_cli whitelist del
 
 Remove a sender email address from your personal whitelist.

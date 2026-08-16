@@ -1,3 +1,7 @@
+---
+title: podctl config
+---
+
 # podctl config
 
 View and manage application configuration settings

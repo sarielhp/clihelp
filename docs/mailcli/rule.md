@@ -1,3 +1,7 @@
+---
+title: mail_cli rule
+---
+
 # mail\_cli rule
 
 Manage auto-labeling rules for matching senders or subject prefixes.

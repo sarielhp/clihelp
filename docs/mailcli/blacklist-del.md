@@ -1,3 +1,7 @@
+---
+title: mail_cli blacklist del
+---
+
 # mail\_cli blacklist del
 
 Remove a sender email address from your personal blacklist.

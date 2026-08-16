@@ -1,3 +1,7 @@
+---
+title: mail_cli scan
+---
+
 # mail\_cli scan
 
 Scan all folders starting with the given label prefix (case-insensitive) for spam.
