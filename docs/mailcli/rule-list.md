@@ -1,0 +1,20 @@
+# rule list \[-a, --all\]
+
+List custom routing and auto-labeling rules for the selected account.
+
+## Usage
+
+```
+mail_cli rule list [-a, --all]
+```
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `-a, --all` | List all custom routing rules, including those already exported to server filters. |
+
+## Examples
+
+- `mail_cli rule list`
+- `mail_cli rule list --all`

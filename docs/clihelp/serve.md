@@ -10,11 +10,13 @@ podctl serve [options]
 
 ## Flags
 
-- `-p, --port N` — Listen HTTP port number (default: 8080)
-- `-H, --host HOST` — Bind IP host address (default: 127.0.0.1)
-- `--tls-cert PATH` — Path to TLS public certificate file for HTTPS
-- `--tls-key PATH` — Path to TLS private key file for HTTPS
-- `--live-reload` — Automatically reload RSS feed on XML or audio updates
+| Flag | Description |
+|------|-------------|
+| `-p, --port N` | Listen HTTP port number (default: 8080) |
+| `-H, --host HOST` | Bind IP host address (default: 127.0.0.1) |
+| `--tls-cert PATH` | Path to TLS public certificate file for HTTPS |
+| `--tls-key PATH` | Path to TLS private key file for HTTPS |
+| `--live-reload` | Automatically reload RSS feed on XML or audio updates |
 
 ## Examples
 

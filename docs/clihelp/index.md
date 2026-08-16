@@ -12,5 +12,5 @@ A podcast distribution & audio processing tool
 
 ## About
 
-Run 'podctl \<command> --help' or 'podctl help \<command>' for command-specific options.
+Run 'podctl <command> --help' or 'podctl help <command>' for command-specific options.
 

@@ -10,8 +10,10 @@ podctl config <subcommand> [options]
 
 ## Subcommands
 
-- [set](config-set.md) — Set configuration attribute values
-- [get](config-get.md) — Display current value for a configuration attribute
+| Command | Description |
+|---------|-------------|
+| [set](config-set.md) | Set configuration attribute values |
+| [get](config-get.md) | Display current value for a configuration attribute |
 
 ## Examples
 

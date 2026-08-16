@@ -10,8 +10,10 @@ podctl config set location <id> [options]
 
 ## Flags
 
-- `--zone NAME` — Specify datacenter or cloud availability zone
-- `--persist` — Save setting to configuration file
+| Flag | Description |
+|------|-------------|
+| `--zone NAME` | Specify datacenter or cloud availability zone |
+| `--persist` | Save setting to configuration file |
 
 ## Examples
 

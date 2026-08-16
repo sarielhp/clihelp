@@ -10,10 +10,12 @@ podctl deploy [options] <stage>
 
 ## Flags
 
-- `-s, --stage STAGE` — Target deployment environment (staging | production)
-- `--dry-run` — Simulate publishing without uploading files
-- `--purge-cdn` — Invalidate CDN cache for feed and updated audio files
-- `--timeout SEC` — Maximum upload timeout in seconds (default: 300)
+| Flag | Description |
+|------|-------------|
+| `-s, --stage STAGE` | Target deployment environment (staging | production) |
+| `--dry-run` | Simulate publishing without uploading files |
+| `--purge-cdn` | Invalidate CDN cache for feed and updated audio files |
+| `--timeout SEC` | Maximum upload timeout in seconds (default: 300) |
 
 ## Examples
 

@@ -199,7 +199,7 @@ func renderIndex(a *App) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# %s\n\n", mdInline(a.Name))
 	if a.Description != "" {
-		fmt.Fprintf(&b, "%s\n\n", mdInline(a.Description))
+		fmt.Fprintf(&b, "%s\n\n", a.Description)
 	}
 
 	if len(a.Commands) > 0 {
@@ -221,7 +221,7 @@ func renderIndex(a *App) string {
 	if len(a.GlobalFlags) > 0 {
 		b.WriteString("## Global Flags\n\n")
 		for _, f := range a.GlobalFlags {
-			fmt.Fprintf(&b, "- %s — %s\n", mdCode(f.Flags), mdInline(f.Description))
+			fmt.Fprintf(&b, "- %s — %s\n", mdCode(f.Flags), f.Description)
 		}
 		b.WriteString("\n")
 	}
@@ -234,7 +234,7 @@ func renderIndex(a *App) string {
 	}
 	if a.GlobalNote != "" {
 		b.WriteString("## About\n\n")
-		fmt.Fprintf(&b, "%s\n\n", mdInline(a.GlobalNote))
+		fmt.Fprintf(&b, "%s\n\n", a.GlobalNote)
 	}
 	return b.String()
 }
@@ -249,7 +249,7 @@ func listLink(c Command, file string) string {
 	if desc == "" {
 		desc = "—"
 	}
-	return fmt.Sprintf("- [%s](%s) — %s\n", mdInline(name), file, mdInline(desc))
+	return fmt.Sprintf("- [%s](%s) — %s\n", mdInline(name), file, desc)
 }
 
 // renderCommandPage renders the detailed page for a single command.
@@ -258,7 +258,7 @@ func renderCommandPage(a *App, n cmdNode) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# %s\n\n", mdInline(title(&cmd)))
 	if cmd.Description != "" {
-		fmt.Fprintf(&b, "%s\n\n", mdInline(cmd.Description))
+		fmt.Fprintf(&b, "%s\n\n", cmd.Description)
 	}
 
 	if cmd.UsageLine != "" {
@@ -268,7 +268,7 @@ func renderCommandPage(a *App, n cmdNode) string {
 	}
 
 	if subs := subcommandEntries(&cmd); len(subs) > 0 {
-		b.WriteString("## Subcommands\n\n")
+		b.WriteString("## Subcommands\n\n| Command | Description |\n|---------|-------------|\n")
 		for _, s := range subs {
 			file := ""
 			for i := range cmd.Subcommands {
@@ -283,26 +283,26 @@ func renderCommandPage(a *App, n cmdNode) string {
 				desc = "—"
 			}
 			if file != "" {
-				fmt.Fprintf(&b, "- [%s](%s) — %s\n", mdInline(s.Name), file, mdInline(desc))
+				fmt.Fprintf(&b, "| [%s](%s) | %s |\n", mdInline(s.Name), file, desc)
 			} else {
-				fmt.Fprintf(&b, "- %s — %s\n", mdInline(s.Name), mdInline(desc))
+				fmt.Fprintf(&b, "| %s | %s |\n", mdInline(s.Name), desc)
 			}
 		}
 		b.WriteString("\n")
 	}
 
 	if len(cmd.Parameters) > 0 {
-		b.WriteString("## Parameters\n\n")
+		b.WriteString("## Parameters\n\n| Parameter | Description |\n|-----------|-------------|\n")
 		for _, p := range cmd.Parameters {
-			fmt.Fprintf(&b, "- %s — %s\n", mdCode(p.Name), mdInline(p.Description))
+			fmt.Fprintf(&b, "| %s | %s |\n", mdCode(p.Name), p.Description)
 		}
 		b.WriteString("\n")
 	}
 
 	if len(cmd.Options) > 0 {
-		b.WriteString("## Flags\n\n")
+		b.WriteString("## Flags\n\n| Flag | Description |\n|------|-------------|\n")
 		for _, f := range cmd.Options {
-			fmt.Fprintf(&b, "- %s — %s\n", mdCode(f.Flags), mdInline(f.Description))
+			fmt.Fprintf(&b, "| %s | %s |\n", mdCode(f.Flags), f.Description)
 		}
 		b.WriteString("\n")
 	}
@@ -312,7 +312,7 @@ func renderCommandPage(a *App, n cmdNode) string {
 		for _, ex := range cmd.Examples {
 			line := fmt.Sprintf("- %s", mdCode(ex.Line))
 			if ex.Description != "" {
-				line += " — " + mdInline(ex.Description)
+				line += " — " + ex.Description
 			}
 			b.WriteString(line + "\n")
 		}
@@ -323,7 +323,7 @@ func renderCommandPage(a *App, n cmdNode) string {
 		if note.Heading != "" {
 			fmt.Fprintf(&b, "## %s\n\n", mdInline(note.Heading))
 		}
-		fmt.Fprintf(&b, "%s\n\n", mdInline(note.Text))
+		fmt.Fprintf(&b, "%s\n\n", note.Text)
 	}
 
 	return strings.TrimRight(b.String(), "\n") + "\n"

@@ -10,8 +10,10 @@ podctl config set time <seconds> [options]
 
 ## Flags
 
-- `--unit SEC` — Time unit format (s: seconds, m: minutes, h: hours)
-- `--persist` — Save setting to configuration file
+| Flag | Description |
+|------|-------------|
+| `--unit SEC` | Time unit format (s: seconds, m: minutes, h: hours) |
+| `--persist` | Save setting to configuration file |
 
 ## Examples
 

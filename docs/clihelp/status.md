@@ -10,8 +10,10 @@ podctl status [options]
 
 ## Flags
 
-- `-s, --stage STAGE` — Environment to inspect (staging | production)
-- `--json` — Output metrics and status in JSON format
+| Flag | Description |
+|------|-------------|
+| `-s, --stage STAGE` | Environment to inspect (staging | production) |
+| `--json` | Output metrics and status in JSON format |
 
 ## Examples
 

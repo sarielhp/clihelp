@@ -10,9 +10,11 @@ podctl config set space <megabytes> [options]
 
 ## Flags
 
-- `--unit SIZE` — Space allocation unit (MB | GB)
-- `--auto-cleanup` — Purge oldest temporary cache files when limit reached
-- `--persist` — Save setting to configuration file
+| Flag | Description |
+|------|-------------|
+| `--unit SIZE` | Space allocation unit (MB | GB) |
+| `--auto-cleanup` | Purge oldest temporary cache files when limit reached |
+| `--persist` | Save setting to configuration file |
 
 ## Examples
 

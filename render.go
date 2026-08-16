@@ -232,7 +232,7 @@ func (a *App) RenderGlobal(o Options) {
 	th.Hdr.Fprintf(w, "Usage of %s:\n\n", a.Name)
 
 	if a.Description != "" {
-		reflow(w, th.Body, wrapW, 2, "", a.Description)
+		reflow(w, th.Body, wrapW, 2, "", inline(a.Description))
 		fmt.Fprintln(w)
 	}
 
@@ -266,7 +266,7 @@ func (a *App) RenderGlobal(o Options) {
 
 	if a.GlobalNote != "" {
 		fmt.Fprintln(w)
-		reflow(w, th.Body, wrapW, 2, "", a.GlobalNote)
+		reflow(w, th.Body, wrapW, 2, "", inline(a.GlobalNote))
 	}
 }
 
@@ -296,7 +296,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 
 	if cmd.Description != "" {
 		th.Hdr.Fprintln(w, "Description:")
-		reflow(w, th.Body, wrapW, 2, "", cmd.Description)
+		reflow(w, th.Body, wrapW, 2, "", inline(cmd.Description))
 	}
 
 	if cmd.UsageLine != "" {
@@ -308,7 +308,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 		th.Hdr.Fprintln(w, "\nSubcommands:")
 		indent := colIndent(subs)
 		for _, s := range subs {
-			reflow(w, th.Body, wrapW, indent, s.Name, s.Description)
+			reflow(w, th.Body, wrapW, indent, s.Name, inline(s.Description))
 		}
 	}
 
@@ -316,7 +316,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 		th.Hdr.Fprintln(w, "\nParameters:")
 		indent := colIndent(cmd.Parameters)
 		for _, p := range cmd.Parameters {
-			reflow(w, th.Body, wrapW, indent, p.Name, p.Description)
+			reflow(w, th.Body, wrapW, indent, p.Name, inline(p.Description))
 		}
 	}
 
@@ -328,7 +328,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 		}
 		indent := colIndent(optParams)
 		for _, p := range optParams {
-			reflow(w, th.Body, wrapW, indent, p.Name, p.Description)
+			reflow(w, th.Body, wrapW, indent, p.Name, inline(p.Description))
 		}
 	}
 
@@ -337,7 +337,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 		for _, ex := range cmd.Examples {
 			reflow(w, th.Body, wrapW, 2, "", ex.Line)
 			if ex.Description != "" {
-				reflow(w, th.Body, wrapW, 4, "", ex.Description)
+				reflow(w, th.Body, wrapW, 4, "", inline(ex.Description))
 			}
 		}
 	}
@@ -346,7 +346,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 		if note.Heading != "" {
 			th.Hdr.Fprintln(w, "\n"+note.Heading+":")
 		}
-		reflow(w, th.Body, wrapW, 2, "", note.Text)
+		reflow(w, th.Body, wrapW, 2, "", inline(note.Text))
 	}
 
 	if th.Separator {
@@ -375,4 +375,11 @@ func colIndent(params []Param) int {
 		}
 	}
 	return maxW + 4
+}
+
+// inline renders inline markdown in s to a string with ANSI/OSC8 sequences.
+func inline(s string) string {
+	var buf strings.Builder
+	renderInline(&buf, s)
+	return buf.String()
 }
