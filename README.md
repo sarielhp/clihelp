@@ -4,11 +4,12 @@
 
 ## Features
 
-- **ANSI Color Styling** — Bold yellow section headers (`USAGE`, `COMMANDS`, `OPTIONS`, `EXAMPLES`), bold green command labels, and cyan flag options via `github.com/fatih/color`.
-- **Terminal Width Auto-Detection** — Automatically queries stdout terminal width (`golang.org/x/term`) with a clean 80-character fallback for non-TTY / piped environments.
-- **ANSI-Aware Text Wrapping** — Wraps descriptions cleanly without breaking ANSI color control sequences (`github.com/acarl005/stripansi`).
-- **Multi-Level Subcommands** — Supports arbitrary subcommand nesting (e.g. `podctl config set location`).
-- **Clean API & Structs** — Intuitive data modeling (`App`, `Command`, `Option`, `Example`) with convenience methods on `*App`.
+- **Theme-Driven Styling** — One renderer, any look: colors, separator bars, and header wording are controlled by a `Theme` (defaults to a bold-yellow / white / bold-cyan palette like `mail_cli`).
+- **io.Writer Output** — All rendering writes to a caller-supplied `io.Writer`, so output is easy to test, capture, or route to stdout vs stderr.
+- **Deterministic Width** — Terminal width auto-detection (`golang.org/x/term`) with a 70-column fallback for non-TTY / piped environments, overridable per-render via `Options.Width`.
+- **ANSI-Aware Word Wrapping** — Reflows descriptions cleanly without breaking ANSI color sequences (`github.com/acarl005/stripansi`).
+- **Rich Sections** — Description, Usage, Subcommands, Parameters, Flags, Examples, and Notes, all first-class.
+- **Multi-Level Subcommands** — Arbitrary nesting (e.g. `podctl config set location`).
 
 ## Installation
 
@@ -48,8 +49,8 @@ func main() {
 		},
 	}
 
-	// Print global usage or command help automatically based on os.Args
-	app.PrintUsage(os.Args[1:]...)
+	// Render global usage, or command help when a path is supplied.
+	app.Render(clihelp.Options{})
 }
 ```
 
@@ -89,8 +90,8 @@ app := &clihelp.App{
 	},
 }
 
-// Print help for nested path: podctl config set location
-app.PrintCommandUsage("config", "set", "location")
+// Render help for the nested path: podctl config set location.
+app.RenderCommand(clihelp.Options{}, "config", "set", "location")
 ```
 
 ## API Reference
@@ -99,27 +100,28 @@ app.PrintCommandUsage("config", "set", "location")
 
 | Struct | Purpose | Key Fields |
 |--------|---------|------------|
-| `App` | Top-level CLI app definition | `Name`, `Description`, `GlobalNote`, `Commands` |
-| `Command` | Subcommand or nested command | `Name`, `Description`, `UsageLine`, `Options`, `Examples`, `Subcommands` |
+| `App` | Top-level CLI app definition | `Name`, `Description`, `GlobalNote`, `Commands`, `Theme`, `GlobalFlags`, `Shortcuts`, `Version`, `ConfigPath` |
+| `Command` | Subcommand or nested command | `Name`, `Title`, `Aliases`, `Description`, `UsageLine`, `Options`, `Parameters`, `SubcommandEntries`, `Notes`, `Examples`, `Subcommands` |
 | `Option` | Command-line option/flag | `Flags` (e.g. `-o, --output`), `Description` |
 | `Example` | Demonstrative usage line | `Line`, `Description` |
+| `Param` | Positional arg / list entry | `Name`, `Description` |
+| `Note` | Prose section | `Heading`, `Text` |
+| `Theme` | Renderer styling | `Hdr`, `Body`, `Accent`, `Separator`, `TitlePrefix` |
+| `Options` | Per-render control | `Writer`, `Width`, `Theme` |
 
 ### Key Methods
 
-#### `func (a *App) PrintGlobalUsage()`
-Prints top-level usage overview listing all registered root commands.
+#### `func (a *App) Render(o Options, path ...string) bool`
+Dispatches to the global overview when `path` is empty, otherwise renders help for the command path. Returns `true` when a command path renders.
 
-#### `func (a *App) PrintCommandUsage(path ...string) bool`
-Renders formatted help text for a specific command or nested subcommand path (e.g., `"config"`, `"set"`, `"location"`). Returns `true` if found, `false` otherwise.
+#### `func (a *App) RenderGlobal(o Options)`
+Renders the top-level overview: `Usage of <name>:`, command list (with aliases), shortcut commands, global flags, config path, and version.
 
-#### `func (a *App) PrintUsage(path ...string) bool`
-Convenience method. If `path` is empty, calls `PrintGlobalUsage()`. If `path` is provided, calls `PrintCommandUsage(path...)`.
+#### `func (a *App) RenderCommand(o Options, path ...string) bool`
+Renders a detailed help page for a command or nested subcommand path (e.g. `"config"`, `"set"`, `"location"`), with Description, Usage, Subcommands, Parameters, Flags, Examples, and Notes sections. Returns `true` if found.
 
 #### `func (a *App) LookupCommand(path ...string) *Command`
 Traverses the command hierarchy and returns the matching `*Command` pointer, or `nil` if not found.
-
-#### `func PrintSection(name string)`
-Prints a stand-alone yellow bold section header (e.g., `PrintSection("ENVIRONMENT")`).
 
 ## Development & Automation
 

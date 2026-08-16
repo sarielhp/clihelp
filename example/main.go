@@ -166,7 +166,7 @@ func main() {
 
 	// Step 2: Handle global help when no arguments are supplied.
 	if len(rawArgs) == 0 {
-		app.PrintGlobalUsage()
+		app.Render(clihelp.Options{})
 		return
 	}
 
@@ -206,11 +206,11 @@ func main() {
 	// Step 5: If help was explicitly requested or no command path was matched, render help text.
 	if helpRequested || len(cmdPath) == 0 {
 		if len(cmdPath) > 0 {
-			// Print command help for nested path (e.g. app.PrintCommandUsage("config", "set", "location"))
-			app.PrintCommandUsage(cmdPath...)
+			// Print command help for nested path (e.g. app.Render(o, "config", "set", "location"))
+			app.Render(clihelp.Options{}, cmdPath...)
 		} else {
 			// Print top-level global help
-			app.PrintGlobalUsage()
+			app.Render(clihelp.Options{})
 		}
 		return
 	}
@@ -219,7 +219,7 @@ func main() {
 	switch cmdPath[0] {
 	case "build":
 		if len(posArgs) == 0 {
-			app.PrintCommandUsage("build")
+			app.Render(clihelp.Options{}, "build")
 			return
 		}
 		fmt.Printf("Compiling audio episode '%s'...\nSuccess.\n", posArgs[0])
@@ -240,7 +240,7 @@ func main() {
 	case "config":
 		if len(cmdPath) < 3 {
 			// Incomplete subcommand (e.g. "podctl config" or "podctl config set") -> print help for that level
-			app.PrintCommandUsage(cmdPath...)
+			app.Render(clihelp.Options{}, cmdPath...)
 			return
 		}
 
@@ -248,7 +248,7 @@ func main() {
 			attr := cmdPath[2]
 			if len(posArgs) == 0 {
 				// Missing required value -> print help for attribute command
-				app.PrintCommandUsage(cmdPath...)
+				app.Render(clihelp.Options{}, cmdPath...)
 				return
 			}
 			val := posArgs[0]
@@ -257,12 +257,12 @@ func main() {
 			attr := cmdPath[2]
 			fmt.Printf("%s = 5 (default)\n", attr)
 		} else {
-			app.PrintCommandUsage(cmdPath...)
+			app.Render(clihelp.Options{}, cmdPath...)
 		}
 
 	default:
 		fmt.Printf("Unknown command: %s\n", cmdPath[0])
-		app.PrintGlobalUsage()
+		app.Render(clihelp.Options{})
 	}
 }
 

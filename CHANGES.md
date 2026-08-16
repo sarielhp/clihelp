@@ -4,6 +4,30 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-15
+
+### Changed (breaking rendering API)
+- Unified the two renderers (the original classic layout and the mail_cli-style detailed layout) into a single theme-driven engine. The old printing methods (`PrintUsage`, `PrintGlobalUsage`, `PrintCommandUsage`, `PrintSection`, `Print*To`) and helpers (`wrapText`, `indentLines`, `describeLabel`, `describeFlags`) were removed in favor of:
+  - `(*App).Render(o Options, path ...string) bool` — dispatch global vs command help.
+  - `(*App).RenderGlobal(o Options)` — application overview.
+  - `(*App).RenderCommand(o Options, path ...string) bool` — detailed command page.
+- Rendering is now `io.Writer`-first: `Options.Writer` (defaults to stdout) replaces hardcoded stdout output.
+- Render width is deterministic and injectable via `Options.Width` (0 = auto-detect with a 70-column fallback), replacing the two previously inconsistent width functions and the separate 80/70 defaults.
+- One ANSI-aware word reflow (`reflow`) replaces the diverging `wrapText` and reflow implementations, so all sections wrap identically.
+- `Theme` (colors, `Separator`, `TitlePrefix`) now drives all styling via `App.Theme` or `Options.Theme`; nil color fields fall back to the default mail_cli palette.
+
+### Remaining API
+- `App`, `Command`, `Option`, `Example`, `Param`, `Note`, `Theme`, `Options`, and `(*App).LookupCommand` are unchanged.
+
+### Fixed
+- `reflow` and `colIndent` now measure **visible width** (ANSI-stripped runes) instead of raw byte length, so multi-byte runes and colored labels wrap and align correctly.
+- `App.Description` and `App.GlobalNote` are now rendered on the global overview (when set).
+- `Example.Description` is now rendered beneath its example line (when set).
+- Corrected the `Theme` and `reflow` doc comments (`Theme`'s zero value is safe; nil colors fall back to defaults).
+
+### Notes
+- The `example/mailcli` reconstruction still reproduces mail_cli's usage pages **byte-for-byte** (verified by the oracle test), now via the unified `Render` API.
+
 ## [0.1.1] - 2026-08-13
 
 ### Added

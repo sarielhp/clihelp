@@ -72,7 +72,7 @@ make run
 
 ## API Stability & Backward Compatibility
 
-- **Stable Interface**: Preserve backward compatibility for all exported types, methods, and package functions (`App`, `Command`, `Option`, `Example`, `PrintUsage`, `PrintGlobalUsage`, `PrintCommandUsage`).
+- **Stable Interface**: Preserve backward compatibility for all exported types and methods (`App`, `Command`, `Option`, `Example`, `Param`, `Note`, `Theme`, `Options`, `App.Render`, `App.RenderGlobal`, `App.RenderCommand`, `App.LookupCommand`).
 - **Additive Changes**: Adding new fields, structs, or methods is encouraged. Avoid breaking existing function signatures or struct field semantics in future development.
 
 ## File Sizing

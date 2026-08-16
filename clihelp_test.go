@@ -2,186 +2,235 @@ package clihelp
 
 import (
 	"bytes"
-	"io"
-	"os"
 	"strings"
 	"testing"
 
+	"github.com/acarl005/stripansi"
 	"github.com/fatih/color"
 )
 
-func captureOutput(f func()) string {
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	f()
-
-	w.Close()
-	os.Stdout = oldStdout
-
+func captureOptions(width int) (Options, *bytes.Buffer) {
 	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, r)
-	return buf.String()
+	return Options{Writer: &buf, Width: width}, &buf
 }
 
-func TestStripANSI(t *testing.T) {
-	input := color.RedString("Colored") + " Text"
-	expected := "Colored Text"
-	got := stripANSI(input)
-	if got != expected {
-		t.Errorf("stripANSI(%q) = %q; want %q", input, got, expected)
-	}
-}
-
-func TestVisualLen(t *testing.T) {
-	input := color.GreenString("Green")
-	expected := 5
-	got := visualLen(input)
-	if got != expected {
-		t.Errorf("visualLen(%q) = %d; want %d", input, got, expected)
-	}
-}
-
-func TestWrapText(t *testing.T) {
-	text := "This is a long sentence that should be wrapped across multiple lines properly."
-	wrapped := wrapText(text, 30)
-	lines := strings.Split(wrapped, "\n")
-	if len(lines) < 2 {
-		t.Errorf("wrapText did not wrap text into multiple lines: %q", wrapped)
-	}
-	for _, l := range lines {
-		if len([]rune(l)) > 30 {
-			t.Errorf("wrapped line exceeded avail width 30: %q", l)
-		}
-	}
-}
-
-func TestIndentLines(t *testing.T) {
-	input := "line1\nline2"
-	expected := "  line1\n  line2"
-	got := indentLines(input, 2)
-	if got != expected {
-		t.Errorf("indentLines(%q) = %q; want %q", input, got, expected)
-	}
-}
-
-func TestPrintGlobalUsage(t *testing.T) {
-	app := &App{
-		Name:        "testapp",
-		Description: "A test application",
-		GlobalNote:  "Run testapp <command> for details.",
-		Commands: []Command{
-			{
-				Name:        "foo",
-				Description: "Do foo",
-			},
-		},
-	}
-
-	out := captureOutput(func() {
-		PrintGlobalUsage(app)
-	})
-
-	if !strings.Contains(out, "USAGE") {
-		t.Errorf("PrintGlobalUsage output missing USAGE header: %s", out)
-	}
-	if !strings.Contains(out, "testapp [command] [options]") {
-		t.Errorf("PrintGlobalUsage output missing usage line: %s", out)
-	}
-	if !strings.Contains(out, "COMMANDS") {
-		t.Errorf("PrintGlobalUsage output missing COMMANDS section: %s", out)
-	}
-	if !strings.Contains(out, "foo") {
-		t.Errorf("PrintGlobalUsage output missing command 'foo': %s", out)
-	}
-	if !strings.Contains(out, "Run testapp <command> for details.") {
-		t.Errorf("PrintGlobalUsage output missing global note: %s", out)
-	}
-}
-
-func TestPrintCommandUsage(t *testing.T) {
-	app := &App{
-		Name: "testapp",
+func testApp() *App {
+	return &App{
+		Name:    "podctl",
+		Version: "1.0.0",
 		Commands: []Command{
 			{
 				Name:        "build",
-				Description: "Build binary",
-				UsageLine:   "testapp build [flags]",
+				Description: "Compile audio episodes",
+				UsageLine:   "podctl build [options] <file>",
 				Options: []Option{
-					{Flags: "-o PATH", Description: "Output path"},
+					{Flags: "-o, --output PATH", Description: "Write output to PATH"},
+					{Flags: "--verbose", Description: "Enable verbose logging"},
 				},
-				Examples: []Example{
-					{Line: "testapp build -o bin"},
-				},
+				Examples: []Example{{Line: "podctl build ep.wav"}},
 			},
-		},
-	}
-
-	// Test non-existent command
-	if PrintCommandUsage(app, "invalid") {
-		t.Errorf("PrintCommandUsage should return false for invalid command")
-	}
-
-	// Test valid command
-	var found bool
-	out := captureOutput(func() {
-		found = PrintCommandUsage(app, "build")
-	})
-
-	if !found {
-		t.Errorf("PrintCommandUsage returned false for valid command 'build'")
-	}
-	if !strings.Contains(out, "build") {
-		t.Errorf("PrintCommandUsage missing command name in output: %s", out)
-	}
-	if !strings.Contains(out, "OPTIONS") {
-		t.Errorf("PrintCommandUsage missing OPTIONS section: %s", out)
-	}
-	if !strings.Contains(out, "EXAMPLES") {
-		t.Errorf("PrintCommandUsage missing EXAMPLES section: %s", out)
-	}
-}
-
-func TestPrintNestedCommandUsage(t *testing.T) {
-	app := &App{
-		Name: "testapp",
-		Commands: []Command{
 			{
 				Name:        "config",
-				Description: "Configuration settings",
+				Description: "Manage configuration",
+				UsageLine:   "podctl config <subcommand>",
 				Subcommands: []Command{
 					{
 						Name:        "set",
-						Description: "Set a config option",
-						Subcommands: []Command{
-							{
-								Name:        "location",
-								Description: "Set location attribute",
-								UsageLine:   "testapp config set location [options] <value>",
-								Examples: []Example{
-									{Line: "testapp config set location 5"},
-								},
-							},
+						Title:       "config set <key> <value>",
+						Description: "Set a configuration value",
+						UsageLine:   "podctl config set <key> <value>",
+						Parameters: []Param{
+							{Name: "<key>", Description: "The key to set"},
+							{Name: "<value>", Description: "The value to assign"},
 						},
 					},
 				},
 			},
 		},
 	}
+}
 
-	var found bool
-	out := captureOutput(func() {
-		found = PrintCommandUsage(app, "config", "set", "location")
-	})
+func strip(s string) string { return stripansi.Strip(s) }
 
-	if !found {
-		t.Errorf("PrintCommandUsage failed for path [config set location]")
+func TestLookupCommand(t *testing.T) {
+	app := testApp()
+	if c := app.LookupCommand("config", "set"); c == nil || c.Name != "set" {
+		t.Fatalf("nested lookup failed: %+v", c)
 	}
-	if !strings.Contains(out, "testapp config set location") {
-		t.Errorf("PrintCommandUsage output missing full path header: %s", out)
+	if c := app.LookupCommand("config", "set", "time"); c != nil {
+		t.Fatalf("expected nil for unknown deep path, got %v", c.Name)
 	}
-	if !strings.Contains(out, "testapp config set location 5") {
-		t.Errorf("PrintCommandUsage output missing example: %s", out)
+	if c := app.LookupCommand("nope"); c != nil {
+		t.Fatalf("expected nil for unknown command")
+	}
+}
+
+func TestVisualLen(t *testing.T) {
+	green := color.New(color.FgGreen).Sprint("podctl")
+	if stripansi.Strip(green) != "podctl" {
+		t.Fatalf("stripansi mismatch: %q", green)
+	}
+	if visualLen(green) != 6 {
+		t.Fatalf("visualLen of colored %q = %d, want 6", green, visualLen(green))
+	}
+}
+
+func TestRenderGlobal(t *testing.T) {
+	o, buf := captureOptions(80)
+	app := testApp()
+	app.RenderGlobal(o)
+	out := strip(buf.String())
+
+	for _, want := range []string{"Usage of podctl:", "build", "Compile audio episodes", "config", "Manage configuration", "Version:", "1.0.0"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("global output missing %q\n%q", want, out)
+		}
+	}
+}
+
+func TestRenderCommand(t *testing.T) {
+	o, buf := captureOptions(80)
+	app := testApp()
+	if !app.RenderCommand(o, "build") {
+		t.Fatal("RenderCommand(\"build\") returned false")
+	}
+	out := strip(buf.String())
+
+	for _, want := range []string{
+		"Detailed Usage: build", "Description:", "Compile audio episodes",
+		"Usage:", "podctl build [options] <file>",
+		"Flags:", "-o, --output PATH", "Write output to PATH",
+		"Examples:", "podctl build ep.wav",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("command output missing %q\n%q", want, out)
+		}
+	}
+}
+
+func TestRenderNestedCommand(t *testing.T) {
+	o, buf := captureOptions(80)
+	app := testApp()
+	if !app.RenderCommand(o, "config", "set") {
+		t.Fatal("RenderCommand(\"config\",\"set\") returned false")
+	}
+	out := strip(buf.String())
+	for _, want := range []string{"Detailed Usage: config set <key> <value>", "Parameters:", "<key>", "The value to assign"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("nested output missing %q", want)
+		}
+	}
+}
+
+func TestRenderCommandNotFound(t *testing.T) {
+	o, _ := captureOptions(80)
+	if testApp().RenderCommand(o, "wat") {
+		t.Fatal("RenderCommand for unknown command should return false")
+	}
+}
+
+func TestRenderDispatch(t *testing.T) {
+	app := testApp()
+	_, gbuf := captureOptions(80)
+	o := Options{Writer: gbuf, Width: 80}
+	app.Render(o)
+
+	o2, cbuf := captureOptions(80)
+	app.Render(o2, "build")
+	if !strings.Contains(strip(cbuf.String()), "Detailed Usage: build") {
+		t.Errorf("Render with path should render the command page")
+	}
+}
+
+func TestReflowHonorsWidth(t *testing.T) {
+	longText := "The quick brown fox jumps over the lazy dog near the riverside cottage daily."
+	var buf bytes.Buffer
+	reflow(&buf, color.New(color.FgWhite), 20, 2, "", longText)
+	max := 0
+	for _, line := range strings.Split(strings.TrimRight(buf.String(), "\n"), "\n") {
+		if l := len(strip(line)); l > max {
+			max = l
+		}
+	}
+	if max > 20 {
+		t.Fatalf("reflow exceeded width: max line %d (>20)\n%s", max, buf.String())
+	}
+}
+
+func TestReflowMultibyteIsRuneAware(t *testing.T) {
+	// Each CJK character is 3 bytes but 1 visible char. At width 10, only
+	// ~10 visible chars fit per line regardless of byte lengths.
+	longText := strings.Repeat("界 ", 30)
+	var buf bytes.Buffer
+	reflow(&buf, color.New(color.FgWhite), 10, 0, "", longText)
+	for _, line := range strings.Split(strings.TrimRight(buf.String(), "\n"), "\n") {
+		if n := len([]rune(strip(line))); n > 10 {
+			t.Fatalf("line exceeded 10 visible chars (got %d): %q", n, strip(line))
+		}
+	}
+}
+
+func TestRenderGlobalDescriptionAndNote(t *testing.T) {
+	app := testApp()
+	app.Description = "A podcast distribution toolkit."
+	app.GlobalNote = "See docs for account setup."
+	o, buf := captureOptions(80)
+	app.RenderGlobal(o)
+	out := strip(buf.String())
+	if !strings.Contains(out, "A podcast distribution toolkit.") {
+		t.Errorf("global output missing App.Description")
+	}
+	if !strings.Contains(out, "See docs for account setup.") {
+		t.Errorf("global output missing App.GlobalNote")
+	}
+	// Ensure defaults keep the classic layout when fields are unset.
+	o2, buf2 := captureOptions(80)
+	testApp().RenderGlobal(o2)
+	if strings.Contains(strip(buf2.String()), "podcast distribution") {
+		t.Errorf("unexpected description rendered when unset")
+	}
+}
+
+func TestRenderExampleDescription(t *testing.T) {
+	app := testApp()
+	app.Commands[0].Examples[0].Description = "Compiles a single episode."
+	o, buf := captureOptions(80)
+	app.RenderCommand(o, "build")
+	out := strip(buf.String())
+	if !strings.Contains(out, "Compiles a single episode.") {
+		t.Errorf("Example.Description not rendered:\n%q", out)
+	}
+}
+
+func TestReflowNoSeparatorTheme(t *testing.T) {
+	o, buf := captureOptions(80)
+	o.Theme = &Theme{Separator: false, TitlePrefix: "USAGE: "}
+	testApp().RenderCommand(o, "build")
+	out := strip(buf.String())
+	if strings.Contains(out, "===") {
+		t.Errorf("separator rendered despite Theme.Separator=false:\n%q", out)
+	}
+	if !strings.Contains(out, "USAGE: build") {
+		t.Errorf("custom TitlePrefix not applied")
+	}
+}
+
+func TestRenderCustomThemeColors(t *testing.T) {
+	had := color.NoColor
+	color.NoColor = false
+	defer func() { color.NoColor = had }()
+
+	o, buf := captureOptions(80)
+	o.Theme = &Theme{
+		Hdr:         color.New(color.FgMagenta, color.Bold),
+		Body:        color.New(color.FgGreen),
+		Accent:      color.New(color.FgBlue, color.Bold),
+		Separator:   true,
+		TitlePrefix: "Detailed Usage: ",
+	}
+	testApp().RenderCommand(o, "build")
+	raw := buf.String()
+	if !strings.Contains(raw, "\x1b[35;1m") {
+		t.Errorf("expect bold magenta header codes, got:\n%q", raw)
 	}
 }
