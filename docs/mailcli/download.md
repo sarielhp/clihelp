@@ -1,4 +1,4 @@
-# download \<label> \<file\_name>
+# mail\_cli download
 
 Download all messages in the specified label (which must match a unique label) to a local mbox file.
 
@@ -19,3 +19,7 @@ mail_cli download <label> <file_name>
 
 - `mail_cli download inbox my_inbox.mbox`
 - `mail_cli download Work/ProjectA project_a.mbox`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

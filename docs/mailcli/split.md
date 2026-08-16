@@ -1,4 +1,4 @@
-# split \<source\_label> \<pattern> \<target\_label>
+# mail\_cli split
 
 Scan messages in the source label. If their subject matches the pattern (which may contain wildcards * and ?), move them to the target label. Runs in dry-run mode by default; use --do to perform actual operations.
 
@@ -26,3 +26,7 @@ mail_cli split <source_label> <pattern> <target_label> [flags]
 
 - `mail_cli split inbox "*invoice*" Work/Billing`
 - `mail_cli split inbox "*urgent*" Urgent --do`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

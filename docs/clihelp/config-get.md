@@ -1,4 +1,4 @@
-# get
+# podctl config get
 
 Display current value for a configuration attribute
 
@@ -12,3 +12,7 @@ podctl config get <attribute>
 
 - `podctl config get location`
 - `podctl config get time`
+
+---
+
+[↑ podctl](index.md) — [nav](nav.md)

@@ -123,7 +123,10 @@ func collect(c Command, prefix []string, out *[]cmdNode) {
 // renderMarkdownPages materializes every page in memory, keyed by its
 // directory-relative filename (e.g. "index.md", "config-set-time.md").
 func renderMarkdownPages(a *App) (map[string]string, error) {
-	pages := map[string]string{"index.md": renderIndex(a)}
+	pages := map[string]string{
+		"index.md": renderIndex(a),
+		"nav.md":   renderNav(a),
+	}
 	for _, n := range collectNodes(a) {
 		pages[markdownRelFile(n.path)] = renderCommandPage(a, n)
 	}
@@ -194,6 +197,41 @@ func mdInline(s string) string {
 // mdCode wraps s as inline code, escaping backticks so they cannot break out.
 func mdCode(s string) string { return "`" + strings.ReplaceAll(s, "`", "\\`") + "`" }
 
+// renderNav renders the page showing the full command tree as a nested list.
+func renderNav(a *App) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "# %s — Navigation\n\n", mdInline(a.Name))
+	if len(a.Commands) > 0 {
+		b.WriteString("## Commands\n\n")
+		for _, c := range a.Commands {
+			renderNavNode(&b, c, []string{c.Name}, 0)
+		}
+		b.WriteString("\n")
+	}
+	if len(a.Shortcuts) > 0 {
+		b.WriteString("## Shortcut Commands\n\n")
+		for _, s := range a.Shortcuts {
+			renderNavNode(&b, s, []string{s.Name}, 0)
+		}
+		b.WriteString("\n")
+	}
+	return strings.TrimRight(b.String(), "\n") + "\n"
+}
+
+func renderNavNode(b *strings.Builder, c Command, path []string, depth int) {
+	indent := strings.Repeat("  ", depth)
+	file := markdownRelFile(path)
+	fmt.Fprintf(b, "%s- [%s](%s)", indent, mdInline(displayName(c)), file)
+	if c.Description != "" {
+		fmt.Fprintf(b, " — %s", c.Description)
+	}
+	b.WriteString("\n")
+	for _, sub := range c.Subcommands {
+		subPath := append(append([]string{}, path...), sub.Name)
+		renderNavNode(b, sub, subPath, depth+1)
+	}
+}
+
 // renderIndex renders the top-level application overview page.
 func renderIndex(a *App) string {
 	var b strings.Builder
@@ -251,7 +289,7 @@ func renderIndex(a *App) string {
 func renderCommandPage(a *App, n cmdNode) string {
 	cmd := n.cmd
 	var b strings.Builder
-	fmt.Fprintf(&b, "# %s\n\n", mdInline(title(&cmd)))
+	fmt.Fprintf(&b, "# %s %s\n\n", mdInline(a.Name), mdInline(strings.Join(n.path, " ")))
 	if cmd.Description != "" {
 		fmt.Fprintf(&b, "%s\n\n", cmd.Description)
 	}
@@ -320,6 +358,8 @@ func renderCommandPage(a *App, n cmdNode) string {
 		}
 		fmt.Fprintf(&b, "%s\n\n", note.Text)
 	}
+
+	fmt.Fprintf(&b, "---\n\n[↑ %s](index.md) — [nav](nav.md)\n", mdInline(a.Name))
 
 	return strings.TrimRight(b.String(), "\n") + "\n"
 }

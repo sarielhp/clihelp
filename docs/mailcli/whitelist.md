@@ -1,4 +1,4 @@
-# whitelist (alias: wlist)
+# mail\_cli whitelist
 
 Manage the personal sender whitelist to bypass spam checks.
 
@@ -20,3 +20,7 @@ mail_cli whitelist <subcommand> [args...]
 
 - `mail_cli whitelist list`
 - `mail_cli whitelist add friend@example.com`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

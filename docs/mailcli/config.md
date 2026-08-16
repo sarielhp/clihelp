@@ -1,4 +1,4 @@
-# config
+# mail\_cli config
 
 Show or manage configuration options.
 
@@ -24,3 +24,7 @@ mail_cli config <subcommand> [args...]
 - `mail_cli config set browser brave-browser`
 - `mail_cli config reset browser`
 - `mail_cli config validate`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

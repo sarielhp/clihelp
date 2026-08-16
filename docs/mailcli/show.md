@@ -1,4 +1,4 @@
-# show
+# mail\_cli show
 
 Show the contents of emails in folders matching a label prefix, or show a specific email's details and body without running spam checks.
 
@@ -26,3 +26,7 @@ mail_cli show <lbl_prefix> [message_id] [flags]
 - `mail_cli show inbox`
 - `mail_cli show inbox abc123de`
 - `mail_cli show inbox abc123de -w`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

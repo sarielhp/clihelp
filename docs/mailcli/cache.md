@@ -1,4 +1,4 @@
-# cache
+# mail\_cli cache
 
 Manage the local email download cache.
 
@@ -27,3 +27,7 @@ mail_cli cache <subcommand> [args...]
 - `mail_cli cache prune 15`
 - `mail_cli cache prune --wipe`
 - `mail_cli cache reset`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

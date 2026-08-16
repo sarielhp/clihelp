@@ -1,4 +1,4 @@
-# blacklist (alias: blist)
+# mail\_cli blacklist
 
 Manage the personal sender blacklist to instantly classify messages as spam.
 
@@ -20,3 +20,7 @@ mail_cli blacklist <subcommand> [args...]
 
 - `mail_cli blacklist list`
 - `mail_cli blacklist add spammer@example.com`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

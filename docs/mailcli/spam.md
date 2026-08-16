@@ -1,4 +1,4 @@
-# spam
+# mail\_cli spam
 
 Manage Spam folder, train filters, and unsubscribe from political mail.
 
@@ -28,3 +28,7 @@ mail_cli spam <message_id...>           Mark one or more messages as spam by ID.
 - `mail_cli spam learn`
 - `mail_cli spam learn force`
 - `mail_cli spam abc123de`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

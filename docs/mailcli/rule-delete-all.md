@@ -1,4 +1,4 @@
-# rule delete\_all
+# mail\_cli rule delete\_all
 
 Delete all custom routing rules for the selected account.
 
@@ -11,3 +11,7 @@ mail_cli rule delete_all
 ## Examples
 
 - `mail_cli rule delete_all`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

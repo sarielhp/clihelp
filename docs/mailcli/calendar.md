@@ -1,4 +1,4 @@
-# calendar
+# mail\_cli calendar
 
 Manage calendar events extracted from email attachments.
 
@@ -20,3 +20,7 @@ mail_cli calendar <subcommand> [args...]
 - `mail_cli calendar add abc123de`
 - `mail_cli calendar add receipts xyz789gh`
 - `mail_cli calendar week`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

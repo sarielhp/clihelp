@@ -1,4 +1,4 @@
-# labels
+# mail\_cli labels
 
 Manage and organize folders/labels.
 
@@ -30,3 +30,7 @@ mail_cli labels <subcommand> [args...]
 - `mail_cli labels rename "sort-coop" "Sort/Services/Coop"`
 - `mail_cli labels search work`
 - `mail_cli labels cache update`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

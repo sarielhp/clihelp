@@ -1,4 +1,4 @@
-# rule add \<email> \<lbl>
+# mail\_cli rule add
 
 Add an auto-labeling rule by sender. Emails from the specified sender address will automatically be labeled with the target label and archived (the "received" label will be removed).
 
@@ -18,3 +18,7 @@ mail_cli rule add <email> <lbl>
 ## Examples
 
 - `mail_cli rule add newsletter@example.com "Sort/Newsletters"`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

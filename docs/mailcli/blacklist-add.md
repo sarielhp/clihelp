@@ -1,4 +1,4 @@
-# blacklist add \<email>
+# mail\_cli blacklist add
 
 Add a sender email address to your personal blacklist. Senders on the blacklist are immediately marked as spam without querying Bogofilter.
 
@@ -17,3 +17,7 @@ mail_cli blacklist add <email>
 ## Examples
 
 - `mail_cli blacklist add spammer@gmail.com`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

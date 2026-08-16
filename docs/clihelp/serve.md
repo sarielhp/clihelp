@@ -1,4 +1,4 @@
-# serve
+# podctl serve
 
 Start local development RSS feed server
 
@@ -23,3 +23,7 @@ podctl serve [options]
 - `podctl serve`
 - `podctl serve --port 9090 --live-reload`
 - `podctl serve -H 0.0.0.0 -p 8443 --tls-cert cert.pem --tls-key key.pem`
+
+---
+
+[↑ podctl](index.md) — [nav](nav.md)

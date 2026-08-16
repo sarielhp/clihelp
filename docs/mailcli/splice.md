@@ -1,4 +1,4 @@
-# splice
+# mail\_cli splice
 
 Move messages from a folder into the keep/YYYY/MM/<folder> structure. The root "keep" is fixed. Use -f to change the target folder name, or -F to change the target folder name and automatically suffix it with the year and month.
 
@@ -29,3 +29,7 @@ The destination folder/label is created on the server automatically if it does n
 ## When dry run only (no --move)
 
 messages are not moved - this shows where they would go.
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

@@ -1,4 +1,4 @@
-# unspam
+# mail\_cli unspam
 
 Mark a message as not being spam: train bogofilter as ham and move it from Spam back to Inbox on the server.
 
@@ -25,3 +25,7 @@ mail_cli unspam <message_id...>
 
 - `mail_cli unspam abc123de`
 - `mail_cli unspam folder Spam`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

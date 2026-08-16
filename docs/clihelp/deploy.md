@@ -1,4 +1,4 @@
-# deploy
+# podctl deploy
 
 Publish RSS feed & audio files to cloud storage / CDN
 
@@ -21,3 +21,7 @@ podctl deploy [options] <stage>
 
 - `podctl deploy --dry-run staging`
 - `podctl deploy -s production --purge-cdn`
+
+---
+
+[↑ podctl](index.md) — [nav](nav.md)

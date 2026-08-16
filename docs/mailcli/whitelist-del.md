@@ -1,4 +1,4 @@
-# whitelist del \<email>
+# mail\_cli whitelist del
 
 Remove a sender email address from your personal whitelist.
 
@@ -17,3 +17,7 @@ mail_cli whitelist del <email>
 ## Examples
 
 - `mail_cli whitelist del mom@gmail.com`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

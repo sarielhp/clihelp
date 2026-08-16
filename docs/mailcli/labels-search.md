@@ -1,4 +1,4 @@
-# labels search \<substring>
+# mail\_cli labels search
 
 Search labels whose full path contains the given substring (case-insensitive). Uses the cached labels list; refreshes asynchronously if the cache is older than 24 hours.
 
@@ -18,3 +18,7 @@ mail_cli labels search <substring>
 
 - `mail_cli labels search work`
 - `mail_cli labels search sort`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

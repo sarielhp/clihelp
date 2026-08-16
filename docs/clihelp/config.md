@@ -1,4 +1,4 @@
-# config
+# podctl config
 
 View and manage application configuration settings
 
@@ -20,3 +20,7 @@ podctl config <subcommand> [options]
 - `podctl config set location 5`
 - `podctl config set time 120`
 - `podctl config set space 500`
+
+---
+
+[↑ podctl](index.md) — [nav](nav.md)

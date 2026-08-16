@@ -1,4 +1,4 @@
-# set
+# podctl config set
 
 Set configuration attribute values
 
@@ -28,3 +28,7 @@ podctl config set <attribute> <value> [options]
 - `podctl config set location 5`
 - `podctl config set time 120`
 - `podctl config set space 500`
+
+---
+
+[↑ podctl](index.md) — [nav](nav.md)

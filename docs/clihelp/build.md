@@ -1,4 +1,4 @@
-# build
+# podctl build
 
 Compile & package audio episodes with metadata
 
@@ -23,3 +23,7 @@ podctl build [options] <source-file>
 - `podctl build episode01.wav`
 - `podctl build -o ep01.mp3 --bitrate 320 --normalize`
 - `podctl build -o dist/ep01.mp3 --tags 'title=Ep1,artist=Podcast' episode01.wav`
+
+---
+
+[↑ podctl](index.md) — [nav](nav.md)

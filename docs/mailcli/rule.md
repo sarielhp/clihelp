@@ -1,4 +1,4 @@
-# rule
+# mail\_cli rule
 
 Manage auto-labeling rules for matching senders or subject prefixes.
 
@@ -41,3 +41,7 @@ mail_cli rule -import <file>
 - `mail_cli rule add billing@netflix.com "Sort/Services/Netflix"`
 - `mail_cli rule add_by_title "GitHub" "Sort/GitHub"`
 - `mail_cli rule add_domain 12345 "Sort/Newsletters"`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

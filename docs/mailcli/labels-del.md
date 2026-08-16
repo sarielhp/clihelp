@@ -1,4 +1,4 @@
-# labels del \<lbl\_name>
+# mail\_cli labels del
 
 Delete an existing label by its name.
 
@@ -17,3 +17,7 @@ mail_cli labels del <lbl_name>
 ## Examples
 
 - `mail_cli labels del "temp-label"`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

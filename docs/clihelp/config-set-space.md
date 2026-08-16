@@ -1,4 +1,4 @@
-# space
+# podctl config set space
 
 Set maximum disk space allocation or cache budget in MB
 
@@ -20,3 +20,7 @@ podctl config set space <megabytes> [options]
 
 - `podctl config set space 500`
 - `podctl config set space 2 --unit GB --auto-cleanup`
+
+---
+
+[↑ podctl](index.md) — [nav](nav.md)

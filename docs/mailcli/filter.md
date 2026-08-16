@@ -1,4 +1,4 @@
-# filter
+# mail\_cli filter
 
 Manage remote filters on Gmail.
 
@@ -17,3 +17,7 @@ mail_cli filter <subcommand> [args...]
 ## Examples
 
 - `mail_cli filter list`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

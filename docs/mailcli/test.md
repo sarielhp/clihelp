@@ -1,4 +1,4 @@
-# test
+# mail\_cli test
 
 Run system and integration self-tests to verify API credentials and mail flow.
 
@@ -17,3 +17,7 @@ mail_cli test run
 ## Examples
 
 - `mail_cli test run`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

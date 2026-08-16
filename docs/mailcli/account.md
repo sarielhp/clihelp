@@ -1,4 +1,4 @@
-# account
+# mail\_cli account
 
 Manage and list configured mail accounts.
 
@@ -29,3 +29,7 @@ mail_cli account <subcommand> [args...]
 - `mail_cli account test outlook-personal`
 - `mail_cli account delete outlook-personal`
 - `mail_cli account associate outlook-personal personal-mail`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

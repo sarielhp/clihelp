@@ -1,4 +1,4 @@
-# scan
+# mail\_cli scan
 
 Scan all folders starting with the given label prefix (case-insensitive) for spam.
 
@@ -27,3 +27,7 @@ mail_cli scan <lbl_prefix> [flags]
 - `mail_cli scan inbox`
 - `mail_cli scan inbox -m`
 - `mail_cli scan receipts -m spammer@example.com`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

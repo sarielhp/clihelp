@@ -1,4 +1,4 @@
-# learn-ham (alias: learn\_ham)
+# mail\_cli learn-ham
 
 Train Bogofilter on ham (non-spam) emails in a folder. The folder must be an exact match and cannot have subfolders.
 
@@ -23,3 +23,7 @@ mail_cli learn-ham <label> [flags]
 ## Examples
 
 - `mail_cli learn-ham receipts --force`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

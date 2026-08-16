@@ -1,4 +1,4 @@
-# status
+# podctl status
 
 Check RSS feed health, CDN metrics, and download stats
 
@@ -19,3 +19,7 @@ podctl status [options]
 
 - `podctl status`
 - `podctl status -s production --json`
+
+---
+
+[↑ podctl](index.md) — [nav](nav.md)

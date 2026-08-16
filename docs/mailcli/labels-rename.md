@@ -1,4 +1,4 @@
-# labels rename \<old\_name> \<new\_name>
+# mail\_cli labels rename
 
 Rename an existing label and move all corresponding emails.
 
@@ -18,3 +18,7 @@ mail_cli labels rename <old_name> <new_name>
 ## Examples
 
 - `mail_cli labels rename "sort-coop" "Sort/Services/Coop"`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

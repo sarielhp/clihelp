@@ -340,7 +340,7 @@ func TestRenderCommandPage(t *testing.T) {
 	// First node should be "build"
 	out := renderCommandPage(app, nodes[0])
 	for _, want := range []string{
-		"# build",
+		"# podctl build",
 		"Compile audio episodes",
 		"## Usage",
 		"```",
@@ -350,6 +350,8 @@ func TestRenderCommandPage(t *testing.T) {
 		"`--verbose`",
 		"## Examples",
 		"`podctl build ep.wav`",
+		"[↑ podctl](index.md)",
+		"[nav](nav.md)",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("renderCommandPage(build) missing %q\n%s", want, out)
@@ -372,9 +374,9 @@ func TestRenderCommandPageNested(t *testing.T) {
 	}
 	out := renderCommandPage(app, setNode)
 
-	// Title is used as heading; angle brackets are escaped by mdInline
-	if !strings.Contains(out, "# config set \\<key> \\<value>") {
-		t.Errorf("expected escaped Title as heading, got:\n%s", out)
+	// Title is now full path: app name + command path
+	if !strings.Contains(out, "# podctl config set") {
+		t.Errorf("expected full-path title, got:\n%s", out)
 	}
 	for _, want := range []string{
 		"## Parameters",
@@ -508,6 +510,59 @@ func TestRenderMarkdownOrphanPruning(t *testing.T) {
 	}
 	if _, err := os.Stat(orphanPath); !os.IsNotExist(err) {
 		t.Error("orphan.md was not pruned")
+	}
+}
+
+func TestRenderNavPage(t *testing.T) {
+	app := testApp()
+	out := renderNav(app)
+
+	for _, want := range []string{
+		"# podctl — Navigation",
+		"## Commands",
+		"- [build](build.md)",
+		"- [config](config.md)",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("nav page missing %q\n%s", want, out)
+		}
+	}
+}
+
+func TestRenderMarkdownIncludesNavPage(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CLIHELP_GEN", "1")
+
+	app := testApp()
+	_, err := RenderMarkdown(app, MarkdownOptions{Dir: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	navPath := filepath.Join(dir, "nav.md")
+	if _, err := os.Stat(navPath); err != nil {
+		t.Errorf("nav.md not generated: %v", err)
+	}
+
+	data, err := os.ReadFile(navPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "[build](build.md)") {
+		t.Errorf("nav.md missing build link: %s", data)
+	}
+}
+
+func TestRenderCommandPageHasFooter(t *testing.T) {
+	app := testApp()
+	nodes := collectNodes(app)
+	out := renderCommandPage(app, nodes[0])
+
+	if !strings.Contains(out, "[↑ podctl](index.md)") {
+		t.Errorf("command page missing parent link: %s", out)
+	}
+	if !strings.Contains(out, "[nav](nav.md)") {
+		t.Errorf("command page missing nav link: %s", out)
 	}
 }
 

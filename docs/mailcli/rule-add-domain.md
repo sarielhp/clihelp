@@ -1,4 +1,4 @@
-# rule add\_domain \<message\_id> \[lbl\]
+# mail\_cli rule add\_domain
 
 Add an auto-labeling rule for all emails from the sender's domain. Extracts the domain of the sender of the specified cached email and creates a rule to auto-label all emails from that domain.
 
@@ -19,3 +19,7 @@ mail_cli rule add_domain <message_id> [lbl]
 
 - `mail_cli rule add_domain 12345 "Sort/Newsletters"`
 - `mail_cli rule add_domain 12345`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

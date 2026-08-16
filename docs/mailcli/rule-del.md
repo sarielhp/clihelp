@@ -1,4 +1,4 @@
-# rule del \<email|title>
+# mail\_cli rule del
 
 Remove an auto-labeling rule for a sender email address or subject prefix.
 
@@ -18,3 +18,7 @@ mail_cli rule del <email|title>
 
 - `mail_cli rule del newsletter@example.com`
 - `mail_cli rule del "[Alert]"`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

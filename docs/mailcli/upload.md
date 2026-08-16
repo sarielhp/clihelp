@@ -1,4 +1,4 @@
-# upload \<label> \<file\_name>
+# mail\_cli upload
 
 Upload all email messages from a local mbox file to the specified target label/folder on the server.
 
@@ -19,3 +19,7 @@ mail_cli upload <label> <file_name>
 
 - `mail_cli upload archive archive.mbox`
 - `mail_cli upload Work/ProjectA project_a.mbox`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

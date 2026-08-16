@@ -1,4 +1,4 @@
-# labels create \<lbl\_name>
+# mail\_cli labels create
 
 Create a new label on the server.
 
@@ -17,3 +17,7 @@ mail_cli labels create <lbl_name>
 ## Examples
 
 - `mail_cli labels create "Work/ProjectA"`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

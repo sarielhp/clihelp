@@ -1,4 +1,4 @@
-# rule list \[-a, --all\]
+# mail\_cli rule list
 
 List custom routing and auto-labeling rules for the selected account.
 
@@ -18,3 +18,7 @@ mail_cli rule list [-a, --all]
 
 - `mail_cli rule list`
 - `mail_cli rule list --all`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)

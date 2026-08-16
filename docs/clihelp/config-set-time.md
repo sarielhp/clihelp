@@ -1,4 +1,4 @@
-# time
+# podctl config set time
 
 Set max execution timeout or timestamp window
 
@@ -19,3 +19,7 @@ podctl config set time <seconds> [options]
 
 - `podctl config set time 120`
 - `podctl config set time 2 --unit h --persist`
+
+---
+
+[↑ podctl](index.md) — [nav](nav.md)

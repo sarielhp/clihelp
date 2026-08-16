@@ -1,4 +1,4 @@
-# blacklist del \<email>
+# mail\_cli blacklist del
 
 Remove a sender email address from your personal blacklist.
 
@@ -17,3 +17,7 @@ mail_cli blacklist del <email>
 ## Examples
 
 - `mail_cli blacklist del spammer@gmail.com`
+
+---
+
+[↑ mail\_cli](index.md) — [nav](nav.md)
