@@ -1,4 +1,4 @@
-// Command mailcli regenerates the complete mail_cli usage/help interface
+// Command mail_cli_fake regenerates the complete mail_cli usage/help interface
 // using clihelp's data model and unified renderer. The global overview is
 // written to stderr and every detailed usage page to stdout, mirroring
 // mail_cli's writer routing.
@@ -15,13 +15,13 @@ func main() {
 	app := buildApp()
 
 	if os.Getenv("CLIHELP_GEN") != "" {
-		changed, err := clihelp.RenderMarkdown(app, clihelp.MarkdownOptions{Dir: "docs/mailcli"})
+		changed, err := clihelp.RenderMarkdown(app, clihelp.MarkdownOptions{Dir: "docs/mail_cli_fake"})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "generate docs: %v\n", err)
 			os.Exit(1)
 		}
 		if changed {
-			fmt.Fprintln(os.Stderr, "processed under docs/mailcli/")
+			fmt.Fprintln(os.Stderr, "processed under docs/mail_cli_fake/")
 		} else {
 			fmt.Fprintln(os.Stderr, "docs up to date.")
 		}
