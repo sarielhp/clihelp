@@ -94,6 +94,34 @@ app := &clihelp.App{
 app.RenderCommand(clihelp.Options{}, "config", "set", "location")
 ```
 
+## Migrating from 0.1.x to v0.2.0
+
+`v0.2.0` replaced the old `Print*` renderer API with a unified, theme-driven,
+`io.Writer`-first engine. Your **data model (`App`, `Command`, `Option`,
+`Example`, and `LookupCommand`) is unchanged** — only the method calls change.
+
+| Before (v0.1.x) | After (v0.2.0) |
+|-----------------|-----------------|
+| `app.PrintGlobalUsage()` | `app.RenderGlobal(clihelp.Options{})` |
+| `app.PrintCommandUsage("config", "set")` | `app.RenderCommand(clihelp.Options{}, "config", "set")` |
+| `app.PrintUsage(args...)` | `app.Render(clihelp.Options{}, args...)` |
+| `PrintSection("USAGE")` | removed (use `Theme`/sections) |
+
+Capturing output to a buffer (rather than stdout) used to require the old
+`Print*To` helpers; now pass a writer directly:
+
+```go
+var buf bytes.Buffer
+app.RenderCommand(clihelp.Options{Writer: &buf, Width: 80}, "config", "set")
+```
+
+Two properties are new but optional:
+- `Options.Writer` defaults to `os.Stdout` when nil.
+- `Options.Width` defaults to auto-detection (70-column fallback) when `0`.
+
+Stay on the old API with `go get github.com/sarielhp/clihelp@v0.1.1` if you
+don't want to migrate yet.
+
 ## API Reference
 
 ### Structs
