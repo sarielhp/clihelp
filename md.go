@@ -203,25 +203,33 @@ func renderIndex(a *App) string {
 	}
 
 	if len(a.Commands) > 0 {
-		b.WriteString("## Commands\n\n")
+		b.WriteString("## Commands\n\n| Command | Description |\n|---------|-------------|\n")
 		for _, c := range a.Commands {
-			b.WriteString(listLink(c, markdownSlug(c.Name)+".md"))
+			desc := c.Description
+			if desc == "" {
+				desc = "—"
+			}
+			fmt.Fprintf(&b, "| [%s](%s) | %s |\n", mdInline(displayName(c)), markdownSlug(c.Name)+".md", desc)
 		}
 		b.WriteString("\n")
 	}
 
 	if len(a.Shortcuts) > 0 {
-		b.WriteString("## Shortcut Commands\n\n")
+		b.WriteString("## Shortcut Commands\n\n| Command | Description |\n|---------|-------------|\n")
 		for _, s := range a.Shortcuts {
-			b.WriteString(listLink(s, markdownSlug(s.Name)+".md"))
+			desc := s.Description
+			if desc == "" {
+				desc = "—"
+			}
+			fmt.Fprintf(&b, "| [%s](%s) | %s |\n", mdInline(displayName(s)), markdownSlug(s.Name)+".md", desc)
 		}
 		b.WriteString("\n")
 	}
 
 	if len(a.GlobalFlags) > 0 {
-		b.WriteString("## Global Flags\n\n")
+		b.WriteString("## Global Flags\n\n| Flag | Description |\n|------|-------------|\n")
 		for _, f := range a.GlobalFlags {
-			fmt.Fprintf(&b, "- %s — %s\n", mdCode(f.Flags), f.Description)
+			fmt.Fprintf(&b, "| %s | %s |\n", mdCode(f.Flags), f.Description)
 		}
 		b.WriteString("\n")
 	}
@@ -237,19 +245,6 @@ func renderIndex(a *App) string {
 		fmt.Fprintf(&b, "%s\n\n", a.GlobalNote)
 	}
 	return b.String()
-}
-
-// listLink renders a bullet linking to an own-generated page.
-func listLink(c Command, file string) string {
-	name := c.Name
-	if len(c.Aliases) > 0 {
-		name += " (" + strings.Join(c.Aliases, ", ") + ")"
-	}
-	desc := c.Description
-	if desc == "" {
-		desc = "—"
-	}
-	return fmt.Sprintf("- [%s](%s) — %s\n", mdInline(name), file, desc)
 }
 
 // renderCommandPage renders the detailed page for a single command.
