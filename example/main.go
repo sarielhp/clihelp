@@ -162,6 +162,25 @@ func main() {
 		},
 	}
 
+	// Optional: generate the GitHub-hosted markdown help site. This is the
+	// developer bootstrap — it runs only when CLIHELP_GEN is set, so a normal
+	// (deployed) invocation never touches the docs. The first run writes the
+	// pages plus a gitignored hash sidecar; later staleness is handled by the
+	// library's self-check. Run:  CLIHELP_GEN=1 go run ./example
+	if os.Getenv("CLIHELP_GEN") != "" {
+		changed, gerr := clihelp.RenderMarkdown(app, clihelp.MarkdownOptions{Dir: "docs/clihelp"})
+		if gerr != nil {
+			fmt.Fprintf(os.Stderr, "generate docs: %v\n", gerr)
+			os.Exit(1)
+		}
+		if changed {
+			fmt.Fprintln(os.Stderr, "processed under docs/clihelp/")
+		} else {
+			fmt.Fprintln(os.Stderr, "docs up to date.")
+		}
+		return
+	}
+
 	rawArgs := os.Args[1:]
 
 	// Step 2: Handle global help when no arguments are supplied.

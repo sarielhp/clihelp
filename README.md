@@ -136,6 +136,7 @@ don't want to migrate yet.
 | `Note` | Prose section | `Heading`, `Text` |
 | `Theme` | Renderer styling | `Hdr`, `Body`, `Accent`, `Separator`, `TitlePrefix` |
 | `Options` | Per-render control | `Writer`, `Width`, `Theme` |
+| `MarkdownOptions` | Markdown generation | `Dir` (default: `"docs/clihelp"`) |
 
 ### Key Methods
 
@@ -150,6 +151,37 @@ Renders a detailed help page for a command or nested subcommand path (e.g. `"con
 
 #### `func (a *App) LookupCommand(path ...string) *Command`
 Traverses the command hierarchy and returns the matching `*Command` pointer, or `nil` if not found.
+
+#### `func RenderMarkdown(a *App, o MarkdownOptions) (changed bool, err error)`
+Generates GitHub-friendly markdown help pages under `o.Dir` (defaults to `docs/clihelp/`). Creates one `.md` file per command plus `index.md`, with embedded relative links between commands. Uses SHA-256 content hashing to skip regeneration when the usage tree is unchanged. Gated by the `CLIHELP_GEN` environment variable so deployed binaries stay silent.
+
+```go
+// Developer bootstrap — run: CLIHELP_GEN=1 go run .
+if os.Getenv("CLIHELP_GEN") != "" {
+    clihelp.RenderMarkdown(app, clihelp.MarkdownOptions{})
+    return
+}
+```
+
+## Markdown Documentation Generation
+
+`clihelp` can generate a **GitHub-friendly markdown help site** from your `App` definition. Each command gets its own `.md` page with embedded links to subcommands, so the rendered output on GitHub is a fully navigable documentation tree.
+
+### Workflow
+
+```bash
+# Generate the docs
+CLIHELP_GEN=1 go run .
+
+# Commit and push to GitHub
+git add -A docs/clihelp
+git commit -m "docs: update CLI help pages"
+git push
+```
+
+The output goes to `docs/clihelp/` by default. A `.clihelp-hash` sidecar file tracks content staleness and is automatically gitignored. Subsequent runs without `CLIHELP_GEN` will regenerate only when the command tree changes.
+
+See `example/main.go` for a complete integration example.
 
 ## Development & Automation
 

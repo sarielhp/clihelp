@@ -4,6 +4,9 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- GitHub-friendly markdown help-page generation via `RenderMarkdown` and `MarkdownOptions`. Generates interlinked `.md` pages under `docs/clihelp/` (configurable) gated by the `CLIHELP_GEN` environment variable. Includes SHA-256 hash staleness detection, orphaned page pruning, and automatic `.gitignore` integration for the hash sidecar.
+
 ## [0.2.0] - 2026-08-15
 
 ### Changed (breaking rendering API)

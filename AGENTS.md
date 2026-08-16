@@ -66,7 +66,7 @@ make run
 ## Version Management
 
 - Version is stored in `VERSION` file (semver: `major.minor.patch`)
-- Current version: `0.1.1`
+- Current version: `0.2.0`
 - Run `make bump` to bump patch version, commit, tag, and push version in one step
 - `VERSION` file is the single source of truth for release versioning
 
@@ -95,7 +95,8 @@ make run
 | File | Purpose |
 |------|---------|
 | `clihelp.go` | Core CLI help printing logic, section layout, string wrapping, and terminal width helpers |
-| `clihelp_test.go` | Unit tests for formatting, wrapping, ANSI stripping, and usage output generation |
+| `md.go` | GitHub-friendly markdown help-page generator (RenderMarkdown, MarkdownOptions) |
+| `clihelp_test.go` | Unit tests for formatting, wrapping, ANSI stripping, usage output, and markdown generation |
 | `example/main.go` | Demonstration CLI app using `clihelp` |
 | `Makefile` | Make targets for standard workflows |
 | `VERSION` | Version source of truth |
