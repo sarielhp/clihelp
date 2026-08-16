@@ -1,5 +1,6 @@
 ---
 title: podctl config get
+parent: podctl config
 ---
 
 # podctl config get

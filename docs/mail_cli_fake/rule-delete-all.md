@@ -1,5 +1,6 @@
 ---
 title: mail_cli rule delete_all
+parent: mail_cli rule
 ---
 
 # mail\_cli rule delete\_all

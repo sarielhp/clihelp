@@ -1,5 +1,6 @@
 ---
 title: podctl config
+has_children: true
 ---
 
 # podctl config

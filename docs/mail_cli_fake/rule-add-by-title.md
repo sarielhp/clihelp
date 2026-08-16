@@ -1,5 +1,6 @@
 ---
 title: mail_cli rule add_by_title
+parent: mail_cli rule
 ---
 
 # mail\_cli rule add\_by\_title

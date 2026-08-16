@@ -1,5 +1,7 @@
 ---
 title: mail_cli labels cache
+has_children: true
+parent: mail_cli labels
 ---
 
 # mail\_cli labels cache

@@ -1,5 +1,6 @@
 ---
 title: mail_cli blacklist del
+parent: mail_cli blacklist
 ---
 
 # mail\_cli blacklist del

@@ -1,5 +1,6 @@
 ---
 title: mail_cli whitelist
+has_children: true
 ---
 
 # mail\_cli whitelist

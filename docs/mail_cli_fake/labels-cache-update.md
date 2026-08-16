@@ -1,5 +1,6 @@
 ---
 title: mail_cli labels cache update
+parent: mail_cli labels cache
 ---
 
 # mail\_cli labels cache update

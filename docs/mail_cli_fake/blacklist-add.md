@@ -1,5 +1,6 @@
 ---
 title: mail_cli blacklist add
+parent: mail_cli blacklist
 ---
 
 # mail\_cli blacklist add

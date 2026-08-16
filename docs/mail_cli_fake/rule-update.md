@@ -1,5 +1,6 @@
 ---
 title: mail_cli rule update
+parent: mail_cli rule
 ---
 
 # mail\_cli rule update

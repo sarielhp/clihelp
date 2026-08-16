@@ -1,5 +1,6 @@
 ---
 title: mail_cli rule export
+parent: mail_cli rule
 ---
 
 # mail\_cli rule export

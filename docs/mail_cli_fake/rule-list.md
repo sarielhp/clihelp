@@ -1,5 +1,6 @@
 ---
 title: mail_cli rule list
+parent: mail_cli rule
 ---
 
 # mail\_cli rule list

@@ -1,5 +1,6 @@
 ---
 title: podctl config set location
+parent: podctl config set
 ---
 
 # podctl config set location

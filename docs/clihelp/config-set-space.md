@@ -1,5 +1,6 @@
 ---
 title: podctl config set space
+parent: podctl config set
 ---
 
 # podctl config set space

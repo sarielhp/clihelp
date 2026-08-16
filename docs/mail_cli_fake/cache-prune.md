@@ -1,5 +1,6 @@
 ---
 title: mail_cli cache prune
+parent: mail_cli cache
 ---
 
 # mail\_cli cache prune

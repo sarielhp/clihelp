@@ -1,5 +1,6 @@
 ---
 title: podctl config set time
+parent: podctl config set
 ---
 
 # podctl config set time

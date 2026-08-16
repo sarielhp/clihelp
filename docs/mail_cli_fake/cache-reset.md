@@ -1,5 +1,6 @@
 ---
 title: mail_cli cache reset
+parent: mail_cli cache
 ---
 
 # mail\_cli cache reset

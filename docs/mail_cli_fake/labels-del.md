@@ -1,5 +1,6 @@
 ---
 title: mail_cli labels del
+parent: mail_cli labels
 ---
 
 # mail\_cli labels del

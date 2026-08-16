@@ -1,5 +1,6 @@
 ---
 title: mail_cli rule add_domain
+parent: mail_cli rule
 ---
 
 # mail\_cli rule add\_domain

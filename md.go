@@ -197,15 +197,31 @@ func mdInline(s string) string {
 // mdCode wraps s as inline code, escaping backticks so they cannot break out.
 func mdCode(s string) string { return "`" + strings.ReplaceAll(s, "`", "\\`") + "`" }
 
-// pageHeader returns Jekyll front matter for the given title.
-func pageHeader(title string) string {
-	return fmt.Sprintf("---\ntitle: %s\n---\n\n", title)
+// pageMeta carries Jekyll front-matter fields for a generated page.
+type pageMeta struct {
+	title       string
+	hasChildren bool
+	parent      string
+}
+
+// pageHeader renders Jekyll front matter from meta.
+func pageHeader(m pageMeta) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "---\ntitle: %s\n", m.title)
+	if m.hasChildren {
+		fmt.Fprintf(&b, "has_children: true\n")
+	}
+	if m.parent != "" {
+		fmt.Fprintf(&b, "parent: %s\n", m.parent)
+	}
+	b.WriteString("---\n\n")
+	return b.String()
 }
 
 // renderNav renders the page showing the full command tree as a nested list.
 func renderNav(a *App) string {
 	var b strings.Builder
-	b.WriteString(pageHeader(a.Name + " — Navigation"))
+	b.WriteString(pageHeader(pageMeta{title: a.Name + " — Navigation"}))
 	fmt.Fprintf(&b, "# %s — Navigation\n\n", mdInline(a.Name))
 	if len(a.Commands) > 0 {
 		b.WriteString("## Commands\n\n")
@@ -241,7 +257,7 @@ func renderNavNode(b *strings.Builder, c Command, path []string, depth int) {
 // renderIndex renders the top-level application overview page.
 func renderIndex(a *App) string {
 	var b strings.Builder
-	b.WriteString(pageHeader(a.Name))
+	b.WriteString(pageHeader(pageMeta{title: a.Name, hasChildren: true}))
 	fmt.Fprintf(&b, "# %s\n\n", mdInline(a.Name))
 	if a.Description != "" {
 		fmt.Fprintf(&b, "%s\n\n", a.Description)
@@ -296,8 +312,17 @@ func renderIndex(a *App) string {
 func renderCommandPage(a *App, n cmdNode) string {
 	cmd := n.cmd
 	fullTitle := a.Name + " " + strings.Join(n.path, " ")
+
+	meta := pageMeta{title: fullTitle}
+	if len(cmd.Subcommands) > 0 {
+		meta.hasChildren = true
+	}
+	if len(n.path) > 1 {
+		meta.parent = a.Name + " " + strings.Join(n.path[:len(n.path)-1], " ")
+	}
+
 	var b strings.Builder
-	b.WriteString(pageHeader(fullTitle))
+	b.WriteString(pageHeader(meta))
 	fmt.Fprintf(&b, "# %s\n\n", mdInline(fullTitle))
 	if cmd.Description != "" {
 		fmt.Fprintf(&b, "%s\n\n", cmd.Description)

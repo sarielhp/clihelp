@@ -1,5 +1,6 @@
 ---
 title: mail_cli rule
+has_children: true
 ---
 
 # mail\_cli rule

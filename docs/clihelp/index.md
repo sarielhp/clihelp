@@ -1,5 +1,6 @@
 ---
 title: podctl
+has_children: true
 ---
 
 # podctl
