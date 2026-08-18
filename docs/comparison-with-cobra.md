@@ -1,33 +1,31 @@
 # Comparing `clihelp` and `spf13/cobra`
 
-When designing command-line applications in Go, [`spf13/cobra`](https://github.com/spf13/cobra) is the venerable industry standard. Created by Steve Francia and maintained by a fantastic team of open-source contributors, Cobra powers legendary cloud-native tools including Kubernetes (`kubectl`), GitHub CLI (`gh`), Hugo, Docker CLI, and Helm. The Go ecosystem owes an enormous debt of gratitude to Cobra for pioneering structured CLI design in Go.
+[`spf13/cobra`](https://github.com/spf13/cobra) is the most widely adopted CLI framework in the Go ecosystem, powering tools such as Kubernetes (`kubectl`), GitHub CLI (`gh`), Hugo, Docker CLI, and Helm. `clihelp` utilizes Cobra's underlying POSIX flag library, `github.com/spf13/pflag`, for flag parsing.
 
-`clihelp` was built with deep respect for Cobra's foundation—in fact, `clihelp` uses Cobra's sister library `github.com/spf13/pflag` under the hood for POSIX-compliant flag handling. 
-
-However, `clihelp` takes a different philosophical approach tailored for modern Go development, clean state management, rich terminal aesthetics, and AI-assisted workflows.
+While Cobra excels at building large CLI ecosystems, `clihelp` offers a different design model focused on declarative struct composition, zero global state, integrated terminal theming, and built-in Markdown documentation generation.
 
 ---
 
-## High-Level Comparison Matrix
+## Feature Comparison Matrix
 
 | Feature | `spf13/cobra` | `clihelp` |
 |---|---|---|
-| **Ecosystem & Community** | Industry standard (Kubernetes, GitHub CLI, Docker) | Focused, modern alternative |
-| **Architecture Style** | Imperative tree construction via `init()` & `AddCommand()` | Declarative, pure struct tree instantiation |
-| **Global State** | Common pattern relies on global `var`s & `init()` functions | Zero global state; fully encapsulated in structs |
-| **Terminal Formatting** | Monochromatic, plain-text default layout | Theme-driven ANSI colors, width detection, OSC 8 links |
-| **Markdown Help Sites** | Generates raw markdown files (requires `cobra/doc`) | Built-in GitHub Markdown tree generator with SHA-256 caching |
-| **Flag Specification** | Separate method calls (`Flags().StringVarP(...)`) | Expressive single-string spec (`"-o, --output PATH"`) |
+| **Ecosystem** | De facto standard across cloud-native tooling | Lightweight, focused alternative |
+| **Command Definition** | Imperative tree construction via `init()` and `AddCommand()` | Pure declarative Go struct tree instantiation |
+| **State Management** | Typically relies on package-level `var`s and `init()` | Zero global state; fully encapsulated in struct instances |
+| **Terminal Output** | Monochromatic, plain-text default layout | Theme-driven ANSI colors, width detection, OSC 8 links |
+| **Markdown Documentation** | Separate package (`cobra/doc`) | Built-in GitHub Markdown tree generator with SHA-256 caching |
+| **Flag Specification** | Method-based binding (`Flags().StringVarP(...)`) | Concise spec string (e.g. `"-o, --output PATH"`) |
 | **Shell Completion** | Bash, Zsh, Fish, PowerShell | Bash, Zsh, Fish |
-| **AI Agent Friendliness** | Prone to `init()` mutation hallucinations | Single declarative literal, token-efficient, `llms.txt` |
+| **AI Agent Prompting** | Multi-step `init()` wiring patterns | Self-contained struct literal with `llms.txt` spec |
 
 ---
 
 ## Architectural Differences
 
-### 1. Declarative Struct Trees vs Imperative `init()` Mutation
+### 1. Declarative Struct Trees vs. Imperative `init()` Wiring
 
-In traditional Cobra applications, commands are defined as package-level global variables, and subcommand trees are wired imperatively inside `init()` functions:
+In typical Cobra applications, commands are defined as package-level global variables and attached to parent commands inside `init()` functions:
 
 #### Cobra Pattern (Imperative & Global)
 
@@ -60,9 +58,9 @@ func init() {
 }
 ```
 
-#### `clihelp` Pattern (Pure Declarative Struct Literal)
+#### `clihelp` Pattern (Declarative Struct Literal)
 
-`clihelp` eliminates package-level mutations and `init()` side-effects. The entire application, hierarchy, options, and hooks can be declared in a single, transparent Go struct literal:
+`clihelp` avoids package-level global variables and `init()` mutations. An entire application tree, its flags, and lifecycle hooks are defined in a single struct value:
 
 ```go
 func NewApp(cfg *Config) *clihelp.App {
@@ -91,50 +89,48 @@ func NewApp(cfg *Config) *clihelp.App {
 
 ---
 
-## Key Advantages of `clihelp`
+## Key Differences & Tradeoffs
 
-### 1. Zero Global State & Superior Testability
-Because `clihelp` applications do not rely on `init()` functions or global command pointers:
-- You can instantiate multiple independent `*clihelp.App` instances concurrently in unit tests.
-- Every render and execution accepts custom `io.Writer` destinations (`Stdout`, `Stderr`) and `context.Context` without monkey-patching global variables.
+### 1. Zero Global State & Testability
+Because `clihelp` applications do not rely on `init()` functions or global pointers:
+- Multiple isolated `*clihelp.App` instances can be created and run concurrently during testing.
+- Target `io.Writer` destinations (`Stdout`, `Stderr`) and `context.Context` are passed explicitly through `clihelp.Context` without modifying global state.
 
-### 2. Built-in Aesthetic Terminal Experience
-- **ANSI Color Themes**: Headers, flags, aliases, and descriptions are rendered with polished, theme-driven palettes out-of-the-box.
-- **Dynamic Width Wrapping**: Word-wrapping is ANSI-aware (preventing broken escape sequences) and automatically matches the user's terminal width.
-- **OSC 8 Hyperlinks & Inline Markdown**: Terminal descriptions support bold, italic, code, and clickable URLs (`[Docs](https://example.com)`).
+### 2. Built-in Terminal Formatting & Theming
+- **ANSI Color Themes**: Colors and header labels are configured via `Theme`.
+- **Dynamic Width Wrapping**: Help text automatically reflows to the active terminal width while preserving ANSI sequences.
+- **OSC 8 Hyperlinks & Inline Markdown**: Descriptions support bold, italic, code, strikethrough, and clickable URLs (`[label](url)`).
 
-### 3. Integrated GitHub Documentation Site Generator
-While Cobra offers the external `cobra/doc` package, `clihelp` integrates GitHub-friendly Markdown generation directly:
-- Generates fully linked, navigable Markdown documentation trees.
-- Features SHA-256 hash change detection so documentation is only updated when the command hierarchy changes.
+### 3. Integrated Markdown Documentation Site Generator
+`clihelp` includes built-in generation of navigable GitHub Markdown documentation trees (`RenderMarkdown`) with SHA-256 caching, eliminating the need for external documentation tools.
 
 ### 4. Expressive Flag Specification Syntax
-Instead of remembering multiple separate method calls for long names, shorthand letters, default values, and usage strings, `clihelp` uses an intuitive spec string:
+`clihelp` combines flag names, aliases, placeholders, and descriptions into concise declarations:
 
 ```go
 // Short + long + placeholder + default + description
 clihelp.String(&out, "-o, --output <path>", "dist", "Destination path")
 
-// Automatic positive and negative boolean toggle flags
+// Boolean toggle pair (--cache / --no-cache)
 clihelp.BoolToggle(&cache, "--[no-]cache", true, "Enable build cache")
 ```
 
-### 5. AI Agent & LLM-Assisted Coding Efficiency
-AI coding assistants (Claude, GPT, Gemini, Cursor) thrive on declarative, self-contained syntax. Cobra's scattered `init()` functions and `Flags().StringVarP()` mutations frequently lead LLMs into hallucinated setup sequences. `clihelp`'s single-pass struct definitions and bundled [`llms.txt`](../llms.txt) provide a token-efficient, unambiguous target for AI code generation.
+### 5. AI Agent & LLM Code Generation
+Self-contained struct declarations are straightforward for LLMs to generate in a single pass without hallucinating missing `init()` registrations or unimported flag methods.
 
 ---
 
-## When Cobra is Still the Right Choice
+## When to Choose Cobra
 
-We enthusiastically recommend `spf13/cobra` if your project:
-- Relies on plugins or extensions from the vast Cobra ecosystem (such as `kubectl` plugin frameworks).
-- Requires PowerShell or Windows Command Prompt completion scripts.
-- Integrates deeply with `spf13/viper` configuration bindings across large legacy codebases.
-- Is maintained by large teams already deeply accustomed to Cobra's imperative conventions.
+Cobra is well-suited for projects that:
+- Rely on plugins or integrations in the Cobra ecosystem (e.g. `kubectl` plugin frameworks).
+- Need PowerShell or Windows completion scripts out-of-the-box.
+- Rely heavily on `spf13/viper` configuration bindings across large multi-package architectures.
+- Are maintained by teams with established conventions around Cobra.
 
 ---
 
 ## Summary
 
-- Use **Cobra** for massive enterprise ecosystems with existing tooling tied to Cobra's architecture.
-- Use **`clihelp`** when you want a modern, declarative, zero-global-state CLI framework with gorgeous terminal output, integrated Markdown documentation generation, and a frictionless experience for both human engineers and AI assistants.
+- Choose **Cobra** for large enterprise ecosystems with existing tooling tied to Cobra and Viper.
+- Choose **`clihelp`** when you prefer a declarative, zero-global-state architecture with built-in theming, integrated Markdown documentation generation, and straightforward unit testing.
