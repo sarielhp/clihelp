@@ -13,11 +13,6 @@ Display current value for a configuration attribute
 podctl config get <attribute>
 ```
 
-## Examples
-
-- `podctl config get location`
-- `podctl config get time`
-
 ---
 
 [↑ podctl](index.md) — [nav](nav.md)

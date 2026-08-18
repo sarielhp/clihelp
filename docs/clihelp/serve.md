@@ -16,17 +16,14 @@ podctl serve [options]
 
 | Flag | Description |
 |------|-------------|
-| `-p, --port N` | Listen HTTP port number (default: 8080) |
-| `-H, --host HOST` | Bind IP host address (default: 127.0.0.1) |
-| `--tls-cert PATH` | Path to TLS public certificate file for HTTPS |
-| `--tls-key PATH` | Path to TLS private key file for HTTPS |
-| `--live-reload` | Automatically reload RSS feed on XML or audio updates |
+| `-p, --port N` | Listen HTTP port number |
+| `-H, --host HOST` | Bind IP host address |
+| `--[no-]live-reload` | Automatically reload RSS feed |
 
 ## Examples
 
 - `podctl serve`
-- `podctl serve --port 9090 --live-reload`
-- `podctl serve -H 0.0.0.0 -p 8443 --tls-cert cert.pem --tls-key key.pem`
+- `podctl serve --port 9090 --no-live-reload`
 
 ---
 

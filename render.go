@@ -216,7 +216,9 @@ func subcommandEntries(c *Command) []Param {
 	}
 	var out []Param
 	for i := range c.Subcommands {
-		out = append(out, Param{Name: c.Subcommands[i].Name, Description: c.Subcommands[i].Description})
+		if !c.Subcommands[i].Hidden {
+			out = append(out, Param{Name: c.Subcommands[i].Name, Description: c.Subcommands[i].Description})
+		}
 	}
 	return out
 }
@@ -238,31 +240,55 @@ func (a *App) RenderGlobal(o Options) {
 
 	th.Accent.Fprintln(w, "Commands:")
 	for _, c := range a.Commands {
-		fmt.Fprintf(w, "  %-12s %s\n", displayName(c), c.Description)
+		if !c.Hidden {
+			fmt.Fprintf(w, "  %-12s %s\n", displayName(c), c.Description)
+		}
 	}
 	fmt.Fprintln(w)
 
-	th.Accent.Fprintln(w, "Shortcut Commands:")
-	for _, s := range a.Shortcuts {
-		fmt.Fprintf(w, "  %-12s %s\n", displayName(s), s.Description)
+	if len(a.Shortcuts) > 0 {
+		th.Accent.Fprintln(w, "Shortcut Commands:")
+		for _, s := range a.Shortcuts {
+			if !s.Hidden {
+				fmt.Fprintf(w, "  %-12s %s\n", displayName(s), s.Description)
+			}
+		}
+		fmt.Fprintln(w)
 	}
-	fmt.Fprintln(w)
 
-	th.Accent.Fprintln(w, "Global Flags:")
+	var globalFlags []Option
+	for _, f := range a.PersistentOptions {
+		if !f.Hidden {
+			globalFlags = append(globalFlags, f)
+		}
+	}
 	for _, f := range a.GlobalFlags {
-		fmt.Fprintf(w, "  %-12s %s\n", f.Flags, f.Description)
+		if !f.Hidden {
+			globalFlags = append(globalFlags, f)
+		}
 	}
-	fmt.Fprintln(w)
+
+	if len(globalFlags) > 0 {
+		th.Accent.Fprintln(w, "Global Flags:")
+		for _, f := range globalFlags {
+			fmt.Fprintf(w, "  %-12s %s\n", f.Flags, f.Description)
+		}
+		fmt.Fprintln(w)
+	}
 
 	th.Hdr.Fprintln(w, "Detailed Help:")
 	fmt.Fprintf(w, "  To see more details and usage for any command, run:\n")
 	fmt.Fprintf(w, "  %s <command>\n\n", a.Name)
 
-	th.Hdr.Fprintln(w, "Config file location:")
-	fmt.Fprintf(w, "  %s\n\n", a.ConfigPath)
+	if a.ConfigPath != "" {
+		th.Hdr.Fprintln(w, "Config file location:")
+		fmt.Fprintf(w, "  %s\n\n", a.ConfigPath)
+	}
 
-	th.Hdr.Fprintln(w, "Version:")
-	fmt.Fprintf(w, "  %s\n", a.Version)
+	if a.Version != "" {
+		th.Hdr.Fprintln(w, "Version:")
+		fmt.Fprintf(w, "  %s\n", a.Version)
+	}
 
 	if a.GlobalNote != "" {
 		fmt.Fprintln(w)
@@ -320,11 +346,27 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 		}
 	}
 
-	if len(cmd.Options) > 0 {
+	var allOptions []Option
+	for _, opt := range cmd.PersistentOptions {
+		if !opt.Hidden {
+			allOptions = append(allOptions, opt)
+		}
+	}
+	for _, opt := range cmd.Options {
+		if !opt.Hidden {
+			allOptions = append(allOptions, opt)
+		}
+	}
+
+	if len(allOptions) > 0 {
 		th.Hdr.Fprintln(w, "\nFlags:")
-		optParams := make([]Param, 0, len(cmd.Options))
-		for _, o0 := range cmd.Options {
-			optParams = append(optParams, Param{Name: o0.Flags, Description: o0.Description})
+		optParams := make([]Param, 0, len(allOptions))
+		for _, o0 := range allOptions {
+			desc := o0.Description
+			if o0.DefaultText != "" {
+				desc = desc + " (default: " + o0.DefaultText + ")"
+			}
+			optParams = append(optParams, Param{Name: o0.Flags, Description: desc})
 		}
 		indent := colIndent(optParams)
 		for _, p := range optParams {

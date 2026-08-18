@@ -287,10 +287,26 @@ func renderIndex(a *App) string {
 		b.WriteString("\n")
 	}
 
-	if len(a.GlobalFlags) > 0 {
+	var globalFlags []Option
+	for _, f := range a.PersistentOptions {
+		if !f.Hidden {
+			globalFlags = append(globalFlags, f)
+		}
+	}
+	for _, f := range a.GlobalFlags {
+		if !f.Hidden {
+			globalFlags = append(globalFlags, f)
+		}
+	}
+
+	if len(globalFlags) > 0 {
 		b.WriteString("## Global Flags\n\n| Flag | Description |\n|------|-------------|\n")
-		for _, f := range a.GlobalFlags {
-			fmt.Fprintf(&b, "| %s | %s |\n", mdCode(f.Flags), f.Description)
+		for _, f := range globalFlags {
+			desc := f.Description
+			if f.DefaultText != "" {
+				desc = desc + " (default: " + f.DefaultText + ")"
+			}
+			fmt.Fprintf(&b, "| %s | %s |\n", mdCode(f.Flags), desc)
 		}
 		b.WriteString("\n")
 	}
@@ -366,10 +382,26 @@ func renderCommandPage(a *App, n cmdNode) string {
 		b.WriteString("\n")
 	}
 
-	if len(cmd.Options) > 0 {
+	var allOptions []Option
+	for _, f := range cmd.PersistentOptions {
+		if !f.Hidden {
+			allOptions = append(allOptions, f)
+		}
+	}
+	for _, f := range cmd.Options {
+		if !f.Hidden {
+			allOptions = append(allOptions, f)
+		}
+	}
+
+	if len(allOptions) > 0 {
 		b.WriteString("## Flags\n\n| Flag | Description |\n|------|-------------|\n")
-		for _, f := range cmd.Options {
-			fmt.Fprintf(&b, "| %s | %s |\n", mdCode(f.Flags), f.Description)
+		for _, f := range allOptions {
+			desc := f.Description
+			if f.DefaultText != "" {
+				desc = desc + " (default: " + f.DefaultText + ")"
+			}
+			fmt.Fprintf(&b, "| %s | %s |\n", mdCode(f.Flags), desc)
 		}
 		b.WriteString("\n")
 	}

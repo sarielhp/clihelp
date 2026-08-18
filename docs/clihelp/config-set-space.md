@@ -5,7 +5,7 @@ parent: podctl config set
 
 # podctl config set space
 
-Set maximum disk space allocation or cache budget in MB
+Set maximum disk space allocation in MB
 
 ## Usage
 
@@ -17,14 +17,8 @@ podctl config set space <megabytes> [options]
 
 | Flag | Description |
 |------|-------------|
-| `--unit SIZE` | Space allocation unit (MB | GB) |
-| `--auto-cleanup` | Purge oldest temporary cache files when limit reached |
-| `--persist` | Save setting to configuration file |
-
-## Examples
-
-- `podctl config set space 500`
-- `podctl config set space 2 --unit GB --auto-cleanup`
+| `--unit SIZE` | Space allocation unit |
+| `--auto-cleanup` | Purge oldest temporary cache files |
 
 ---
 
