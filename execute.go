@@ -47,30 +47,18 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 	}
 
 	// 3. Resolve command hierarchy and separate command path from remaining args
-	targetCmd, path, remaining, err := a.resolveCommand(args)
+	targetCmd, ancestors, path, remaining, err := a.resolveCommand(args)
 	if err != nil {
 		return err
 	}
 
-	// 4. Handle help command or flags
-	if targetCmd == nil && len(path) == 0 && (len(remaining) == 0 && a.Run == nil) {
+	// If resolved to help subcommand
+	if targetCmd == nil && len(path) == 0 && len(remaining) == 0 && a.Run == nil {
 		a.RenderGlobal(Options{Writer: a.stdout()})
 		return nil
 	}
 
-	// Check if explicit help was requested
-	for _, arg := range remaining {
-		if arg == "-h" || arg == "--help" || arg == "help" {
-			if len(path) == 0 {
-				a.RenderGlobal(Options{Writer: a.stdout()})
-			} else {
-				a.RenderCommand(Options{Writer: a.stdout()}, path...)
-			}
-			return nil
-		}
-	}
-
-	// 5. Gather persistent + local options and bind to pflag.FlagSet
+	// 4. Gather persistent + local options and bind to pflag.FlagSet
 	cmdName := a.Name
 	if targetCmd != nil {
 		cmdName = targetCmd.Name
@@ -78,6 +66,13 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 
 	fs := pflag.NewFlagSet(cmdName, pflag.ContinueOnError)
 	fs.SetOutput(a.stderr())
+
+	// Add help flag if not explicitly defined
+	var helpRequested bool
+	if fs.Lookup("help") == nil {
+		fs.BoolVarP(&helpRequested, "help", "h", false, "Help for "+cmdName)
+		_ = fs.MarkHidden("help")
+	}
 
 	// Bind App PersistentOptions
 	for _, opt := range a.PersistentOptions {
@@ -88,7 +83,18 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 		}
 	}
 
-	// Bind Command PersistentOptions & Options
+	// Bind Ancestors' PersistentOptions
+	for _, anc := range ancestors {
+		for _, opt := range anc.PersistentOptions {
+			if opt.Binder != nil {
+				if err := opt.Binder(fs); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	// Bind Target Command PersistentOptions & Options
 	if targetCmd != nil {
 		for _, opt := range targetCmd.PersistentOptions {
 			if opt.Binder != nil {
@@ -111,7 +117,17 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 		return err
 	}
 
-	// 6. Validate positional args
+	// Render help if -h / --help was passed
+	if helpRequested {
+		if len(path) == 0 {
+			a.RenderGlobal(Options{Writer: a.stdout()})
+		} else {
+			a.RenderCommand(Options{Writer: a.stdout()}, path...)
+		}
+		return nil
+	}
+
+	// 5. Validate positional args
 	cmdArgs := fs.Args()
 	if targetCmd != nil && targetCmd.Args != nil {
 		if err := targetCmd.Args(cmdArgs); err != nil {
@@ -119,7 +135,7 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 		}
 	}
 
-	// 7. Lifecycle execution
+	// 6. Lifecycle execution
 	cliCtx := &Context{
 		Context: ctx,
 		App:     a,
@@ -184,9 +200,10 @@ func (a *App) hasCommandNamed(name string) bool {
 	return false
 }
 
-func (a *App) resolveCommand(args []string) (*Command, []string, []string, error) {
+func (a *App) resolveCommand(args []string) (*Command, []*Command, []string, []string, error) {
 	currentCommands := a.Commands
 	var currentCmd *Command
+	var ancestors []*Command
 	var path []string
 	idx := 0
 
@@ -194,14 +211,14 @@ func (a *App) resolveCommand(args []string) (*Command, []string, []string, error
 		arg := args[idx]
 
 		// If help subcommand is passed: e.g. "app help scan"
-		if arg == "help" {
+		if arg == "help" && !a.hasCommandNamed("help") {
 			helpPath := append(path, args[idx+1:]...)
 			if len(helpPath) == 0 {
 				a.RenderGlobal(Options{Writer: a.stdout()})
 			} else {
 				a.RenderCommand(Options{Writer: a.stdout()}, helpPath...)
 			}
-			return nil, nil, nil, nil
+			return nil, nil, nil, nil, nil
 		}
 
 		// Flags denote end of command tree traversal
@@ -228,6 +245,9 @@ func (a *App) resolveCommand(args []string) (*Command, []string, []string, error
 		}
 
 		if matched != nil {
+			if currentCmd != nil {
+				ancestors = append(ancestors, currentCmd)
+			}
 			currentCmd = matched
 			path = append(path, matched.Name)
 			currentCommands = matched.Subcommands
@@ -243,16 +263,16 @@ func (a *App) resolveCommand(args []string) (*Command, []string, []string, error
 			}
 			suggestion := suggestCommand(arg, currentCommands)
 			if suggestion != "" {
-				return nil, nil, nil, fmt.Errorf("unknown command %q for %q. Did you mean %q?", arg, parentName, suggestion)
+				return nil, nil, nil, nil, fmt.Errorf("unknown command %q for %q. Did you mean %q?", arg, parentName, suggestion)
 			}
-			return nil, nil, nil, fmt.Errorf("unknown command %q for %q", arg, parentName)
+			return nil, nil, nil, nil, fmt.Errorf("unknown command %q for %q", arg, parentName)
 		}
 
 		// Otherwise positional argument for current command
 		break
 	}
 
-	return currentCmd, path, args[idx:], nil
+	return currentCmd, ancestors, path, args[idx:], nil
 }
 
 func suggestCommand(typed string, available []Command) string {

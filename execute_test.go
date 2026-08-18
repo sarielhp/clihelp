@@ -166,6 +166,78 @@ func TestExecuteVersionAndHelpInterception(t *testing.T) {
 	}
 }
 
+func TestExecuteNestedPersistentOptions(t *testing.T) {
+	var (
+		appGlobal string
+		parentOpt string
+		childOpt  string
+	)
+
+	app := &App{
+		Name: "nestcli",
+		PersistentOptions: []Option{
+			String(&appGlobal, "--app-global <val>", "default_app", "app global"),
+		},
+		Commands: []Command{
+			{
+				Name: "parent",
+				PersistentOptions: []Option{
+					String(&parentOpt, "--parent-opt <val>", "default_parent", "parent persistent"),
+				},
+				Subcommands: []Command{
+					{
+						Name: "child",
+						Options: []Option{
+							String(&childOpt, "--child-opt <val>", "default_child", "child option"),
+						},
+						Run: func(ctx *Context) error {
+							return nil
+						},
+					},
+				},
+			},
+		},
+	}
+
+	err := app.ExecuteContext(context.Background(), []string{
+		"parent", "child",
+		"--app-global", "set_app",
+		"--parent-opt", "set_parent",
+		"--child-opt", "set_child",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if appGlobal != "set_app" || parentOpt != "set_parent" || childOpt != "set_child" {
+		t.Errorf("options not set properly: app=%s, parent=%s, child=%s", appGlobal, parentOpt, childOpt)
+	}
+}
+
+func TestExecuteCustomHelpCommand(t *testing.T) {
+	customHelpCalled := false
+	app := &App{
+		Name: "customhelpapp",
+		Commands: []Command{
+			{
+				Name: "help",
+				Run: func(ctx *Context) error {
+					customHelpCalled = true
+					return nil
+				},
+			},
+		},
+	}
+
+	err := app.ExecuteContext(context.Background(), []string{"help"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !customHelpCalled {
+		t.Errorf("expected custom help command to be executed")
+	}
+}
+
 func TestPrintError(t *testing.T) {
 	// Ensure calling PrintError with nil or an error does not panic
 	PrintError(nil)

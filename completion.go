@@ -26,11 +26,14 @@ func (a *App) handleComplete(ctx context.Context, args []string) error {
 	}
 
 	// Resolve the active command path from the args up to len(args)-1
-	currentCmd, _, _, _ := a.resolveCommand(args[:len(args)-1])
+	currentCmd, ancestors, _, _, _ := a.resolveCommand(args[:len(args)-1])
 
 	// Collect active options
 	var activeOptions []Option
 	activeOptions = append(activeOptions, a.PersistentOptions...)
+	for _, anc := range ancestors {
+		activeOptions = append(activeOptions, anc.PersistentOptions...)
+	}
 	if currentCmd != nil {
 		activeOptions = append(activeOptions, currentCmd.PersistentOptions...)
 		activeOptions = append(activeOptions, currentCmd.Options...)
