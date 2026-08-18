@@ -4,13 +4,21 @@ When implementing or modifying applications using `clihelp`, AI assistants, codi
 
 ---
 
-## Core Rules
+## LLM Documentation Resources
+
+- [`llms.txt`](../llms.txt) — Clean, token-efficient single-file specification designed for direct LLM ingestion.
+- [Execution Lifecycle Guide](lifecycle-and-routing.md) — Comprehensive execution pipeline details.
+- [Flags & Options Reference](flags-and-options.md) — Complete flag constructor signatures and type behaviors.
+
+---
+
+## Core Rules for AI Assistants
 
 1. **Persistent Target Variables**:
    Always pass pointers to fields within an options struct or command-level variable scope (e.g. `&globals.Verbose`, `&opts.OutputDir`). Never pass pointers to temporary local variables that go out of scope.
 
 2. **Never Manually Register `-h` / `--help`**:
-   `clihelp` automatically binds help flags to all command flagsets during `app.Execute()`. Explicitly registering a help option will trigger `panic: help flag redefined: help`.
+   `clihelp` automatically binds help flags to all command flagsets during `app.Execute()`. Explicitly registering a help option will return a validation error.
 
 3. **Use Subcommands for Nested Workflows**:
    Model nested subcommands (e.g. `config set space`) using `Command.Subcommands` slices rather than doing manual token parsing inside `Run` handlers.

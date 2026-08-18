@@ -2,6 +2,11 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.2.7] - 2026-08-18
+
+### Added
+- Prominently integrated `llms.txt` and AI optimization documentation across `README.md`, `docs/index.md`, and `docs/ai-guidelines.md`.
+
 ## [0.2.6] - 2026-08-18
 
 ### Added

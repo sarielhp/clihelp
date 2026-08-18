@@ -19,6 +19,7 @@
 - **Rich Terminal Styling** — Theme-driven ANSI colors, auto-detected terminal width with 70-column fallback, and ANSI-aware word wrapping.
 - **Inline Markdown & OSC 8 Hyperlinks** — Rich text formatting in descriptions: bold, italic, code, strikethrough, and clickable terminal hyperlinks.
 - **Markdown Documentation Generator** — Automatically generates navigable, GitHub-friendly Markdown doc trees with SHA-256 change-detection caching.
+- **AI & LLM-Optimized** — Token-efficient single-file [`llms.txt`](llms.txt) specification and declarative syntax eliminating common LLM hallucinations.
 
 ---
 
@@ -104,6 +105,7 @@ Detailed technical guides and reference documentation are available in the [`doc
 | 💻 [**Shell Autocompletion**](docs/completion.md) | Setting up Bash, Zsh, and Fish completion, wiring the `completion` command, dynamic callbacks, and live testing. |
 | 📄 [**Markdown Doc Generation**](docs/markdown-generation.md) | Generating navigable GitHub Markdown docs with `RenderMarkdown` and SHA-256 change-detection caching. |
 | 🤖 [**AI Coding Agent Guidelines**](docs/ai-guidelines.md) | Best practices and prompt rules for LLM coding agents and pair programmers building CLIs with `clihelp`. |
+| 🧠 [**AI Context Specification (`llms.txt`)**](llms.txt) | Compact single-file specification formatted for direct ingestion by LLMs and AI developer tools. |
 | ⚖️ [**Comparison with Cobra**](docs/comparison-with-cobra.md) | In-depth comparison with `spf13/cobra`, architectural differences, code patterns, and tradeoffs. |
 
 ---
