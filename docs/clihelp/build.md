@@ -4,7 +4,7 @@ title: podctl build
 
 # podctl build
 
-Compile & package audio episodes with metadata
+Compile & package audio episodes with **metadata** and *ID3 tags*
 
 ## Usage
 
@@ -25,6 +25,10 @@ podctl build [options] <source-file>
 
 - `podctl build episode01.wav`
 - `podctl build -o ep01.mp3 --bitrate 320 --normalize`
+
+## Encoding Guidelines
+
+Use `--bitrate 320` for *highest quality* or `--bitrate 128` for **voice-only** episodes (see [Audio Encoding Guide](https://podctl.example.com/docs/audio)).
 
 ---
 

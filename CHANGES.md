@@ -2,6 +2,13 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.2.11] - 2026-08-18
+
+### Added
+- Expanded Cobra comparison with detailed breakdown of terminal styling, plain-text defaults, and ANSI-aware width wrapping.
+- Enriched `example/main.go` demonstrating all inline Markdown formatting features (bold, italic, code, strikethrough, links, notes).
+- Added pre-checks in `bindHelper` for duplicate flag and shorthand declarations across parent and child flagsets.
+
 ## [0.2.10] - 2026-08-18
 
 ### Added

@@ -205,9 +205,9 @@ done
 		}
 	})
 
-	// Test Case 4: Enum flag completion for "podctl deploy -s "
+	// Test Case 4: Enum flag completion for "podctl deploy -S s"
 	t.Run("EnumFlagValues", func(t *testing.T) {
-		replies := runBashComplete([]string{"podctl", "deploy", "-s", "s"}, 3)
+		replies := runBashComplete([]string{"podctl", "deploy", "-S", "s"}, 3)
 		if len(replies) != 1 || replies[0] != "staging" {
 			t.Errorf("expected ['staging'], got: %v", replies)
 		}

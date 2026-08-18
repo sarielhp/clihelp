@@ -96,10 +96,11 @@ Because `clihelp` applications do not rely on `init()` functions or global point
 - Multiple isolated `*clihelp.App` instances can be created and run concurrently during testing.
 - Target `io.Writer` destinations (`Stdout`, `Stderr`) and `context.Context` are passed explicitly through `clihelp.Context` without modifying global state.
 
-### 2. Built-in Terminal Formatting & Theming
-- **ANSI Color Themes**: Colors and header labels are configured via `Theme`.
-- **Dynamic Width Wrapping**: Help text automatically reflows to the active terminal width while preserving ANSI sequences.
-- **OSC 8 Hyperlinks & Inline Markdown**: Descriptions support bold, italic, code, strikethrough, and clickable URLs (`[label](url)`).
+### 2. Built-in Terminal Formatting, Theming & Clickable Hyperlinks
+- **Plain Text vs. Native Theming**: Cobra renders monochromatic plain-text help by default. Getting colors in Cobra requires overriding its internal template engine (`SetHelpTemplate` or `SetHelpFunc`). In contrast, `clihelp` provides a built-in, theme-driven ANSI engine with headers, accents, and separators configured via `Theme`.
+- **Clickable OSC 8 Hyperlinks**: `clihelp` translates Markdown links `[title](https://...)` into terminal OSC 8 hyperlinks out-of-the-box. Clicking the link in modern terminals opens the URL directly.
+- **Inline Markdown Reflow**: Descriptions and notes support `` `code` ``, `**bold**`, `*italic*`, and `~~strikethrough~~`.
+- **ANSI-Aware Wrapping**: If you embed ANSI escape codes or hyperlink escape sequences in Cobra descriptions, Cobra's string wrapper measures raw byte lengths rather than visible character widths, which can break line wraps and table alignment. `clihelp` measures visual rune width (stripping ANSI escapes during layout calculation) so formatted text always wraps cleanly.
 
 ### 3. Integrated Markdown Documentation Site Generator
 `clihelp` includes built-in generation of navigable GitHub Markdown documentation trees (`RenderMarkdown`) with SHA-256 caching, eliminating the need for external documentation tools.

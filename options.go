@@ -75,6 +75,17 @@ func bindHelper(fs *pflag.FlagSet, spec flagSpec, fn func(long, short string)) e
 		return fmt.Errorf("flag spec %q: -h/--help flags are automatically managed by clihelp and must not be declared in Options", spec.raw)
 	}
 
+	for _, l := range spec.longNames {
+		if fs.Lookup(l) != nil {
+			return fmt.Errorf("flag %q in spec %q is already registered in %s flagset", "--"+l, spec.raw, fs.Name())
+		}
+	}
+	for _, s := range spec.shortNames {
+		if fs.ShorthandLookup(s) != nil {
+			return fmt.Errorf("shorthand %q in spec %q is already registered in %s flagset", "-"+s, spec.raw, fs.Name())
+		}
+	}
+
 	primaryLong := ""
 	if len(spec.longNames) > 0 {
 		primaryLong = spec.longNames[0]

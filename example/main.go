@@ -53,7 +53,7 @@ func main() {
 		Commands: []clihelp.Command{
 			{
 				Name:        "build",
-				Description: "Compile & package audio episodes with metadata",
+				Description: "Compile & package audio episodes with **metadata** and *ID3 tags*",
 				UsageLine:   "podctl build [options] <source-file>",
 				Args:        clihelp.ExactArgs(1),
 				Options: []clihelp.Option{
@@ -65,6 +65,12 @@ func main() {
 				Examples: []clihelp.Example{
 					{Line: "podctl build episode01.wav"},
 					{Line: "podctl build -o ep01.mp3 --bitrate 320 --normalize"},
+				},
+				Notes: []clihelp.Note{
+					{
+						Heading: "Encoding Guidelines",
+						Text:    "Use `--bitrate 320` for *highest quality* or `--bitrate 128` for **voice-only** episodes (see [Audio Encoding Guide](https://podctl.example.com/docs/audio)).",
+					},
 				},
 				Run: func(ctx *clihelp.Context) error {
 					fmt.Printf("Compiling audio episode '%s' (bitrate: %d kbps, output: %q)...\nSuccess.\n",
@@ -131,13 +137,19 @@ func main() {
 			},
 			{
 				Name:        "deploy",
-				Description: "Publish RSS feed & audio files to cloud storage / CDN",
+				Description: "Publish RSS feed & audio to cloud storage (e.g. `S3`, `GCS`) and CDN",
 				UsageLine:   "podctl deploy [options]",
 				Options: []clihelp.Option{
-					clihelp.Enum(&deployStage, "-s, --stage STAGE", []string{"staging", "production"}, "staging", "Target deployment environment"),
+					clihelp.Enum(&deployStage, "-S, --stage STAGE", []string{"staging", "production"}, "staging", "Target deployment environment"),
 					clihelp.Bool(&deployDryRun, "--dry-run", false, "Simulate publishing without uploading files"),
 					clihelp.Bool(&deployPurgeCDN, "--purge-cdn", false, "Invalidate CDN cache for feed and updated audio files"),
 					clihelp.Duration(&deployTimeout, "--timeout SEC", 300*time.Second, "Maximum upload timeout"),
+				},
+				Notes: []clihelp.Note{
+					{
+						Heading: "Safety Precaution",
+						Text:    "Always test with `--dry-run` before ~~overwriting~~ publishing to **production** (see [Deploy Docs](https://podctl.example.com/docs/deploy)).",
+					},
 				},
 				Run: func(ctx *clihelp.Context) error {
 					fmt.Printf("Deploying podcast feed to environment '%s' (dry-run: %v, timeout: %v)...\nSuccess.\n",
@@ -150,7 +162,7 @@ func main() {
 				Description: "Check RSS feed health, CDN metrics, and download stats",
 				UsageLine:   "podctl status [options]",
 				Options: []clihelp.Option{
-					clihelp.Enum(&statusStage, "-s, --stage STAGE", []string{"staging", "production"}, "production", "Environment to inspect"),
+					clihelp.Enum(&statusStage, "-S, --stage STAGE", []string{"staging", "production"}, "production", "Environment to inspect"),
 					clihelp.Bool(&statusJSON, "--json", false, "Output metrics and status in JSON format"),
 				},
 				Run: func(ctx *clihelp.Context) error {

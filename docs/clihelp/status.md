@@ -16,7 +16,7 @@ podctl status [options]
 
 | Flag | Description |
 |------|-------------|
-| `-s, --stage STAGE` | Environment to inspect |
+| `-S, --stage STAGE` | Environment to inspect |
 | `--json` | Output metrics and status in JSON format |
 
 ---
