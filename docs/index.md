@@ -11,6 +11,7 @@ Welcome to the `clihelp` documentation hub.
 - [Shell Autocompletion](completion.md) — Bash, Zsh, Fish script generators, dynamic completion callbacks, and live testing.
 - [GitHub Markdown Documentation Generator](markdown-generation.md) — Automatic Markdown help tree generation with SHA-256 caching.
 - [AI Coding Agent Guidelines](ai-guidelines.md) — Best practices for LLM assistants constructing CLIs with `clihelp`.
+- [Comparison with `spf13/cobra`](comparison-with-cobra.md) — Differences, design philosophy, code comparisons, and architectural tradeoffs.
 
 ---
 

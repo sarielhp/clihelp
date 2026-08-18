@@ -104,6 +104,7 @@ Detailed technical guides and reference documentation are available in the [`doc
 | 💻 [**Shell Autocompletion**](docs/completion.md) | Setting up Bash, Zsh, and Fish completion, wiring the `completion` command, dynamic callbacks, and live testing. |
 | 📄 [**Markdown Doc Generation**](docs/markdown-generation.md) | Generating navigable GitHub Markdown docs with `RenderMarkdown` and SHA-256 change-detection caching. |
 | 🤖 [**AI Coding Agent Guidelines**](docs/ai-guidelines.md) | Best practices and prompt rules for LLM coding agents and pair programmers building CLIs with `clihelp`. |
+| ⚖️ [**Comparison with Cobra**](docs/comparison-with-cobra.md) | In-depth comparison with `spf13/cobra`, architectural differences, code patterns, and tradeoffs. |
 
 ---
 

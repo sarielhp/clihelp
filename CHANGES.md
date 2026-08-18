@@ -2,6 +2,11 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.2.6] - 2026-08-18
+
+### Added
+- In-depth architectural comparison guide with `spf13/cobra` in `docs/comparison-with-cobra.md` covering global state tradeoffs, declarative vs imperative patterns, and terminal aesthetics.
+
 ## [0.2.5] - 2026-08-18
 
 ### Added
