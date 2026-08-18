@@ -10,6 +10,7 @@ import (
 )
 
 type flagSpec struct {
+	raw         string
 	longNames   []string
 	shortNames  []string
 	placeholder string
@@ -17,8 +18,22 @@ type flagSpec struct {
 	baseToggle  string
 }
 
+func (fs flagSpec) hasHelpFlag() bool {
+	for _, l := range fs.longNames {
+		if l == "help" {
+			return true
+		}
+	}
+	for _, s := range fs.shortNames {
+		if s == "h" {
+			return true
+		}
+	}
+	return false
+}
+
 func parseFlagSpec(spec string) flagSpec {
-	var fs flagSpec
+	fs := flagSpec{raw: spec}
 	// Clean commas and split by whitespace
 	parts := strings.Fields(spec)
 	for _, raw := range parts {
@@ -55,7 +70,11 @@ func parseFlagSpec(spec string) flagSpec {
 	return fs
 }
 
-func bindHelper(fs *pflag.FlagSet, spec flagSpec, fn func(long, short string)) {
+func bindHelper(fs *pflag.FlagSet, spec flagSpec, fn func(long, short string)) error {
+	if spec.hasHelpFlag() {
+		return fmt.Errorf("flag spec %q: -h/--help flags are automatically managed by clihelp and must not be declared in Options", spec.raw)
+	}
+
 	primaryLong := ""
 	if len(spec.longNames) > 0 {
 		primaryLong = spec.longNames[0]
@@ -83,6 +102,7 @@ func bindHelper(fs *pflag.FlagSet, spec flagSpec, fn func(long, short string)) {
 		fn(aliasLong, short)
 		_ = fs.MarkHidden(aliasLong)
 	}
+	return nil
 }
 
 // String binds a string flag to target.
@@ -93,7 +113,7 @@ func String(target *string, flags string, defaultVal string, usage string) Optio
 		Flags:       flags,
 		Description: usage,
 		Binder: func(fs *pflag.FlagSet) error {
-			bindHelper(fs, spec, func(long, short string) {
+			return bindHelper(fs, spec, func(long, short string) {
 				if long != "" && short != "" {
 					fs.StringVarP(target, long, short, defaultVal, usage)
 				} else if long != "" {
@@ -102,7 +122,6 @@ func String(target *string, flags string, defaultVal string, usage string) Optio
 					fs.StringVarP(target, "flag-"+short, short, defaultVal, usage)
 				}
 			})
-			return nil
 		},
 	}
 }
@@ -115,7 +134,7 @@ func Int(target *int, flags string, defaultVal int, usage string) Option {
 		Flags:       flags,
 		Description: usage,
 		Binder: func(fs *pflag.FlagSet) error {
-			bindHelper(fs, spec, func(long, short string) {
+			return bindHelper(fs, spec, func(long, short string) {
 				if long != "" && short != "" {
 					fs.IntVarP(target, long, short, defaultVal, usage)
 				} else if long != "" {
@@ -124,7 +143,6 @@ func Int(target *int, flags string, defaultVal int, usage string) Option {
 					fs.IntVarP(target, "flag-"+short, short, defaultVal, usage)
 				}
 			})
-			return nil
 		},
 	}
 }
@@ -137,7 +155,7 @@ func Bool(target *bool, flags string, defaultVal bool, usage string) Option {
 		Flags:       flags,
 		Description: usage,
 		Binder: func(fs *pflag.FlagSet) error {
-			bindHelper(fs, spec, func(long, short string) {
+			return bindHelper(fs, spec, func(long, short string) {
 				if long != "" && short != "" {
 					fs.BoolVarP(target, long, short, defaultVal, usage)
 				} else if long != "" {
@@ -146,7 +164,6 @@ func Bool(target *bool, flags string, defaultVal bool, usage string) Option {
 					fs.BoolVarP(target, "flag-"+short, short, defaultVal, usage)
 				}
 			})
-			return nil
 		},
 	}
 }
@@ -200,6 +217,9 @@ func BoolToggle(target *bool, flags string, defaultVal bool, usage string) Optio
 		Flags:       flags,
 		Description: usage,
 		Binder: func(fs *pflag.FlagSet) error {
+			if spec.hasHelpFlag() {
+				return fmt.Errorf("flag spec %q: -h/--help flags are automatically managed by clihelp and must not be declared in Options", flags)
+			}
 			pos := &toggleVal{target: target, positive: true}
 			neg := &toggleVal{target: target, positive: false}
 
@@ -236,7 +256,7 @@ func Duration(target *time.Duration, flags string, defaultVal time.Duration, usa
 		Flags:       flags,
 		Description: usage,
 		Binder: func(fs *pflag.FlagSet) error {
-			bindHelper(fs, spec, func(long, short string) {
+			return bindHelper(fs, spec, func(long, short string) {
 				if long != "" && short != "" {
 					fs.DurationVarP(target, long, short, defaultVal, usage)
 				} else if long != "" {
@@ -245,7 +265,6 @@ func Duration(target *time.Duration, flags string, defaultVal time.Duration, usa
 					fs.DurationVarP(target, "flag-"+short, short, defaultVal, usage)
 				}
 			})
-			return nil
 		},
 	}
 }
@@ -258,7 +277,7 @@ func StringSlice(target *[]string, flags string, defaultVal []string, usage stri
 		Flags:       flags,
 		Description: usage,
 		Binder: func(fs *pflag.FlagSet) error {
-			bindHelper(fs, spec, func(long, short string) {
+			return bindHelper(fs, spec, func(long, short string) {
 				if long != "" && short != "" {
 					fs.StringSliceVarP(target, long, short, defaultVal, usage)
 				} else if long != "" {
@@ -267,7 +286,6 @@ func StringSlice(target *[]string, flags string, defaultVal []string, usage stri
 					fs.StringSliceVarP(target, "flag-"+short, short, defaultVal, usage)
 				}
 			})
-			return nil
 		},
 	}
 }
@@ -316,7 +334,7 @@ func Enum(target *string, flags string, allowed []string, defaultVal string, usa
 		},
 		Binder: func(fs *pflag.FlagSet) error {
 			val := &enumVal{target: target, allowed: allowed}
-			bindHelper(fs, spec, func(long, short string) {
+			return bindHelper(fs, spec, func(long, short string) {
 				if long != "" && short != "" {
 					fs.VarP(val, long, short, usage)
 				} else if long != "" {
@@ -325,7 +343,6 @@ func Enum(target *string, flags string, allowed []string, defaultVal string, usa
 					fs.VarP(val, "flag-"+short, short, usage)
 				}
 			})
-			return nil
 		},
 	}
 }
@@ -337,7 +354,7 @@ func Var(target pflag.Value, flags string, usage string) Option {
 		Flags:       flags,
 		Description: usage,
 		Binder: func(fs *pflag.FlagSet) error {
-			bindHelper(fs, spec, func(long, short string) {
+			return bindHelper(fs, spec, func(long, short string) {
 				if long != "" && short != "" {
 					fs.VarP(target, long, short, usage)
 				} else if long != "" {
@@ -346,7 +363,6 @@ func Var(target pflag.Value, flags string, usage string) Option {
 					fs.VarP(target, "flag-"+short, short, usage)
 				}
 			})
-			return nil
 		},
 	}
 }

@@ -143,3 +143,27 @@ func TestParseFlagSpec(t *testing.T) {
 		t.Errorf("unexpected toggle spec: %+v", toggleSpec)
 	}
 }
+
+func TestHelpFlagRejection(t *testing.T) {
+	var helpVal bool
+	app := &App{
+		Name: "testhelp",
+		Commands: []Command{
+			{
+				Name: "sub",
+				Options: []Option{
+					Bool(&helpVal, "-h, --help", false, "explicit help"),
+				},
+				Run: func(ctx *Context) error { return nil },
+			},
+		},
+	}
+
+	err := app.ExecuteContext(context.Background(), []string{"sub"})
+	if err == nil {
+		t.Fatalf("expected error when declaring -h/--help option, got nil")
+	}
+	if !strings.Contains(err.Error(), "automatically managed by clihelp") {
+		t.Errorf("expected automatic help management error, got: %v", err)
+	}
+}
