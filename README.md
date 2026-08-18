@@ -4,7 +4,9 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/sarielhp/clihelp)](https://goreportcard.com/report/github.com/sarielhp/clihelp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-`clihelp` is a modern, lightweight, declarative CLI framework and width-aware, colorized help-text generator for Go. It features `pflag`-backed flag parsing, hierarchical subcommand routing, argument validation, lifecycle hooks, shell autocompletion (Bash, Zsh, Fish), OSC 8 terminal hyperlinks, and automatic GitHub Markdown documentation generation.
+`clihelp` is a Go library for parsing command-line arguments and generating clean, detailed usage and help messages. Similar in functionality to [Cobra](https://github.com/spf13/cobra), it was written by an AI agent as a reusable tool to be used across other projects.
+
+It provides clean, structured usage messages with support for ANSI colors and clickable OSC 8 hyperlinks in supported terminals, alongside `pflag`-backed flag parsing, hierarchical subcommand routing, argument validation, lifecycle hooks, and automatic GitHub Markdown documentation generation.
 
 ---
 

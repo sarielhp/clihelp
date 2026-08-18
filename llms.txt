@@ -1,6 +1,6 @@
 # clihelp — Declarative Go CLI Framework & Help Text Formatter
 
-> A lightweight, declarative CLI framework and width-aware, colorized terminal help formatter for Go 1.26+. Features pflag-backed option parsing, hierarchical subcommand routing, argument validation, lifecycle hooks, shell autocompletion (Bash, Zsh, Fish), and GitHub Markdown documentation generation.
+> `clihelp` is a Go library for parsing command-line arguments and generating clean, detailed usage and help messages (similar in functionality to Cobra). Written by an AI agent as a reusable CLI tool across projects, it features pflag-backed option parsing, hierarchical routing, lifecycle hooks, terminal theming with ANSI/OSC 8 link support, and GitHub Markdown documentation generation.
 
 ## Package Architecture
 

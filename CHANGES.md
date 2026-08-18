@@ -2,6 +2,11 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.2.9] - 2026-08-18
+
+### Changed
+- Clarified and refined package description at the top of `README.md` and `llms.txt`.
+
 ## [0.2.7] - 2026-08-18
 
 ### Added
