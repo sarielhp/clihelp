@@ -124,7 +124,14 @@ func GenBashCompletion(app *App, w io.Writer) error {
 	tmpl := fmt.Sprintf(`# bash completion for %[1]s
 _%[2]s_complete() {
     local cur prev words cword
-    _init_completion -n : || return
+    if declare -F _init_completion >/dev/null 2>&1; then
+        _init_completion -n : || return
+    else
+        words=("${COMP_WORDS[@]}")
+        cword=$COMP_CWORD
+        cur="${words[cword]}"
+        prev="${words[cword-1]}"
+    fi
 
     local out
     out=$( "${COMP_WORDS[0]}" __complete "${COMP_WORDS[@]:1}" 2>/dev/null )
@@ -160,10 +167,19 @@ _%[2]s() {
     local line
     
     local -a words_to_pass
-    words_to_pass=("${words[@]:1}")
+    if (( ${#words[@]} > 1 )); then
+        words_to_pass=("${(@)words[2,-1]}")
+    elif (( ${#@} > 0 )); then
+        words_to_pass=("$@")
+    fi
     
+    local binary_cmd="${words[1]:-%[1]s}"
     local output
-    output=(${(f)"$(_call_program %[1]s ${words[1]} __complete ${words_to_pass[@]})"})
+    if declare -f _call_program >/dev/null 2>&1; then
+        output=(${(f)"$(_call_program %[1]s ${binary_cmd} __complete ${words_to_pass[@]})"})
+    else
+        output=(${(f)"$(${binary_cmd} __complete ${words_to_pass[@]})"})
+    fi
     
     for line in "${output[@]}"; do
         if [[ "$line" == *$'\t'* ]]; then

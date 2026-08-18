@@ -2,10 +2,17 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
-## [Unreleased]
+## [0.2.1] - 2026-08-18
 
 ### Added
-- GitHub-friendly markdown help-page generation via `RenderMarkdown` and `MarkdownOptions`. Generates interlinked `.md` pages under `docs/clihelp/` (configurable) gated by the `CLIHELP_GEN` environment variable. Includes SHA-256 hash staleness detection, orphaned page pruning, and automatic `.gitignore` integration for the hash sidecar.
+- Comprehensive package documentation and README overhaul detailing execution lifecycle, flag specification syntax, positional argument validators, and AI agent guidelines.
+- Standard Go package documentation in `doc.go` for `pkg.go.dev`.
+- Live subshell integration tests for Bash (`TestLiveBashCompletion`), Zsh (`TestLiveZshCompletion`), and Fish (`TestLiveFishCompletion`).
+- Added `completion` command to demo application in `example/main.go`.
+
+### Improved
+- `GenBashCompletion`: Added fallback for environments lacking the `bash-completion` package (`_init_completion`).
+- `GenZshCompletion`: Improved parameter expansion and array slicing with `${(@)words[2,-1]}` and `_call_program` fallback.
 
 ## [0.2.0] - 2026-08-15
 

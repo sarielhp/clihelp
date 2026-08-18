@@ -162,6 +162,24 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name:        "completion",
+				Description: "Generate shell autocompletion script",
+				UsageLine:   "podctl completion <bash|zsh|fish>",
+				Args:        clihelp.ExactArgs(1),
+				Run: func(ctx *clihelp.Context) error {
+					switch ctx.Args[0] {
+					case "bash":
+						return clihelp.GenBashCompletion(ctx.App, ctx.Stdout)
+					case "zsh":
+						return clihelp.GenZshCompletion(ctx.App, ctx.Stdout)
+					case "fish":
+						return clihelp.GenFishCompletion(ctx.App, ctx.Stdout)
+					default:
+						return fmt.Errorf("unsupported shell: %s (choose bash, zsh, or fish)", ctx.Args[0])
+					}
+				},
+			},
 		},
 	}
 

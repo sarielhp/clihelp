@@ -16,6 +16,7 @@ A podcast distribution & audio processing tool
 | [config](config.md) | View and manage application configuration settings |
 | [deploy](deploy.md) | Publish RSS feed & audio files to cloud storage / CDN |
 | [status](status.md) | Check RSS feed health, CDN metrics, and download stats |
+| [completion](completion.md) | Generate shell autocompletion script |
 
 ## Global Flags
 

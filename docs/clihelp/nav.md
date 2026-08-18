@@ -14,3 +14,4 @@ title: podctl — Navigation
   - [get](config-get.md) — Display current value for a configuration attribute
 - [deploy](deploy.md) — Publish RSS feed & audio files to cloud storage / CDN
 - [status](status.md) — Check RSS feed health, CDN metrics, and download stats
+- [completion](completion.md) — Generate shell autocompletion script
