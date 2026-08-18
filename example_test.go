@@ -3,6 +3,7 @@ package clihelp_test
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/sarielhp/clihelp"
 )
@@ -86,4 +87,28 @@ func ExampleExactArgs() {
 
 	// Output:
 	// tagging file.txt with v1.0
+}
+
+func ExampleApp_Render() {
+	var buf strings.Builder
+
+	app := &clihelp.App{
+		Name:        "webcli",
+		Description: "[webcli](https://example.com) — Modern web utility tool with `fast` execution.",
+		Commands: []clihelp.Command{
+			{
+				Name:        "ping",
+				Description: "Ping remote server",
+			},
+		},
+	}
+
+	// Render global help to buffer
+	app.RenderGlobal(clihelp.Options{Writer: &buf, Width: 80})
+
+	// Output is formatted with colors and OSC 8 hyperlinks in supported terminals
+	fmt.Println(strings.Contains(buf.String(), "webcli"))
+
+	// Output:
+	// true
 }

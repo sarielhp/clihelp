@@ -2,6 +2,11 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.2.10] - 2026-08-18
+
+### Added
+- Demonstrated clickable OSC 8 hyperlinks and inline formatting in `example/main.go` and `example_test.go` (`ExampleApp_Render`).
+
 ## [0.2.9] - 2026-08-18
 
 ### Changed

@@ -43,9 +43,9 @@ func main() {
 
 	app := &clihelp.App{
 		Name:        "podctl",
-		Description: "A podcast distribution & audio processing tool",
-		Version:     "0.2.0",
-		GlobalNote:  "Run 'podctl <command> --help' or 'podctl help <command>' for command-specific options.",
+		Description: "[podctl](https://podctl.example.com) — A podcast distribution & audio processing tool.",
+		Version:     "0.2.9",
+		GlobalNote:  "Documentation & source: [https://github.com/sarielhp/clihelp](https://github.com/sarielhp/clihelp)\nRun 'podctl <command> --help' for command-specific options.",
 		PersistentOptions: []clihelp.Option{
 			clihelp.Bool(&globals.Verbose, "-v, --verbose", false, "Enable verbose output logs"),
 			clihelp.Bool(&globals.Silent, "-s, --silent", false, "Suppress non-error output"),

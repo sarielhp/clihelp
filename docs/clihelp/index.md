@@ -5,7 +5,7 @@ has_children: true
 
 # podctl
 
-A podcast distribution & audio processing tool
+[podctl](https://podctl.example.com) — A podcast distribution & audio processing tool.
 
 ## Commands
 
@@ -27,9 +27,10 @@ A podcast distribution & audio processing tool
 
 ## Version
 
-0.2.0
+0.2.9
 
 ## About
 
-Run 'podctl <command> --help' or 'podctl help <command>' for command-specific options.
+Documentation & source: [https://github.com/sarielhp/clihelp](https://github.com/sarielhp/clihelp)
+Run 'podctl <command> --help' for command-specific options.
 
