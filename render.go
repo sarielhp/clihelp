@@ -282,20 +282,20 @@ func (a *App) RenderGlobal(o Options) {
 		fmt.Fprintln(w)
 	}
 
-	th.Accent.Fprintln(w, "Commands:")
-	{
-		params := make([]Param, 0, len(a.Commands))
-		for _, c := range a.Commands {
-			if !c.Hidden {
-				params = append(params, Param{Name: displayName(c), Description: c.Description})
-			}
+	params := make([]Param, 0, len(a.Commands))
+	for _, c := range a.Commands {
+		if !c.Hidden {
+			params = append(params, Param{Name: displayName(c), Description: c.Description})
 		}
+	}
+	if len(params) > 0 {
+		th.Accent.Fprintln(w, "Commands:")
 		indent := colIndent(params)
 		for _, p := range params {
 			reflow(w, th.Body, wrapW, indent, p.Name, inline(p.Description))
 		}
+		fmt.Fprintln(w)
 	}
-	fmt.Fprintln(w)
 
 	if len(a.Shortcuts) > 0 {
 		th.Accent.Fprintln(w, "Shortcut Commands:")
@@ -452,7 +452,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 	if len(cmd.Examples) > 0 {
 		th.Hdr.Fprintln(w, "\nExamples:")
 		for _, ex := range cmd.Examples {
-			reflow(w, th.Body, wrapW, 2, "", ex.Line)
+			fmt.Fprintf(w, "  %s\n", ex.Line)
 			if ex.Description != "" {
 				reflow(w, th.Body, wrapW, 4, "", inline(ex.Description))
 			}

@@ -227,7 +227,7 @@ func oracleDetailedUsage(out io.Writer, cmd *clihelp.Command) {
 	if len(cmd.Examples) > 0 {
 		oHdr.Fprintln(out, "\nExamples:")
 		for _, e := range cmd.Examples {
-			oracleReflow(out, oBody, 2, "", e.Line)
+			io.WriteString(out, "  "+e.Line+"\n")
 		}
 	}
 	for _, n := range cmd.Notes {
