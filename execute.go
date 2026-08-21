@@ -205,6 +205,15 @@ func (a *App) hasCommandNamed(name string) bool {
 	return false
 }
 
+func hasSubcommandNamed(cmds []Command, name string) bool {
+	for _, c := range cmds {
+		if c.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 func (a *App) resolveCommand(args []string) (*Command, []*Command, []string, []string, error) {
 	currentCommands := a.Commands
 	var currentCmd *Command
@@ -216,7 +225,7 @@ func (a *App) resolveCommand(args []string) (*Command, []*Command, []string, []s
 		arg := args[idx]
 
 		// If help subcommand is passed: e.g. "app help scan"
-		if arg == "help" && !a.hasCommandNamed("help") {
+		if arg == "help" && !a.hasCommandNamed("help") && !hasSubcommandNamed(currentCommands, "help") {
 			helpPath := append(path, args[idx+1:]...)
 			if len(helpPath) == 0 {
 				a.RenderGlobal(Options{Writer: a.stdout()})

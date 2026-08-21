@@ -338,8 +338,8 @@ func (a *App) RenderGlobal(o Options) {
 	}
 
 	th.Hdr.Fprintln(w, "Detailed Help:")
-	fmt.Fprintf(w, "  To see more details and usage for any command, run:\n")
-	fmt.Fprintf(w, "  %s <command> --help\n\n", a.Name)
+	th.Body.Fprintf(w, "  To see more details and usage for any command, run:\n")
+	th.Body.Fprintf(w, "  %s <command> [<subcommand>...] --help\n\n", a.Name)
 
 	if a.ConfigPath != "" {
 		th.Hdr.Fprintln(w, "Config file location:")

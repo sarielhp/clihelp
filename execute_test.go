@@ -307,6 +307,36 @@ func TestExecuteNestedHelpSubcommandNoDoubleRender(t *testing.T) {
 	}
 }
 
+func TestExecuteCustomHelpSubcommandOnNestedCommand(t *testing.T) {
+	customHelpCalled := false
+	app := &App{
+		Name: "testapp",
+		Commands: []Command{
+			{
+				Name: "config",
+				Subcommands: []Command{
+					{
+						Name: "help",
+						Run: func(ctx *Context) error {
+							customHelpCalled = true
+							return nil
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// "config help" should run the custom help subcommand, not built-in help
+	err := app.ExecuteContext(context.Background(), []string{"config", "help"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !customHelpCalled {
+		t.Errorf("expected custom help subcommand to be executed")
+	}
+}
+
 func TestPrintError(t *testing.T) {
 	// Ensure calling PrintError with nil or an error does not panic
 	PrintError(nil)
