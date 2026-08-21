@@ -250,18 +250,57 @@ func oracleDisplayName(c clihelp.Command) string {
 func oracleGlobalUsage(out io.Writer, a *clihelp.App) {
 	oHdr.Fprintf(out, "Usage of %s:\n\n", a.Name)
 	oAccent.Fprintln(out, "Commands:")
-	for _, c := range a.Commands {
-		io.WriteString(out, "  "+padRight(oracleDisplayName(c), 12)+" "+c.Description+"\n")
+	{
+		params := make([]clihelp.Param, 0, len(a.Commands))
+		for _, c := range a.Commands {
+			params = append(params, clihelp.Param{Name: oracleDisplayName(c), Description: c.Description})
+		}
+		maxW := 0
+		for _, p := range params {
+			if len(p.Name) > maxW {
+				maxW = len(p.Name)
+			}
+		}
+		indent := maxW + 4
+		for _, p := range params {
+			oracleReflow(out, oBody, indent, p.Name, p.Description)
+		}
 	}
 	io.WriteString(out, "\n")
 	oAccent.Fprintln(out, "Shortcut Commands:")
-	for _, s := range a.Shortcuts {
-		io.WriteString(out, "  "+padRight(oracleDisplayName(s), 12)+" "+s.Description+"\n")
+	{
+		params := make([]clihelp.Param, 0, len(a.Shortcuts))
+		for _, s := range a.Shortcuts {
+			params = append(params, clihelp.Param{Name: oracleDisplayName(s), Description: s.Description})
+		}
+		maxW := 0
+		for _, p := range params {
+			if len(p.Name) > maxW {
+				maxW = len(p.Name)
+			}
+		}
+		indent := maxW + 4
+		for _, p := range params {
+			oracleReflow(out, oBody, indent, p.Name, p.Description)
+		}
 	}
 	io.WriteString(out, "\n")
 	oAccent.Fprintln(out, "Global Flags:")
-	for _, f := range a.GlobalFlags {
-		io.WriteString(out, "  "+padRight(f.Flags, 12)+" "+f.Description+"\n")
+	{
+		params := make([]clihelp.Param, 0, len(a.GlobalFlags))
+		for _, f := range a.GlobalFlags {
+			params = append(params, clihelp.Param{Name: f.Flags, Description: f.Description})
+		}
+		maxW := 0
+		for _, p := range params {
+			if len(p.Name) > maxW {
+				maxW = len(p.Name)
+			}
+		}
+		indent := maxW + 4
+		for _, p := range params {
+			oracleReflow(out, oBody, indent, p.Name, p.Description)
+		}
 	}
 	io.WriteString(out, "\n")
 	oHdr.Fprintln(out, "Detailed Help:")

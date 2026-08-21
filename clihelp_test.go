@@ -387,6 +387,97 @@ func TestRenderCommandPageNested(t *testing.T) {
 	}
 }
 
+func TestRenderCommandReflowAtWidth60(t *testing.T) {
+	th := defaultTheme()
+	th.Separator = false
+	o, buf := captureOptions(60)
+	o.Theme = &th
+
+	longDesc := "Compile, encode, and package raw audio source files into fully tagged MP3 podcast episodes with configurable bitrate, loudness normalization, and embedded ID3 metadata tags for distribution across multiple platforms and aggregators like Apple Podcasts, Spotify, and Google Podcasts."
+
+	app := &App{
+		Name: "podctl",
+		Commands: []Command{
+			{
+				Name:        "build",
+				Description: longDesc,
+				UsageLine:   "podctl build [options] <source-file>",
+				Options: []Option{
+					{Flags: "-o, --output PATH", Description: "Write compiled MP3 output to specified PATH for later distribution and archival storage on cloud platforms"},
+					{Flags: "--tags TAGS", Description: "Embed ID3 metadata tags including title, artist, album, episode number, season, and publication date for rich podcast episode descriptions"},
+				},
+				Notes: []Note{
+					{
+						Heading: "Encoding Guidelines",
+						Text:    "Use --bitrate 320 for highest quality music episodes or --bitrate 128 for voice-only spoken word content to optimize file size while maintaining acceptable audio fidelity for listeners on mobile connections.",
+					},
+				},
+			},
+		},
+	}
+
+	app.RenderCommand(o, "build")
+	output := strip(buf.String())
+
+	maxLine := 0
+	for _, line := range strings.Split(strings.TrimRight(output, "\n"), "\n") {
+		if l := len([]rune(line)); l > maxLine {
+			maxLine = l
+		}
+		if len([]rune(line)) > 60 {
+			t.Errorf("line exceeds 60 chars at width 60:\n  len=%d  %q", len([]rune(line)), line)
+		}
+	}
+	t.Logf("width=60: max line = %d chars", maxLine)
+}
+
+func TestRenderCommandReflowAtWidth100(t *testing.T) {
+	th := defaultTheme()
+	th.Separator = false
+	o, buf := captureOptions(100)
+	o.Theme = &th
+
+	longDesc := "Compile, encode, and package raw audio source files into fully tagged MP3 podcast episodes with configurable bitrate, loudness normalization, and embedded ID3 metadata tags for distribution across multiple platforms and aggregators like Apple Podcasts, Spotify, and Google Podcasts."
+
+	app := &App{
+		Name: "podctl",
+		Commands: []Command{
+			{
+				Name:        "build",
+				Description: longDesc,
+				UsageLine:   "podctl build [options] <source-file>",
+				Options: []Option{
+					{Flags: "-o, --output PATH", Description: "Write compiled MP3 output to specified PATH for later distribution and archival storage on cloud platforms"},
+					{Flags: "--tags TAGS", Description: "Embed ID3 metadata tags including title, artist, album, episode number, season, and publication date for rich podcast episode descriptions"},
+				},
+				Notes: []Note{
+					{
+						Heading: "Encoding Guidelines",
+						Text:    "Use --bitrate 320 for highest quality music episodes or --bitrate 128 for voice-only spoken word content to optimize file size while maintaining acceptable audio fidelity for listeners on mobile connections.",
+					},
+				},
+			},
+		},
+	}
+
+	app.RenderCommand(o, "build")
+	output := strip(buf.String())
+
+	// wrapW is capped at min(width, 80)
+	expectedMax := 80
+
+	maxLine := 0
+	for _, line := range strings.Split(strings.TrimRight(output, "\n"), "\n") {
+		if l := len([]rune(line)); l > maxLine {
+			maxLine = l
+		}
+		if len([]rune(line)) > expectedMax {
+			t.Errorf("line exceeds %d chars at width 100:\n  len=%d  %q", expectedMax, len([]rune(line)), line)
+		}
+	}
+	t.Logf("width=100: max line = %d chars", maxLine)
+}
+
 func TestRenderCustomThemeColors(t *testing.T) {
 	had := color.NoColor
 	color.NoColor = false

@@ -53,7 +53,7 @@ func main() {
 		Commands: []clihelp.Command{
 			{
 				Name:        "build",
-				Description: "Compile & package audio episodes with **metadata** and *ID3 tags*",
+				Description: "Compile, encode, and package raw audio source files into fully tagged MP3 podcast episodes with configurable bitrate, loudness normalization, and embedded ID3 metadata tags for distribution across multiple platforms and aggregators like Apple Podcasts, Spotify, and Google Podcasts.",
 				UsageLine:   "podctl build [options] <source-file>",
 				Args:        clihelp.ExactArgs(1),
 				Options: []clihelp.Option{
@@ -80,7 +80,7 @@ func main() {
 			},
 			{
 				Name:        "serve",
-				Description: "Start local development RSS feed server",
+				Description: "Start a local development HTTP server that serves your podcast RSS feed and episode audio files with live-reload support, CORS headers for cross-origin testing, and a built-in web dashboard for previewing feed metadata before deploying to your production CDN and cloud storage endpoints.",
 				UsageLine:   "podctl serve [options]",
 				Options: []clihelp.Option{
 					clihelp.Int(&servePort, "-p, --port N", 8080, "Listen HTTP port number"),
@@ -99,17 +99,17 @@ func main() {
 			},
 			{
 				Name:        "config",
-				Description: "View and manage application configuration settings",
+				Description: "View, inspect, set, modify, and manage your application configuration settings including storage locations, disk space allocation limits, CDN bucket names, API keys, RSS feed metadata defaults, and podcast episode publishing preferences via a hierarchy of dedicated subcommands.",
 				UsageLine:   "podctl config <subcommand> [options]",
 				Subcommands: []clihelp.Command{
 					{
 						Name:        "set",
-						Description: "Set configuration attribute values",
+						Description: "Assign, update, or override one or more configuration attribute values in the persistent application configuration store, supporting nested key paths and bulk operations for efficient environment setup across development, staging, and production deployment targets.",
 						UsageLine:   "podctl config set <attribute> <value> [options]",
 						Subcommands: []clihelp.Command{
 							{
 								Name:        "space",
-								Description: "Set maximum disk space allocation in MB",
+								Description: "Set the maximum disk space allocation for temporary cache and episode build artifacts in megabytes or gigabytes, with an optional automatic cleanup policy that purges the oldest temporary cache files when the configured limit is exceeded.",
 								UsageLine:   "podctl config set space <megabytes> [options]",
 								Args:        clihelp.ExactArgs(1),
 								Options: []clihelp.Option{
@@ -125,7 +125,7 @@ func main() {
 					},
 					{
 						Name:        "get",
-						Description: "Display current value for a configuration attribute",
+						Description: "Display, inspect, and print the current configured value for one or more application configuration attributes, reading from the persistent configuration store or falling back to built-in defaults when no explicit user configuration value has been set for that attribute.",
 						UsageLine:   "podctl config get <attribute>",
 						Args:        clihelp.ExactArgs(1),
 						Run: func(ctx *clihelp.Context) error {
@@ -137,7 +137,7 @@ func main() {
 			},
 			{
 				Name:        "deploy",
-				Description: "Publish RSS feed & audio to cloud storage (e.g. `S3`, `GCS`) and CDN",
+				Description: "Publish your compiled podcast RSS feed XML and encoded audio episode MP3 files to cloud storage providers like Amazon S3 and Google Cloud Storage with optional CDN cache invalidation, dry-run simulation mode, configurable timeout, and multi-stage deployment to staging and production environments.",
 				UsageLine:   "podctl deploy [options]",
 				Options: []clihelp.Option{
 					clihelp.Enum(&deployStage, "-S, --stage STAGE", []string{"staging", "production"}, "staging", "Target deployment environment"),
@@ -159,7 +159,7 @@ func main() {
 			},
 			{
 				Name:        "status",
-				Description: "Check RSS feed health, CDN metrics, and download stats",
+				Description: "Check and display comprehensive health metrics for your podcast RSS feed, CDN edge cache status, episode download statistics over configurable time windows, origin server connectivity, and real-time feed validation status across all configured deployment stages and environments.",
 				UsageLine:   "podctl status [options]",
 				Options: []clihelp.Option{
 					clihelp.Enum(&statusStage, "-S, --stage STAGE", []string{"staging", "production"}, "production", "Environment to inspect"),
@@ -176,7 +176,7 @@ func main() {
 			},
 			{
 				Name:        "completion",
-				Description: "Generate shell autocompletion script",
+				Description: "Generate and print shell autocompletion scripts for bash, zsh, or fish shells that enable tab-completion for all podctl commands, subcommands, flags, and option values to improve command-line efficiency and reduce typing errors during daily usage of the tool.",
 				UsageLine:   "podctl completion <bash|zsh|fish>",
 				Args:        clihelp.ExactArgs(1),
 				Run: func(ctx *clihelp.Context) error {

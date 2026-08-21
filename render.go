@@ -283,19 +283,31 @@ func (a *App) RenderGlobal(o Options) {
 	}
 
 	th.Accent.Fprintln(w, "Commands:")
-	for _, c := range a.Commands {
-		if !c.Hidden {
-			fmt.Fprintf(w, "  %-12s %s\n", displayName(c), c.Description)
+	{
+		params := make([]Param, 0, len(a.Commands))
+		for _, c := range a.Commands {
+			if !c.Hidden {
+				params = append(params, Param{Name: displayName(c), Description: c.Description})
+			}
+		}
+		indent := colIndent(params)
+		for _, p := range params {
+			reflow(w, th.Body, wrapW, indent, p.Name, inline(p.Description))
 		}
 	}
 	fmt.Fprintln(w)
 
 	if len(a.Shortcuts) > 0 {
 		th.Accent.Fprintln(w, "Shortcut Commands:")
+		params := make([]Param, 0, len(a.Shortcuts))
 		for _, s := range a.Shortcuts {
 			if !s.Hidden {
-				fmt.Fprintf(w, "  %-12s %s\n", displayName(s), s.Description)
+				params = append(params, Param{Name: displayName(s), Description: s.Description})
 			}
+		}
+		indent := colIndent(params)
+		for _, p := range params {
+			reflow(w, th.Body, wrapW, indent, p.Name, inline(p.Description))
 		}
 		fmt.Fprintln(w)
 	}
@@ -314,8 +326,13 @@ func (a *App) RenderGlobal(o Options) {
 
 	if len(globalFlags) > 0 {
 		th.Accent.Fprintln(w, "Global Flags:")
+		params := make([]Param, 0, len(globalFlags))
 		for _, f := range globalFlags {
-			fmt.Fprintf(w, "  %-12s %s\n", f.Flags, f.Description)
+			params = append(params, Param{Name: f.Flags, Description: f.Description})
+		}
+		indent := colIndent(params)
+		for _, p := range params {
+			reflow(w, th.Body, wrapW, indent, p.Name, inline(p.Description))
 		}
 		fmt.Fprintln(w)
 	}
