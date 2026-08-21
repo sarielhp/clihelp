@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 
-	"github.com/acarl005/stripansi"
 	"github.com/fatih/color"
 	"golang.org/x/term"
 )
@@ -95,9 +95,17 @@ func (o Options) width() int {
 	return w
 }
 
+// stripANSI removes both CSI escape sequences (e.g. \x1b[31m) and OSC
+// sequences (e.g. \x1b]8;;url\x1b\ for hyperlinks, \x1b]0;title\x07 for
+// window titles) from s, returning only the visible text.
+func stripANSI(s string) string {
+	re := regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]|\x1b\].*?(?:\x1b\\|\x07)`)
+	return re.ReplaceAllString(s, "")
+}
+
 // visualLen calculates the visible character length of s, ignoring ANSI codes.
 func visualLen(s string) int {
-	return len([]rune(stripansi.Strip(s)))
+	return len([]rune(stripANSI(s)))
 }
 
 // splitLines splits text on '\n', preserving empty segments so consecutive
@@ -369,14 +377,14 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 	th := o.theme(a)
 	w := o.out()
 
-	sepW := min(o.width(), 70)
+	sepW := min(o.width(), 80)
 	wrapW := min(o.width(), 80)
 
 	fmt.Fprintln(w)
 	if th.Separator {
 		separator(w, th, sepW)
 	}
-	th.Accent.Fprintln(w, th.TitlePrefix+title(cmd))
+	reflow(w, th.Accent, wrapW, 2, "", th.TitlePrefix+title(cmd))
 	if th.Separator {
 		separator(w, th, sepW)
 	}

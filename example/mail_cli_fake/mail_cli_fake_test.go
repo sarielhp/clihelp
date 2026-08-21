@@ -175,7 +175,7 @@ func oracleDetailedUsage(out io.Writer, cmd *clihelp.Command) {
 	}
 	io.WriteString(out, "\n")
 	oracleSeparator(out)
-	oAccent.Fprintln(out, "Detailed Usage: "+title)
+	oracleReflow(out, oAccent, 2, "", "Detailed Usage: "+title)
 	oracleSeparator(out)
 	if cmd.Description != "" {
 		oHdr.Fprintln(out, "Description:")
