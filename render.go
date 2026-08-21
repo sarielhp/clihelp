@@ -408,6 +408,12 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 	}
 
 	var allOptions []Option
+	// Collect app-level persistent options
+	for _, opt := range a.PersistentOptions {
+		if !opt.Hidden {
+			allOptions = append(allOptions, opt)
+		}
+	}
 	// Collect ancestor persistent options
 	for _, anc := range a.ancestorsForPath(path...) {
 		for _, opt := range anc.PersistentOptions {

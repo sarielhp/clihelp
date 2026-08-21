@@ -87,6 +87,36 @@ func TestRenderCommandShowsAncestorPersistentOptions(t *testing.T) {
 	}
 }
 
+func TestRenderCommandShowsAppPersistentOptions(t *testing.T) {
+	app := &App{
+		Name: "testapp",
+		PersistentOptions: []Option{
+			{Flags: "--app-flag <val>", Description: "App-level persistent option"},
+		},
+		Commands: []Command{
+			{
+				Name: "cmd",
+				Options: []Option{
+					{Flags: "--cmd-flag <val>", Description: "Command option"},
+				},
+			},
+		},
+	}
+
+	o, buf := captureOptions(80)
+	if !app.RenderCommand(o, "cmd") {
+		t.Fatal("RenderCommand returned false")
+	}
+	out := strip(buf.String())
+
+	if !strings.Contains(out, "--app-flag") {
+		t.Errorf("command help missing app-level persistent option --app-flag\n%s", out)
+	}
+	if !strings.Contains(out, "--cmd-flag") {
+		t.Errorf("command help missing own option --cmd-flag\n%s", out)
+	}
+}
+
 func TestLookupCommand(t *testing.T) {
 	app := testApp()
 	if c := app.LookupCommand("config", "set"); c == nil || c.Name != "set" {

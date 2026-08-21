@@ -111,6 +111,18 @@ func (a *App) handleComplete(ctx context.Context, args []string) error {
 		}
 	}
 
+	// Include shortcut commands at root level
+	if currentCmd == nil {
+		for _, s := range a.Shortcuts {
+			if s.Hidden {
+				continue
+			}
+			if strings.HasPrefix(s.Name, toComplete) {
+				fmt.Fprintf(w, "%s\t%s\n", s.Name, s.Description)
+			}
+		}
+	}
+
 	return nil
 }
 

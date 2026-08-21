@@ -48,6 +48,12 @@ func TestShellCompletionProtocol(t *testing.T) {
 				Description: "Download episodes",
 			},
 		},
+		Shortcuts: []Command{
+			{
+				Name:        "quick",
+				Description: "Quick scan and download",
+			},
+		},
 	}
 
 	// 1. Root command completion
@@ -78,6 +84,16 @@ func TestShellCompletionProtocol(t *testing.T) {
 	}
 	if !strings.Contains(outBuf.String(), "pod1\tHistory podcast") || !strings.Contains(outBuf.String(), "pod2\tTech podcast") {
 		t.Errorf("expected dynamic value completions, got: %q", outBuf.String())
+	}
+
+	// 4. Shortcut command completion
+	outBuf.Reset()
+	err = app.ExecuteContext(context.Background(), []string{"__complete", "qu"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(outBuf.String(), "quick\tQuick scan and download") {
+		t.Errorf("expected shortcut suggestion, got: %q", outBuf.String())
 	}
 }
 
