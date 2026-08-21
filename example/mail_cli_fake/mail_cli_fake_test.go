@@ -33,22 +33,30 @@ func oracleSeparator(out io.Writer) {
 	oAccent.Fprintln(out, strings.Repeat("=", width))
 }
 
-func oracleReflow(out io.Writer, c *color.Color, indent int, prefix, text string) {
-	width := oracleWidth()
-	if width > 80 {
-		width = 80
+func oracleSplitLines(text string) []string {
+	if text == "" {
+		return nil
 	}
-	if indent < 2 {
-		indent = 2
+	var out []string
+	start := 0
+	for i, r := range text {
+		if r == '\n' {
+			out = append(out, text[start:i])
+			start = i + 1
+		}
 	}
+	out = append(out, text[start:])
+	return out
+}
 
+func oracleReflowSegment(out io.Writer, c *color.Color, width, indent int, prefix, text string) {
 	if prefix != "" {
 		prefixStr := "  " + padRight(prefix, indent-2)
 		if len(prefixStr) > indent {
 			c.Fprintln(out, prefixStr)
 			prefixStr = strings.Repeat(" ", indent)
 		}
-		words := strings.Fields(strings.TrimSpace(text))
+		words := strings.Fields(text)
 		if len(words) == 0 {
 			if len(strings.TrimSpace(prefixStr)) > 0 {
 				c.Fprintln(out, prefixStr)
@@ -86,7 +94,7 @@ func oracleReflow(out io.Writer, c *color.Color, indent int, prefix, text string
 		return
 	}
 
-	words := strings.Fields(strings.TrimSpace(text))
+	words := strings.Fields(text)
 	if len(words) == 0 {
 		return
 	}
@@ -117,6 +125,34 @@ func oracleReflow(out io.Writer, c *color.Color, indent int, prefix, text string
 	}
 	if curLen > indent {
 		c.Fprintln(out, current.String())
+	}
+}
+
+func oracleReflow(out io.Writer, c *color.Color, indent int, prefix, text string) {
+	width := oracleWidth()
+	if width > 80 {
+		width = 80
+	}
+	if indent < 2 {
+		indent = 2
+	}
+	segments := oracleSplitLines(strings.TrimSpace(text))
+	for i, seg := range segments {
+		if seg == "" && i+1 < len(segments) {
+			if prefix != "" {
+				prefixStr := "  " + padRight(prefix, indent-2)
+				c.Fprintln(out, prefixStr)
+				prefix = ""
+			} else {
+				c.Fprintln(out, strings.Repeat(" ", indent))
+			}
+			continue
+		}
+		if seg == "" {
+			continue
+		}
+		oracleReflowSegment(out, c, width, indent, prefix, seg)
+		prefix = ""
 	}
 }
 

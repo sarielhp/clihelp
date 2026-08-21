@@ -100,15 +100,29 @@ func visualLen(s string) int {
 	return len([]rune(stripansi.Strip(s)))
 }
 
-// reflow word-wraps text so that no visual line exceeds width columns. An
-// optional prefix is placed in its own first-line column and following lines
-// are indented to align it. Width is measured in visible characters, so ANSI
-// escape codes and multi-byte runes are ignored when deciding where to wrap.
-func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string) {
-	if indent < 2 {
-		indent = 2
+// splitLines splits text on '\n', preserving empty segments so consecutive
+// newlines produce blank lines.
+func splitLines(text string) []string {
+	if text == "" {
+		return nil
 	}
-	words := strings.Fields(strings.TrimSpace(text))
+	var out []string
+	start := 0
+	for i, r := range text {
+		if r == '\n' {
+			out = append(out, text[start:i])
+			start = i + 1
+		}
+	}
+	out = append(out, text[start:])
+	return out
+}
+
+// reflowSegment word-wraps a single paragraph (no newlines) so that no visual
+// line exceeds width columns. An optional prefix is placed in its own first-line
+// column and following lines are indented to align it.
+func reflowSegment(w io.Writer, c *color.Color, width, indent int, prefix, text string) {
+	words := strings.Fields(text)
 
 	if prefix != "" {
 		prefixStr := fmt.Sprintf("  %-*s", indent-2, prefix)
@@ -184,6 +198,36 @@ func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string)
 	}
 	if curLen > indent {
 		c.Fprintln(w, cur.String())
+	}
+}
+
+// reflow word-wraps text so that no visual line exceeds width columns. It
+// preserves intentional newlines in text by processing each line segment
+// independently. An optional prefix is placed in its own first-line column
+// and following lines are indented to align it. Width is measured in visible
+// characters, so ANSI escape codes and multi-byte runes are ignored when
+// deciding where to wrap.
+func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string) {
+	if indent < 2 {
+		indent = 2
+	}
+	segments := splitLines(strings.TrimSpace(text))
+	for i, seg := range segments {
+		if seg == "" && i+1 < len(segments) {
+			if prefix != "" {
+				prefixStr := fmt.Sprintf("  %-*s", indent-2, prefix)
+				c.Fprintln(w, prefixStr)
+				prefix = ""
+			} else {
+				c.Fprintln(w, strings.Repeat(" ", indent))
+			}
+			continue
+		}
+		if seg == "" {
+			continue
+		}
+		reflowSegment(w, c, width, indent, prefix, seg)
+		prefix = ""
 	}
 }
 
