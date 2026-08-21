@@ -16,6 +16,11 @@ func (a *App) handleComplete(ctx context.Context, args []string) error {
 				fmt.Fprintf(w, "%s\t%s\n", cmd.Name, cmd.Description)
 			}
 		}
+		for _, s := range a.Shortcuts {
+			if !s.Hidden {
+				fmt.Fprintf(w, "%s\t%s\n", s.Name, s.Description)
+			}
+		}
 		return nil
 	}
 

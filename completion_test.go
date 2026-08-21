@@ -11,6 +11,28 @@ import (
 	"testing"
 )
 
+func TestShellCompletionEmptyArgsIncludesShortcuts(t *testing.T) {
+	var outBuf bytes.Buffer
+	app := &App{
+		Name:   "podcli",
+		Stdout: &outBuf,
+		Commands: []Command{
+			{Name: "scan", Description: "Scan podcasts"},
+		},
+		Shortcuts: []Command{
+			{Name: "quick", Description: "Quick action"},
+		},
+	}
+
+	err := app.ExecuteContext(context.Background(), []string{"__complete"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(outBuf.String(), "quick\tQuick action") {
+		t.Errorf("expected shortcut in empty args completion, got: %q", outBuf.String())
+	}
+}
+
 func TestShellCompletionProtocol(t *testing.T) {
 	var outBuf bytes.Buffer
 	var podcastVal string

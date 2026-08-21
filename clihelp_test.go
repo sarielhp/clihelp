@@ -87,6 +87,32 @@ func TestRenderCommandShowsAncestorPersistentOptions(t *testing.T) {
 	}
 }
 
+func TestAncestorsForPathWithAliases(t *testing.T) {
+	app := &App{
+		Name: "testapp",
+		Commands: []Command{
+			{
+				Name:    "parent",
+				Aliases: []string{"p"},
+				Subcommands: []Command{
+					{
+						Name: "child",
+					},
+				},
+			},
+		},
+	}
+
+	// Using alias should still find ancestors
+	ancestors := app.ancestorsForPath("p", "child")
+	if len(ancestors) != 1 {
+		t.Fatalf("expected 1 ancestor, got %d", len(ancestors))
+	}
+	if ancestors[0].Name != "parent" {
+		t.Errorf("expected ancestor name 'parent', got %q", ancestors[0].Name)
+	}
+}
+
 func TestRenderCommandShowsAppPersistentOptions(t *testing.T) {
 	app := &App{
 		Name: "testapp",

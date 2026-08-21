@@ -360,6 +360,16 @@ func renderCommandPage(a *App, n cmdNode) string {
 					file = markdownRelFile(p)
 					break
 				}
+				for _, alias := range cmd.Subcommands[i].Aliases {
+					if alias == s.Name {
+						p := append(append([]string{}, n.path...), s.Name)
+						file = markdownRelFile(p)
+						break
+					}
+				}
+				if file != "" {
+					break
+				}
 			}
 			desc := s.Description
 			if desc == "" {
