@@ -148,3 +148,31 @@ func (a *App) LookupCommand(path ...string) *Command {
 	}
 	return found
 }
+
+// ancestorsForPath returns all ancestor Command pointers for the given path,
+// excluding the final (target) command. Returns nil for top-level commands.
+func (a *App) ancestorsForPath(path ...string) []*Command {
+	if len(path) <= 1 {
+		return nil
+	}
+	var ancestors []*Command
+	currentSlice := a.Commands
+	for i := 0; i < len(path)-1; i++ {
+		p := path[i]
+		for j := range currentSlice {
+			if currentSlice[j].Name == p {
+				ancestors = append(ancestors, &currentSlice[j])
+				currentSlice = currentSlice[j].Subcommands
+				break
+			}
+			for _, alias := range currentSlice[j].Aliases {
+				if alias == p {
+					ancestors = append(ancestors, &currentSlice[j])
+					currentSlice = currentSlice[j].Subcommands
+					break
+				}
+			}
+		}
+	}
+	return ancestors
+}

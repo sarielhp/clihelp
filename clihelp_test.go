@@ -52,6 +52,41 @@ func testApp() *App {
 
 func strip(s string) string { return stripansi.Strip(s) }
 
+func TestRenderCommandShowsAncestorPersistentOptions(t *testing.T) {
+	app := &App{
+		Name: "testapp",
+		Commands: []Command{
+			{
+				Name: "parent",
+				PersistentOptions: []Option{
+					{Flags: "--parent-opt <val>", Description: "Parent persistent option"},
+				},
+				Subcommands: []Command{
+					{
+						Name: "child",
+						Options: []Option{
+							{Flags: "--child-opt <val>", Description: "Child option"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	o, buf := captureOptions(80)
+	if !app.RenderCommand(o, "parent", "child") {
+		t.Fatal("RenderCommand returned false")
+	}
+	out := strip(buf.String())
+
+	if !strings.Contains(out, "--parent-opt") {
+		t.Errorf("child help missing ancestor persistent option --parent-opt\n%s", out)
+	}
+	if !strings.Contains(out, "--child-opt") {
+		t.Errorf("child help missing own option --child-opt\n%s", out)
+	}
+}
+
 func TestLookupCommand(t *testing.T) {
 	app := testApp()
 	if c := app.LookupCommand("config", "set"); c == nil || c.Name != "set" {

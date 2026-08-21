@@ -238,6 +238,75 @@ func TestExecuteCustomHelpCommand(t *testing.T) {
 	}
 }
 
+func TestExecuteHelpSubcommandNoDoubleRender(t *testing.T) {
+	var outBuf bytes.Buffer
+	app := &App{
+		Name:   "testapp",
+		Stdout: &outBuf,
+		Commands: []Command{
+			{
+				Name:        "info",
+				Description: "Print info",
+				Run:         func(ctx *Context) error { return nil },
+			},
+		},
+	}
+
+	// "help info" should render command help exactly once
+	err := app.ExecuteContext(context.Background(), []string{"help", "info"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	output := outBuf.String()
+	// Count occurrences of "Detailed Usage: info"
+	count := strings.Count(output, "Detailed Usage: info")
+	if count != 1 {
+		t.Errorf("expected exactly 1 occurrence of 'Detailed Usage: info', got %d\n%s", count, output)
+	}
+
+	// "help" alone should render global help exactly once
+	outBuf.Reset()
+	err = app.ExecuteContext(context.Background(), []string{"help"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	output = outBuf.String()
+	count = strings.Count(output, "Usage of testapp:")
+	if count != 1 {
+		t.Errorf("expected exactly 1 occurrence of 'Usage of testapp:', got %d\n%s", count, output)
+	}
+}
+
+func TestExecuteNestedHelpSubcommandNoDoubleRender(t *testing.T) {
+	var outBuf bytes.Buffer
+	app := &App{
+		Name:   "nestapp",
+		Stdout: &outBuf,
+		Commands: []Command{
+			{
+				Name: "config",
+				Subcommands: []Command{
+					{
+						Name:        "set",
+						Description: "Set a value",
+						Run:         func(ctx *Context) error { return nil },
+					},
+				},
+			},
+		},
+	}
+
+	err := app.ExecuteContext(context.Background(), []string{"help", "config", "set"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	output := outBuf.String()
+	count := strings.Count(output, "Detailed Usage: set")
+	if count != 1 {
+		t.Errorf("expected exactly 1 occurrence of 'Detailed Usage: set', got %d\n%s", count, output)
+	}
+}
+
 func TestPrintError(t *testing.T) {
 	// Ensure calling PrintError with nil or an error does not panic
 	PrintError(nil)

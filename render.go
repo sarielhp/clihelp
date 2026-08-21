@@ -339,7 +339,7 @@ func (a *App) RenderGlobal(o Options) {
 
 	th.Hdr.Fprintln(w, "Detailed Help:")
 	fmt.Fprintf(w, "  To see more details and usage for any command, run:\n")
-	fmt.Fprintf(w, "  %s <command>\n\n", a.Name)
+	fmt.Fprintf(w, "  %s <command> --help\n\n", a.Name)
 
 	if a.ConfigPath != "" {
 		th.Hdr.Fprintln(w, "Config file location:")
@@ -408,6 +408,14 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 	}
 
 	var allOptions []Option
+	// Collect ancestor persistent options
+	for _, anc := range a.ancestorsForPath(path...) {
+		for _, opt := range anc.PersistentOptions {
+			if !opt.Hidden {
+				allOptions = append(allOptions, opt)
+			}
+		}
+	}
 	for _, opt := range cmd.PersistentOptions {
 		if !opt.Hidden {
 			allOptions = append(allOptions, opt)

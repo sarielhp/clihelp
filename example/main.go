@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/sarielhp/clihelp"
@@ -40,6 +41,8 @@ func main() {
 		configSpaceUnit string
 		configSpaceAuto bool
 	)
+
+	deepCmd := buildDeepTree()
 
 	app := &clihelp.App{
 		Name:        "podctl",
@@ -192,6 +195,7 @@ func main() {
 					}
 				},
 			},
+			deepCmd,
 		},
 	}
 
@@ -215,4 +219,51 @@ func main() {
 		clihelp.PrintError(err)
 		os.Exit(1)
 	}
+}
+
+// levelSuffixes maps depth to the two suffixes used for subcommand naming.
+var levelSuffixes = [][]string{
+	2: {"one", "two"},
+	3: {"a", "b"},
+	4: {"i", "ii"},
+}
+
+// buildDeepTree creates the "deep" command with a binary tree of subcommands
+// up to depth 5, as specified in the project todo.
+func buildDeepTree() clihelp.Command {
+	return clihelp.Command{
+		Name:        "deep",
+		Description: "**deep** — This is the [deep command](https://example.com/deep) at the root of the demonstration hierarchy with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines for testing purposes.",
+		UsageLine:   "podctl deep [options] <subcommand> — This is a **very long usage line** for the [deep command](https://example.com/deep) that should definitely trigger word-wrapping in the help output because it exceeds typical terminal widths and needs to be reflowed properly by the formatter.",
+		Subcommands: []clihelp.Command{
+			buildSubTree("alpha", []string{"deep", "alpha"}, 2),
+			buildSubTree("beta", []string{"deep", "beta"}, 2),
+		},
+	}
+}
+
+// buildSubTree recursively builds a command node and its binary subcommand tree.
+func buildSubTree(name string, path []string, depth int) clihelp.Command {
+	cmd := clihelp.Command{
+		Name:        name,
+		Description: fmt.Sprintf("**%s** — This is the [%s command](https://example.com/%s) at depth %d with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines.", strings.Join(path, " "), name, strings.Join(path, "/"), depth),
+		UsageLine:   fmt.Sprintf("podctl %s [options] [arguments...] — This is a **very long usage line** for the [%s command](https://example.com/%s) that should definitely trigger word-wrapping in the help output because it exceeds typical terminal widths and needs to be reflowed properly by the formatter.", strings.Join(path, " "), name, strings.Join(path, "/")),
+	}
+
+	if depth < 5 {
+		suffixes := levelSuffixes[depth]
+		child1 := name + "-" + suffixes[0]
+		child2 := name + "-" + suffixes[1]
+		cmd.Subcommands = []clihelp.Command{
+			buildSubTree(child1, append(path, child1), depth+1),
+			buildSubTree(child2, append(path, child2), depth+1),
+		}
+	} else {
+		cmd.Run = func(ctx *clihelp.Context) error {
+			fmt.Printf("Executing leaf command: %s\n", strings.Join(path, " "))
+			return nil
+		}
+	}
+
+	return cmd
 }

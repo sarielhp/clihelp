@@ -305,7 +305,7 @@ func oracleGlobalUsage(out io.Writer, a *clihelp.App) {
 	io.WriteString(out, "\n")
 	oHdr.Fprintln(out, "Detailed Help:")
 	io.WriteString(out, "  To see more details and usage for any command, run:\n")
-	io.WriteString(out, "  "+a.Name+" <command>\n\n")
+	io.WriteString(out, "  "+a.Name+" <command> --help\n\n")
 	oHdr.Fprintln(out, "Config file location:")
 	io.WriteString(out, "  "+a.ConfigPath+"\n\n")
 	oHdr.Fprintln(out, "Version:")

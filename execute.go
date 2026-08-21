@@ -52,6 +52,11 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 		return err
 	}
 
+	// If resolveCommand handled the "help" subcommand, return early to avoid double render
+	if len(args) > 0 && args[0] == "help" && !a.hasCommandNamed("help") {
+		return nil
+	}
+
 	// If resolved to help subcommand
 	if targetCmd == nil && len(path) == 0 && len(remaining) == 0 && a.Run == nil {
 		a.RenderGlobal(Options{Writer: a.stdout()})
