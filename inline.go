@@ -50,7 +50,19 @@ func renderInline(w io.Writer, s string) {
 		if s[i] == '[' {
 			cb := strings.IndexByte(s[i+1:], ']')
 			if cb >= 0 && i+1+cb+1 < len(s) && s[i+1+cb+1] == '(' {
-				ue := strings.IndexByte(s[i+1+cb+2:], ')')
+				depth := 1
+				ue := -1
+				for j := i + 1 + cb + 2; j < len(s); j++ {
+					if s[j] == '(' {
+						depth++
+					} else if s[j] == ')' {
+						depth--
+						if depth == 0 {
+							ue = j - (i + 1 + cb + 2)
+							break
+						}
+					}
+				}
 				if ue >= 0 {
 					text := s[i+1 : i+1+cb]
 					url := s[i+1+cb+2 : i+1+cb+2+ue]

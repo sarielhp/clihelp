@@ -84,6 +84,24 @@ func TestRenderInlineUnmatchedDelimiter(t *testing.T) {
 	}
 }
 
+func TestRenderInlineLinkWithNestedParens(t *testing.T) {
+	var buf bytes.Buffer
+	renderInline(&buf, "see [example](https://example.com/a(b)c)")
+	want := "see \x1b]8;;https://example.com/a(b)c\x1b\\example\x1b]8;;\x1b\\"
+	if buf.String() != want {
+		t.Errorf("nested parens link: got %q, want %q", buf.String(), want)
+	}
+}
+
+func TestRenderInlineLinkWithMultipleNestedParens(t *testing.T) {
+	var buf bytes.Buffer
+	renderInline(&buf, "see [wiki](https://en.wikipedia.org/wiki/Go_(programming_language))")
+	want := "see \x1b]8;;https://en.wikipedia.org/wiki/Go_(programming_language)\x1b\\wiki\x1b]8;;\x1b\\"
+	if buf.String() != want {
+		t.Errorf("wiki link: got %q, want %q", buf.String(), want)
+	}
+}
+
 func TestRenderInlineMixed(t *testing.T) {
 	var buf bytes.Buffer
 	renderInline(&buf, "**bold** and *italic* and `code`")
