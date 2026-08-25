@@ -17,13 +17,20 @@ var (
 	oHdr    = color.New(color.FgYellow, color.Bold)
 	oBody   = color.New(color.FgWhite)
 	oAccent = color.New(color.FgCyan, color.Bold)
-	oSub    = color.New(color.FgGreen)
 )
 
 // oracleWidth pins the layout width to the same 70 columns the tests inject
 // into clihelp, so the comparison is deterministic regardless of TTY state.
 func oracleWidth() int {
 	return 70
+}
+
+func oracleSeparator(out io.Writer) {
+	width := oracleWidth()
+	if width > 70 {
+		width = 70
+	}
+	oAccent.Fprintln(out, strings.Repeat("=", width))
 }
 
 func oracleSplitLines(text string) []string {
@@ -42,25 +49,23 @@ func oracleSplitLines(text string) []string {
 	return out
 }
 
-func oracleReflowSegment(out io.Writer, c, prefixColor *color.Color, width, indent int, prefix, text string) {
-	if prefixColor == nil {
-		prefixColor = c
-	}
+func oracleReflowSegment(out io.Writer, c *color.Color, width, indent int, prefix, text string) {
 	if prefix != "" {
 		prefixStr := "  " + padRight(prefix, indent-2)
 		if len(prefixStr) > indent {
-			prefixColor.Fprintln(out, prefixStr)
+			c.Fprintln(out, prefixStr)
 			prefixStr = strings.Repeat(" ", indent)
 		}
 		words := strings.Fields(text)
 		if len(words) == 0 {
 			if len(strings.TrimSpace(prefixStr)) > 0 {
-				prefixColor.Fprintln(out, prefixStr)
+				c.Fprintln(out, prefixStr)
 			}
 			return
 		}
 		indentStr := strings.Repeat(" ", indent)
-		prefixColor.Fprint(out, prefixStr)
+		var current strings.Builder
+		current.WriteString(prefixStr)
 		curLen := len(prefixStr)
 		for _, word := range words {
 			wlen := len(word)
@@ -69,21 +74,22 @@ func oracleReflowSegment(out io.Writer, c, prefixColor *color.Color, width, inde
 				space = 1
 			}
 			if curLen+space+wlen > width {
-				c.Fprintln(out)
-				c.Fprint(out, indentStr)
-				c.Fprint(out, word)
+				c.Fprintln(out, current.String())
+				current.Reset()
+				current.WriteString(indentStr)
+				current.WriteString(word)
 				curLen = indent + wlen
 			} else {
 				if space > 0 {
-					c.Fprint(out, " ")
+					current.WriteString(" ")
 					curLen++
 				}
-				c.Fprint(out, word)
+				current.WriteString(word)
 				curLen += wlen
 			}
 		}
 		if curLen > indent {
-			c.Fprintln(out)
+			c.Fprintln(out, current.String())
 		}
 		return
 	}
@@ -122,14 +128,10 @@ func oracleReflowSegment(out io.Writer, c, prefixColor *color.Color, width, inde
 	}
 }
 
-func oracleReflow(out io.Writer, c, prefixColor *color.Color, indent int, prefix, text string) {
-	if prefixColor == nil {
-		prefixColor = c
-	}
+func oracleReflow(out io.Writer, c *color.Color, indent int, prefix, text string) {
 	width := oracleWidth()
-	maxContent := indent + 80
-	if width > maxContent {
-		width = maxContent
+	if width > 80 {
+		width = 80
 	}
 	if indent < 2 {
 		indent = 2
@@ -139,7 +141,7 @@ func oracleReflow(out io.Writer, c, prefixColor *color.Color, indent int, prefix
 		if seg == "" && i+1 < len(segments) {
 			if prefix != "" {
 				prefixStr := "  " + padRight(prefix, indent-2)
-				prefixColor.Fprintln(out, prefixStr)
+				c.Fprintln(out, prefixStr)
 				prefix = ""
 			} else {
 				c.Fprintln(out, strings.Repeat(" ", indent))
@@ -149,7 +151,7 @@ func oracleReflow(out io.Writer, c, prefixColor *color.Color, indent int, prefix
 		if seg == "" {
 			continue
 		}
-		oracleReflowSegment(out, c, prefixColor, width, indent, prefix, seg)
+		oracleReflowSegment(out, c, width, indent, prefix, seg)
 		prefix = ""
 	}
 }
@@ -166,21 +168,22 @@ func oracleSubs(cmd *clihelp.Command) []clihelp.Param {
 	return out
 }
 
-func oracleDetailedUsage(out io.Writer, a *clihelp.App, cmd *clihelp.Command, path []string) {
-	display := cmd.Title
-	if display == "" {
-		display = a.Name + " " + strings.Join(path, " ")
+func oracleDetailedUsage(out io.Writer, cmd *clihelp.Command) {
+	title := cmd.Title
+	if title == "" {
+		title = cmd.Name
 	}
 	io.WriteString(out, "\n")
-	oAccent.Fprintln(out, display)
-	io.WriteString(out, "\n")
+	oracleSeparator(out)
+	oracleReflow(out, oAccent, 2, "", "Detailed Usage: "+title)
+	oracleSeparator(out)
 	if cmd.Description != "" {
 		oHdr.Fprintln(out, "Description:")
-		oracleReflow(out, oBody, nil, 2, "", cmd.Description)
+		oracleReflow(out, oBody, 2, "", cmd.Description)
 	}
 	if cmd.UsageLine != "" {
 		oHdr.Fprintln(out, "\nUsage:")
-		oracleReflow(out, oBody, nil, 2, "", cmd.UsageLine)
+		oracleReflow(out, oBody, 2, "", cmd.UsageLine)
 	}
 	if subs := oracleSubs(cmd); len(subs) > 0 {
 		oHdr.Fprintln(out, "\nSubcommands:")
@@ -192,7 +195,7 @@ func oracleDetailedUsage(out io.Writer, a *clihelp.App, cmd *clihelp.Command, pa
 		}
 		indent := maxW + 4
 		for _, s := range subs {
-			oracleReflow(out, oBody, oSub, indent, s.Name, s.Description)
+			oracleReflow(out, oBody, indent, s.Name, s.Description)
 		}
 	}
 	if len(cmd.Parameters) > 0 {
@@ -205,7 +208,7 @@ func oracleDetailedUsage(out io.Writer, a *clihelp.App, cmd *clihelp.Command, pa
 		}
 		indent := maxW + 4
 		for _, pp := range cmd.Parameters {
-			oracleReflow(out, oBody, nil, indent, pp.Name, pp.Description)
+			oracleReflow(out, oBody, indent, pp.Name, pp.Description)
 		}
 	}
 	if len(cmd.Options) > 0 {
@@ -218,21 +221,22 @@ func oracleDetailedUsage(out io.Writer, a *clihelp.App, cmd *clihelp.Command, pa
 		}
 		indent := maxW + 4
 		for _, o := range cmd.Options {
-			oracleReflow(out, oBody, nil, indent, o.Flags, o.Description)
+			oracleReflow(out, oBody, indent, o.Flags, o.Description)
 		}
 	}
 	if len(cmd.Examples) > 0 {
 		oHdr.Fprintln(out, "\nExamples:")
 		for _, e := range cmd.Examples {
-			io.WriteString(out, "  "+e.Line+"\n")
+			oracleReflow(out, oBody, 2, "", e.Line)
 		}
 	}
 	for _, n := range cmd.Notes {
 		if n.Heading != "" {
 			oHdr.Fprintln(out, "\n"+n.Heading+":")
 		}
-		oracleReflow(out, oBody, nil, 2, "", n.Text)
+		oracleReflow(out, oBody, 2, "", n.Text)
 	}
+	oracleSeparator(out)
 	io.WriteString(out, "\n")
 }
 
@@ -259,7 +263,7 @@ func oracleGlobalUsage(out io.Writer, a *clihelp.App) {
 		}
 		indent := maxW + 4
 		for _, p := range params {
-			oracleReflow(out, oBody, nil, indent, p.Name, p.Description)
+			oracleReflow(out, oBody, indent, p.Name, p.Description)
 		}
 	}
 	io.WriteString(out, "\n")
@@ -277,7 +281,7 @@ func oracleGlobalUsage(out io.Writer, a *clihelp.App) {
 		}
 		indent := maxW + 4
 		for _, p := range params {
-			oracleReflow(out, oBody, nil, indent, p.Name, p.Description)
+			oracleReflow(out, oBody, indent, p.Name, p.Description)
 		}
 	}
 	io.WriteString(out, "\n")
@@ -295,13 +299,13 @@ func oracleGlobalUsage(out io.Writer, a *clihelp.App) {
 		}
 		indent := maxW + 4
 		for _, p := range params {
-			oracleReflow(out, oBody, nil, indent, p.Name, p.Description)
+			oracleReflow(out, oBody, indent, p.Name, p.Description)
 		}
 	}
 	io.WriteString(out, "\n")
 	oHdr.Fprintln(out, "Detailed Help:")
-	oBody.Fprint(out, "  To see more details and usage for any command, run:\n")
-	oBody.Fprint(out, "  "+a.Name+" <command> [<subcommand>...] --help\n\n")
+	io.WriteString(out, "  To see more details and usage for any command, run:\n")
+	io.WriteString(out, "  "+a.Name+" <command>\n\n")
 	oHdr.Fprintln(out, "Config file location:")
 	io.WriteString(out, "  "+a.ConfigPath+"\n\n")
 	oHdr.Fprintln(out, "Version:")
@@ -332,7 +336,7 @@ func TestMailCLIReconstruction(t *testing.T) {
 		var got, want bytes.Buffer
 		app.RenderCommand(clihelp.Options{Writer: &got, Width: 70}, path...)
 		cmd := app.LookupCommand(path...)
-		oracleDetailedUsage(&want, app, cmd, path)
+		oracleDetailedUsage(&want, cmd)
 
 		if got.String() != want.String() {
 			t.Errorf("detailed page %q mismatch (raw)\n--- got ---\n%s\n--- want ---\n%s",
