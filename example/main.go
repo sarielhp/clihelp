@@ -47,7 +47,7 @@ func main() {
 	app := &clihelp.App{
 		Name:        "podctl",
 		Description: "[podctl](https://podctl.example.com) — A podcast distribution & audio processing tool.",
-		Version:     "0.2.9",
+		Version:     "0.2.13",
 		GlobalNote:  "Documentation & source: [https://github.com/sarielhp/clihelp](https://github.com/sarielhp/clihelp)\nRun 'podctl <command> --help' for command-specific options.",
 		PersistentOptions: []clihelp.Option{
 			clihelp.Bool(&globals.Verbose, "-v, --verbose", false, "Enable verbose output logs"),
@@ -179,8 +179,8 @@ func main() {
 			},
 			{
 				Name:        "completion",
-				Description: "Generate and print shell autocompletion scripts for bash, zsh, or fish shells that enable tab-completion for all podctl commands, subcommands, flags, and option values to improve command-line efficiency and reduce typing errors during daily usage of the tool.",
-				UsageLine:   "podctl completion <bash|zsh|fish>",
+				Description: "Generate and print shell autocompletion scripts for bash or zsh shells that enable tab-completion for all podctl commands, subcommands, flags, and option values to improve command-line efficiency and reduce typing errors during daily usage of the tool.",
+				UsageLine:   "podctl completion <bash|zsh>",
 				Args:        clihelp.ExactArgs(1),
 				Run: func(ctx *clihelp.Context) error {
 					switch ctx.Args[0] {
@@ -188,10 +188,8 @@ func main() {
 						return clihelp.GenBashCompletion(ctx.App, ctx.Stdout)
 					case "zsh":
 						return clihelp.GenZshCompletion(ctx.App, ctx.Stdout)
-					case "fish":
-						return clihelp.GenFishCompletion(ctx.App, ctx.Stdout)
 					default:
-						return fmt.Errorf("unsupported shell: %s (choose bash, zsh, or fish)", ctx.Args[0])
+						return fmt.Errorf("unsupported shell: %s (choose bash or zsh)", ctx.Args[0])
 					}
 				},
 			},
@@ -216,7 +214,7 @@ func main() {
 
 	// Execute application lifecycle
 	if err := app.Execute(os.Args[1:]); err != nil {
-		clihelp.PrintError(err)
+		app.PrintError(err)
 		os.Exit(1)
 	}
 }

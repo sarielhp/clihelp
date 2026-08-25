@@ -103,10 +103,9 @@
 //
 // # Shell Autocompletion
 //
-// clihelp includes generators for Bash, Zsh, and Fish autocompletion:
+// clihelp includes generators for Bash and Zsh autocompletion:
 //   - [GenBashCompletion]
 //   - [GenZshCompletion]
-//   - [GenFishCompletion]
 //
 // Dynamic completion is supported by setting the Option.Complete callback.
 //

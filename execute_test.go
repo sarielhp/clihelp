@@ -6,6 +6,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/acarl005/stripansi"
 )
 
 func TestExecuteLifecycleAndHooks(t *testing.T) {
@@ -257,11 +259,11 @@ func TestExecuteHelpSubcommandNoDoubleRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	output := outBuf.String()
-	// Count occurrences of "Detailed Usage: info"
-	count := strings.Count(output, "Detailed Usage: info")
+	output := stripansi.Strip(outBuf.String())
+	// Count occurrences of "testapp info"
+	count := strings.Count(output, "testapp info")
 	if count != 1 {
-		t.Errorf("expected exactly 1 occurrence of 'Detailed Usage: info', got %d\n%s", count, output)
+		t.Errorf("expected exactly 1 occurrence of 'testapp info', got %d\n%s", count, output)
 	}
 
 	// "help" alone should render global help exactly once
@@ -300,10 +302,10 @@ func TestExecuteNestedHelpSubcommandNoDoubleRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	output := outBuf.String()
-	count := strings.Count(output, "Detailed Usage: set")
+	output := stripansi.Strip(outBuf.String())
+	count := strings.Count(output, "nestapp config set")
 	if count != 1 {
-		t.Errorf("expected exactly 1 occurrence of 'Detailed Usage: set', got %d\n%s", count, output)
+		t.Errorf("expected exactly 1 occurrence of 'nestapp config set', got %d\n%s", count, output)
 	}
 }
 
@@ -339,6 +341,66 @@ func TestExecuteCustomHelpSubcommandOnNestedCommand(t *testing.T) {
 
 func TestPrintError(t *testing.T) {
 	// Ensure calling PrintError with nil or an error does not panic
-	PrintError(nil)
-	PrintError(errors.New("sample error"))
+	app := &App{}
+	app.PrintError(nil)
+	app.PrintError(errors.New("sample error"))
+}
+func TestExecuteNestedHelpNoCustomCommandNoDoubleRender(t *testing.T) {
+	var outBuf bytes.Buffer
+	app := &App{
+		Name:   "nestapp",
+		Stdout: &outBuf,
+		Commands: []Command{
+			{
+				Name: "config",
+				Subcommands: []Command{
+					{
+						Name:        "set",
+						Description: "Set a value",
+						Run:         func(ctx *Context) error { return nil },
+					},
+				},
+			},
+		},
+	}
+
+	// "config help" should render config help exactly once (no double render)
+	err := app.ExecuteContext(context.Background(), []string{"config", "help"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	output := stripansi.Strip(outBuf.String())
+	// Count occurrences of "nestapp config"
+	count := strings.Count(output, "nestapp config")
+	if count != 1 {
+		t.Errorf("expected exactly 1 occurrence of nestapp config, got %d\n%s", count, output)
+	}
+}
+
+func TestExecuteVersionWithVerboseFlag(t *testing.T) {
+	var globalVerbose bool
+	app := &App{
+		Name:    "testapp",
+		Version: "1.0.0",
+		PersistentOptions: []Option{
+			Bool(&globalVerbose, "-v, --verbose", false, "Verbose output"),
+		},
+		Commands: []Command{
+			{
+				Name: "build",
+				Run: func(ctx *Context) error {
+					return nil
+				},
+			},
+		},
+	}
+
+	// Test that -v parses as verbose flag, not version
+	err := app.ExecuteContext(context.Background(), []string{"-v"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !globalVerbose {
+		t.Errorf("expected verbose flag to be set to true")
+	}
 }

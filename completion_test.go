@@ -137,14 +137,6 @@ func TestShellCompletionGenerators(t *testing.T) {
 	if !strings.Contains(zshBuf.String(), "#compdef my-app") || !strings.Contains(zshBuf.String(), "_my_app") {
 		t.Errorf("invalid zsh completion script: %s", zshBuf.String())
 	}
-
-	var fishBuf bytes.Buffer
-	if err := GenFishCompletion(app, &fishBuf); err != nil {
-		t.Fatalf("GenFishCompletion error: %v", err)
-	}
-	if !strings.Contains(fishBuf.String(), "__my_app_complete") || !strings.Contains(fishBuf.String(), "complete -c my-app") {
-		t.Errorf("invalid fish completion script: %s", fishBuf.String())
-	}
 }
 
 func TestLiveBashCompletion(t *testing.T) {
@@ -360,46 +352,4 @@ source %q
 			t.Errorf("expected '--output' flag with description in zsh completions, got: %v", replies)
 		}
 	})
-}
-
-func TestLiveFishCompletion(t *testing.T) {
-	fishPath, err := exec.LookPath("fish")
-	if err != nil {
-		t.Skip("fish not found on system, skipping live fish completion test")
-	}
-
-	tmpDir := t.TempDir()
-	binPath := filepath.Join(tmpDir, "podctl")
-
-	buildCmd := exec.Command("go", "build", "-o", binPath, "./example")
-	if out, err := buildCmd.CombinedOutput(); err != nil {
-		t.Fatalf("failed to build example CLI binary: %v, output: %s", err, string(out))
-	}
-
-	genCmd := exec.Command(binPath, "completion", "fish")
-	scriptBytes, err := genCmd.Output()
-	if err != nil {
-		t.Fatalf("failed to generate fish completion script: %v", err)
-	}
-
-	scriptPath := filepath.Join(tmpDir, "podctl.fish")
-	if err := os.WriteFile(scriptPath, scriptBytes, 0600); err != nil {
-		t.Fatalf("failed to write fish script: %v", err)
-	}
-
-	fishScript := fmt.Sprintf(`
-source %q
-complete -C "podctl b"
-`, scriptPath)
-
-	cmd := exec.Command(fishPath, "--no-config", "-c", fishScript)
-	cmd.Env = append(os.Environ(), "PATH="+tmpDir+":"+os.Getenv("PATH"))
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("fish completion failed: %v, output: %s", err, string(out))
-	}
-
-	if !strings.Contains(string(out), "build") {
-		t.Errorf("expected 'build' in fish completions, got: %s", string(out))
-	}
 }

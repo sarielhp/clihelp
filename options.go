@@ -231,6 +231,19 @@ func BoolToggle(target *bool, flags string, defaultVal bool, usage string) Optio
 			if spec.hasHelpFlag() {
 				return fmt.Errorf("flag spec %q: -h/--help flags are automatically managed by clihelp and must not be declared in Options", flags)
 			}
+
+			// Check for duplicate flags (similar to bindHelper)
+			for _, l := range spec.longNames {
+				if fs.Lookup(l) != nil {
+					return fmt.Errorf("flag %q in spec %q is already registered in %s flagset", "--"+l, spec.raw, fs.Name())
+				}
+			}
+			for _, s := range spec.shortNames {
+				if fs.ShorthandLookup(s) != nil {
+					return fmt.Errorf("shorthand %q in spec %q is already registered in %s flagset", "-"+s, spec.raw, fs.Name())
+				}
+			}
+
 			pos := &toggleVal{target: target, positive: true}
 			neg := &toggleVal{target: target, positive: false}
 

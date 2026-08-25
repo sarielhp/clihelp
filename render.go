@@ -6,7 +6,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/acarl005/stripansi"
 	"github.com/fatih/color"
 	"golang.org/x/term"
 )
@@ -21,6 +20,9 @@ type Theme struct {
 	Body *color.Color
 	// Accent colors the help header line, separators, and global command groups.
 	Accent *color.Color
+	// Subcommand colors subcommand names in the Subcommands section.
+	// When nil, Body is used.
+	Subcommand *color.Color
 	// Separator toggles the horizontal rule drawn around the header block.
 	Separator bool
 	// TitlePrefix is prepended to the command help header line
@@ -33,8 +35,9 @@ func defaultTheme() Theme {
 		Hdr:         color.New(color.FgYellow, color.Bold),
 		Body:        color.New(color.FgWhite),
 		Accent:      color.New(color.FgCyan, color.Bold),
-		Separator:   true,
-		TitlePrefix: "Detailed Usage: ",
+		Subcommand:  color.New(color.FgGreen),
+		Separator:   false,
+		TitlePrefix: "",
 	}
 }
 
@@ -48,6 +51,10 @@ type Options struct {
 	// Theme overrides the App.Theme and the package default. When nil the
 	// App's theme (or the default) applies.
 	Theme *Theme
+	// ShowURLs controls whether link target URLs are rendered as visible text
+	// alongside the link text. When false (default), URLs are hidden inside
+	// OSC 8 hyperlink escape sequences.
+	ShowURLs bool
 }
 
 func (o Options) out() io.Writer {
@@ -75,6 +82,9 @@ func (o Options) theme(a *App) Theme {
 	if src.Accent != nil {
 		th.Accent = src.Accent
 	}
+	if src.Subcommand != nil {
+		th.Subcommand = src.Subcommand
+	}
 	if src.TitlePrefix != "" {
 		th.TitlePrefix = src.TitlePrefix
 	}
@@ -95,9 +105,61 @@ func (o Options) width() int {
 	return w
 }
 
-// visualLen calculates the visible character length of s, ignoring ANSI codes.
+// wrapWidth returns the total line width for text starting at the given indent
+// column. The content area (indent..wrapWidth) is at most 80 columns wide,
+// unless the terminal is narrower.
+func (o Options) wrapWidth(indent int) int {
+	w := o.width()
+	maxContent := indent + 80
+	if w < maxContent {
+		return w
+	}
+	return maxContent
+}
+
+// visualLen calculates the visible character length of s, ignoring all
+// ANSI/OSC escape sequences (SGR codes and OSC 8 hyperlinks).
 func visualLen(s string) int {
-	return len([]rune(stripansi.Strip(s)))
+	return len([]rune(stripANSI(s)))
+}
+
+// stripANSI removes all ANSI/OSC escape sequences from s, including standard
+// CSI sequences (\x1b[...) and OSC sequences (\x1b]...\x1b\\) used for
+// hyperlinks (OSC 8) and other operating system commands.
+func stripANSI(s string) string {
+	var out strings.Builder
+	out.Grow(len(s))
+	for i := 0; i < len(s); i++ {
+		if s[i] != '\x1b' {
+			out.WriteByte(s[i])
+			continue
+		}
+		if i+1 >= len(s) {
+			break
+		}
+		next := s[i+1]
+		if next == '[' {
+			// CSI sequence: \x1b[<params><intermediate><final>
+			i += 2
+			for i < len(s) && s[i] >= 0x20 && s[i] <= 0x3F {
+				i++
+			}
+			// Leave i pointing at the final byte; the for loop's i++ will advance past it
+			continue
+		}
+		if next == ']' {
+			// OSC sequence: \x1b]...\x1b\\
+			i += 2
+			for i+1 < len(s) && !(s[i] == '\x1b' && s[i+1] == '\\') {
+				i++
+			}
+			i++ // i now points at '\\'; for loop's i++ will advance past it
+			continue
+		}
+		// Other escape sequence, skip both bytes
+		i++
+	}
+	return out.String()
 }
 
 // splitLines splits text on '\n', preserving empty segments so consecutive
@@ -120,27 +182,30 @@ func splitLines(text string) []string {
 
 // reflowSegment word-wraps a single paragraph (no newlines) so that no visual
 // line exceeds width columns. An optional prefix is placed in its own first-line
-// column and following lines are indented to align it.
-func reflowSegment(w io.Writer, c *color.Color, width, indent int, prefix, text string) {
+// column and following lines are indented to align it. When prefixColor is nil
+// the body color c is used for the prefix as well.
+func reflowSegment(w io.Writer, c, prefixColor *color.Color, width, indent int, prefix, text string) {
+	if prefixColor == nil {
+		prefixColor = c
+	}
 	words := strings.Fields(text)
 
 	if prefix != "" {
 		prefixStr := fmt.Sprintf("  %-*s", indent-2, prefix)
 		curLen := visualLen(prefixStr)
 		if curLen > indent {
-			c.Fprintln(w, prefixStr)
+			prefixColor.Fprintln(w, prefixStr)
 			prefixStr = strings.Repeat(" ", indent)
 			curLen = indent
 		}
 		if len(words) == 0 {
 			if curLen > 0 {
-				c.Fprintln(w, prefixStr)
+				prefixColor.Fprintln(w, prefixStr)
 			}
 			return
 		}
 		indentStr := strings.Repeat(" ", indent)
-		var cur strings.Builder
-		cur.WriteString(prefixStr)
+		prefixColor.Fprint(w, prefixStr)
 		for _, word := range words {
 			wlen := visualLen(word)
 			space := 0
@@ -148,22 +213,21 @@ func reflowSegment(w io.Writer, c *color.Color, width, indent int, prefix, text 
 				space = 1
 			}
 			if curLen+space+wlen > width {
-				c.Fprintln(w, cur.String())
-				cur.Reset()
-				cur.WriteString(indentStr)
-				cur.WriteString(word)
+				c.Fprintln(w)
+				c.Fprint(w, indentStr)
+				c.Fprint(w, word)
 				curLen = indent + wlen
 			} else {
 				if space > 0 {
-					cur.WriteString(" ")
+					c.Fprint(w, " ")
 					curLen++
 				}
-				cur.WriteString(word)
+				c.Fprint(w, word)
 				curLen += wlen
 			}
 		}
 		if curLen > indent {
-			c.Fprintln(w, cur.String())
+			c.Fprintln(w)
 		}
 		return
 	}
@@ -206,8 +270,12 @@ func reflowSegment(w io.Writer, c *color.Color, width, indent int, prefix, text 
 // independently. An optional prefix is placed in its own first-line column
 // and following lines are indented to align it. Width is measured in visible
 // characters, so ANSI escape codes and multi-byte runes are ignored when
-// deciding where to wrap.
-func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string) {
+// deciding where to wrap. When prefixColor is nil the body color c is used
+// for the prefix as well.
+func reflow(w io.Writer, c, prefixColor *color.Color, width, indent int, prefix, text string) {
+	if prefixColor == nil {
+		prefixColor = c
+	}
 	if indent < 2 {
 		indent = 2
 	}
@@ -216,7 +284,7 @@ func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string)
 		if seg == "" && i+1 < len(segments) {
 			if prefix != "" {
 				prefixStr := fmt.Sprintf("  %-*s", indent-2, prefix)
-				c.Fprintln(w, prefixStr)
+				prefixColor.Fprintln(w, prefixStr)
 				prefix = ""
 			} else {
 				c.Fprintln(w, strings.Repeat(" ", indent))
@@ -226,7 +294,7 @@ func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string)
 		if seg == "" {
 			continue
 		}
-		reflowSegment(w, c, width, indent, prefix, seg)
+		reflowSegment(w, c, prefixColor, width, indent, prefix, seg)
 		prefix = ""
 	}
 }
@@ -242,14 +310,6 @@ func displayName(c Command) string {
 		return c.Name
 	}
 	return c.Name + " (" + strings.Join(c.Aliases, ", ") + ")"
-}
-
-// title returns the explicit help title of cmd, falling back to its name.
-func title(c *Command) string {
-	if c.Title != "" {
-		return c.Title
-	}
-	return c.Name
 }
 
 // subcommandEntries returns the display list for the Subcommands section,
@@ -273,12 +333,16 @@ func subcommandEntries(c *Command) []Param {
 func (a *App) RenderGlobal(o Options) {
 	th := o.theme(a)
 	w := o.out()
-	wrapW := min(o.width(), 80)
 
 	th.Hdr.Fprintf(w, "Usage of %s:\n\n", a.Name)
 
+	if th.Separator {
+		separator(w, th, o.width())
+		fmt.Fprintln(w)
+	}
+
 	if a.Description != "" {
-		reflow(w, th.Body, wrapW, 2, "", inline(a.Description))
+		reflow(w, th.Body, nil, o.wrapWidth(2), 2, "", inline(a.Description, o.ShowURLs))
 		fmt.Fprintln(w)
 	}
 
@@ -292,7 +356,7 @@ func (a *App) RenderGlobal(o Options) {
 		th.Accent.Fprintln(w, "Commands:")
 		indent := colIndent(params)
 		for _, p := range params {
-			reflow(w, th.Body, wrapW, indent, p.Name, inline(p.Description))
+			reflow(w, th.Body, nil, o.wrapWidth(indent), indent, p.Name, inline(p.Description, o.ShowURLs))
 		}
 		fmt.Fprintln(w)
 	}
@@ -307,7 +371,7 @@ func (a *App) RenderGlobal(o Options) {
 		}
 		indent := colIndent(params)
 		for _, p := range params {
-			reflow(w, th.Body, wrapW, indent, p.Name, inline(p.Description))
+			reflow(w, th.Body, nil, o.wrapWidth(indent), indent, p.Name, inline(p.Description, o.ShowURLs))
 		}
 		fmt.Fprintln(w)
 	}
@@ -332,7 +396,7 @@ func (a *App) RenderGlobal(o Options) {
 		}
 		indent := colIndent(params)
 		for _, p := range params {
-			reflow(w, th.Body, wrapW, indent, p.Name, inline(p.Description))
+			reflow(w, th.Body, nil, o.wrapWidth(indent), indent, p.Name, inline(p.Description, o.ShowURLs))
 		}
 		fmt.Fprintln(w)
 	}
@@ -353,7 +417,7 @@ func (a *App) RenderGlobal(o Options) {
 
 	if a.GlobalNote != "" {
 		fmt.Fprintln(w)
-		reflow(w, th.Body, wrapW, 2, "", inline(a.GlobalNote))
+		reflow(w, th.Body, nil, o.wrapWidth(2), 2, "", inline(a.GlobalNote, o.ShowURLs))
 	}
 }
 
@@ -369,33 +433,34 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 	th := o.theme(a)
 	w := o.out()
 
-	sepW := min(o.width(), 70)
-	wrapW := min(o.width(), 80)
-
 	fmt.Fprintln(w)
-	if th.Separator {
-		separator(w, th, sepW)
+	header := cmd.Title
+	if header == "" {
+		header = a.Name + " " + strings.Join(path, " ")
 	}
-	th.Accent.Fprintln(w, th.TitlePrefix+title(cmd))
+	th.Accent.Fprintln(w, th.TitlePrefix+header)
+	fmt.Fprintln(w)
+
 	if th.Separator {
-		separator(w, th, sepW)
+		separator(w, th, o.width())
+		fmt.Fprintln(w)
 	}
 
 	if cmd.Description != "" {
 		th.Hdr.Fprintln(w, "Description:")
-		reflow(w, th.Body, wrapW, 2, "", inline(cmd.Description))
+		reflow(w, th.Body, nil, o.wrapWidth(2), 2, "", inline(cmd.Description, o.ShowURLs))
 	}
 
 	if cmd.UsageLine != "" {
 		th.Hdr.Fprintln(w, "\nUsage:")
-		reflow(w, th.Body, wrapW, 2, "", cmd.UsageLine)
+		reflow(w, th.Body, nil, o.wrapWidth(2), 2, "", inline(cmd.UsageLine, o.ShowURLs))
 	}
 
 	if subs := subcommandEntries(cmd); len(subs) > 0 {
 		th.Hdr.Fprintln(w, "\nSubcommands:")
 		indent := colIndent(subs)
 		for _, s := range subs {
-			reflow(w, th.Body, wrapW, indent, s.Name, inline(s.Description))
+			reflow(w, th.Body, th.Subcommand, o.wrapWidth(indent), indent, s.Name, inline(s.Description, o.ShowURLs))
 		}
 	}
 
@@ -403,7 +468,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 		th.Hdr.Fprintln(w, "\nParameters:")
 		indent := colIndent(cmd.Parameters)
 		for _, p := range cmd.Parameters {
-			reflow(w, th.Body, wrapW, indent, p.Name, inline(p.Description))
+			reflow(w, th.Body, nil, o.wrapWidth(indent), indent, p.Name, inline(p.Description, o.ShowURLs))
 		}
 	}
 
@@ -445,7 +510,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 		}
 		indent := colIndent(optParams)
 		for _, p := range optParams {
-			reflow(w, th.Body, wrapW, indent, p.Name, inline(p.Description))
+			reflow(w, th.Body, nil, o.wrapWidth(indent), indent, p.Name, inline(p.Description, o.ShowURLs))
 		}
 	}
 
@@ -454,7 +519,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 		for _, ex := range cmd.Examples {
 			fmt.Fprintf(w, "  %s\n", ex.Line)
 			if ex.Description != "" {
-				reflow(w, th.Body, wrapW, 4, "", inline(ex.Description))
+				reflow(w, th.Body, nil, o.wrapWidth(4), 4, "", inline(ex.Description, o.ShowURLs))
 			}
 		}
 	}
@@ -463,12 +528,9 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 		if note.Heading != "" {
 			th.Hdr.Fprintln(w, "\n"+note.Heading+":")
 		}
-		reflow(w, th.Body, wrapW, 2, "", inline(note.Text))
+		reflow(w, th.Body, nil, o.wrapWidth(2), 2, "", inline(note.Text, o.ShowURLs))
 	}
 
-	if th.Separator {
-		separator(w, th, sepW)
-	}
 	fmt.Fprintln(w)
 	return true
 }
@@ -495,8 +557,9 @@ func colIndent(params []Param) int {
 }
 
 // inline renders inline markdown in s to a string with ANSI/OSC8 sequences.
-func inline(s string) string {
+func inline(s string, showURLs ...bool) string {
+	show := len(showURLs) > 0 && showURLs[0]
 	var buf strings.Builder
-	renderInline(&buf, s)
+	renderInline(&buf, s, show)
 	return buf.String()
 }

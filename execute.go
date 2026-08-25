@@ -3,21 +3,20 @@ package clihelp
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/fatih/color"
 	"github.com/spf13/pflag"
 )
 
-// PrintError prints a formatted error message to os.Stderr with colored prefix.
-func PrintError(err error) {
+// PrintError prints a formatted error message to the App's stderr with colored prefix.
+func (a *App) PrintError(err error) {
 	if err == nil {
 		return
 	}
 	errColor := color.New(color.FgRed, color.Bold)
-	errColor.Fprintf(os.Stderr, "Error: ")
-	fmt.Fprintln(os.Stderr, err.Error())
+	errColor.Fprintf(a.stderr(), "Error: ")
+	fmt.Fprintln(a.stderr(), err.Error())
 }
 
 // Execute runs the application using os.Args[1:] and context.Background().
@@ -33,7 +32,7 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 	}
 
 	// 2. Check for top-level version flag
-	if len(args) == 1 && (args[0] == "--version" || args[0] == "-v" || args[0] == "version") {
+	if len(args) == 1 && (args[0] == "--version" || args[0] == "version") {
 		if !a.hasCommandNamed("version") {
 			if a.Version != "" {
 				if a.Name != "" {
@@ -47,13 +46,13 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 	}
 
 	// 3. Resolve command hierarchy and separate command path from remaining args
-	targetCmd, ancestors, path, remaining, err := a.resolveCommand(args)
+	targetCmd, ancestors, path, remaining, handled, err := a.resolveCommand(args)
 	if err != nil {
 		return err
 	}
 
 	// If resolveCommand handled the "help" subcommand, return early to avoid double render
-	if len(args) > 0 && args[0] == "help" && !a.hasCommandNamed("help") {
+	if handled {
 		return nil
 	}
 
@@ -81,6 +80,15 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 
 	// Bind App PersistentOptions
 	for _, opt := range a.PersistentOptions {
+		if opt.Binder != nil {
+			if err := opt.Binder(fs); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Bind App GlobalFlags
+	for _, opt := range a.GlobalFlags {
 		if opt.Binder != nil {
 			if err := opt.Binder(fs); err != nil {
 				return err
@@ -214,7 +222,7 @@ func hasSubcommandNamed(cmds []Command, name string) bool {
 	return false
 }
 
-func (a *App) resolveCommand(args []string) (*Command, []*Command, []string, []string, error) {
+func (a *App) resolveCommand(args []string) (*Command, []*Command, []string, []string, bool, error) {
 	currentCommands := a.Commands
 	var currentCmd *Command
 	var ancestors []*Command
@@ -228,11 +236,16 @@ func (a *App) resolveCommand(args []string) (*Command, []*Command, []string, []s
 		if arg == "help" && !a.hasCommandNamed("help") && !hasSubcommandNamed(currentCommands, "help") {
 			helpPath := append(path, args[idx+1:]...)
 			if len(helpPath) == 0 {
-				a.RenderGlobal(Options{Writer: a.stdout()})
+				a.RenderGlobal(Options{Writer: a.stdout(), Theme: a.Theme})
 			} else {
-				a.RenderCommand(Options{Writer: a.stdout()}, helpPath...)
+				// Validate that the help path resolves to a command
+				helpCmd := a.LookupCommand(helpPath...)
+				if helpCmd == nil {
+					return nil, nil, nil, nil, false, fmt.Errorf("unknown help topic %q", helpPath[0])
+				}
+				a.RenderCommand(Options{Writer: a.stdout(), Theme: a.Theme}, helpPath...)
 			}
-			return nil, nil, nil, nil, nil
+			return nil, nil, nil, nil, true, nil
 		}
 
 		// Flags denote end of command tree traversal
@@ -277,16 +290,16 @@ func (a *App) resolveCommand(args []string) (*Command, []*Command, []string, []s
 			}
 			suggestion := suggestCommand(arg, currentCommands)
 			if suggestion != "" {
-				return nil, nil, nil, nil, fmt.Errorf("unknown command %q for %q. Did you mean %q?", arg, parentName, suggestion)
+				return nil, nil, nil, nil, false, fmt.Errorf("unknown command %q for %q. Did you mean %q?", arg, parentName, suggestion)
 			}
-			return nil, nil, nil, nil, fmt.Errorf("unknown command %q for %q", arg, parentName)
+			return nil, nil, nil, nil, false, fmt.Errorf("unknown command %q for %q", arg, parentName)
 		}
 
 		// Otherwise positional argument for current command
 		break
 	}
 
-	return currentCmd, ancestors, path, args[idx:], nil
+	return currentCmd, ancestors, path, args[idx:], false, nil
 }
 
 func suggestCommand(typed string, available []Command) string {

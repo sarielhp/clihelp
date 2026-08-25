@@ -24,12 +24,13 @@ const (
 //
 // Recognized patterns (in priority order):
 //   - `code`          inline code (green foreground)
-//   - [text](url)     OSC 8 clickable hyperlink
+//   - [text](url)     OSC 8 clickable hyperlink (or visible text when showURLs is true)
 //   - **bold**        bold text
 //   - *italic*        italic text
 //   - ~~strikethrough~~  strikethrough text
 //   - \X              backslash escapes the next character
-func renderInline(w io.Writer, s string) {
+func renderInline(w io.Writer, s string, showURLs ...bool) {
+	show := len(showURLs) > 0 && showURLs[0]
 	for i := 0; i < len(s); {
 		// backslash escape
 		if s[i] == '\\' && i+1 < len(s) {
@@ -66,7 +67,11 @@ func renderInline(w io.Writer, s string) {
 				if ue >= 0 {
 					text := s[i+1 : i+1+cb]
 					url := s[i+1+cb+2 : i+1+cb+2+ue]
-					fmt.Fprintf(w, "%s%s%s%s%s", osc8, url, oscEnd, text, osc8+oscEnd)
+					if show {
+						fmt.Fprintf(w, "%s (%s)", text, url)
+					} else {
+						fmt.Fprintf(w, "%s%s%s%s%s", osc8, url, oscEnd, text, osc8+oscEnd)
+					}
 					i += cb + 2 + ue + 2
 					continue
 				}

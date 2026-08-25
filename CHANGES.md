@@ -2,6 +2,23 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.2.13] - 
+n### Fixed
+- Fixed nested help double-render for `podctl config help` and similar nested commands
+- Fixed `-v` version flag hijacking `-v, --verbose` persistent flags
+- Fixed `App.GlobalFlags` not being parsed
+- Fixed `Theme.Separator` dead code
+- Fixed `BoolToggle` duplicate registration panicking instead of returning friendly error
+- Fixed markdown subcommand alias links broken
+- Fixed markdown tables unescaped `|` in descriptions
+- Fixed silent `help <unknown>` behavior
+- Fixed `PrintError` bypassing `App.Stderr`
+- Fixed execute-path help ignoring custom theme
+- Fixed markdown command pages omitting app/ancestor persistent flags
+
+### Changed
+- Updated example to version 0.2.13
+
 ## [0.2.11] - 2026-08-18
 
 ### Added

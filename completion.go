@@ -31,7 +31,7 @@ func (a *App) handleComplete(ctx context.Context, args []string) error {
 	}
 
 	// Resolve the active command path from the args up to len(args)-1
-	currentCmd, ancestors, _, _, _ := a.resolveCommand(args[:len(args)-1])
+	currentCmd, ancestors, _, _, _, _ := a.resolveCommand(args[:len(args)-1])
 
 	// Collect active options
 	var activeOptions []Option
@@ -215,25 +215,6 @@ _%[2]s() {
 }
 
 _%[2]s "$@"
-`, name, cleanName)
-	_, err := io.WriteString(w, tmpl)
-	return err
-}
-
-// GenFishCompletion writes a Fish tab-completion script to w.
-func GenFishCompletion(app *App, w io.Writer) error {
-	name := app.Name
-	if name == "" {
-		name = "app"
-	}
-	cleanName := strings.ReplaceAll(name, "-", "_")
-	tmpl := fmt.Sprintf(`function __%[2]s_complete
-    set -l cmd (commandline -cop)
-    test (count $cmd) -gt 1; and set -e cmd[1]
-    eval (commandline -o)[1] __complete $cmd
-end
-
-complete -c %[1]s -f -a '(__%[2]s_complete)'
 `, name, cleanName)
 	_, err := io.WriteString(w, tmpl)
 	return err

@@ -191,11 +191,17 @@ func mdInline(s string) string {
 		"[", "\\[",
 		"]", "\\]",
 		"<", "\\<",
+		"|", "\\|", // Escape pipe for table cells
 	).Replace(strings.TrimSpace(s))
 }
 
 // mdCode wraps s as inline code, escaping backticks so they cannot break out.
 func mdCode(s string) string { return "`" + strings.ReplaceAll(s, "`", "\\`") + "`" }
+
+// mdTableCell escapes text for use inside a markdown table cell.
+func mdTableCell(s string) string {
+	return strings.ReplaceAll(s, "|", "\\|")
+}
 
 // pageMeta carries Jekyll front-matter fields for a generated page.
 type pageMeta struct {
@@ -270,7 +276,7 @@ func renderIndex(a *App) string {
 			if desc == "" {
 				desc = "—"
 			}
-			fmt.Fprintf(&b, "| [%s](%s) | %s |\n", mdInline(displayName(c)), markdownSlug(c.Name)+".md", desc)
+			fmt.Fprintf(&b, "| [%s](%s) | %s |\n", mdInline(displayName(c)), markdownSlug(c.Name)+".md", mdTableCell(desc))
 		}
 		b.WriteString("\n")
 	}
@@ -282,7 +288,7 @@ func renderIndex(a *App) string {
 			if desc == "" {
 				desc = "—"
 			}
-			fmt.Fprintf(&b, "| [%s](%s) | %s |\n", mdInline(displayName(s)), markdownSlug(s.Name)+".md", desc)
+			fmt.Fprintf(&b, "| [%s](%s) | %s |\n", mdInline(displayName(s)), markdownSlug(s.Name)+".md", mdTableCell(desc))
 		}
 		b.WriteString("\n")
 	}
@@ -356,13 +362,13 @@ func renderCommandPage(a *App, n cmdNode) string {
 			file := ""
 			for i := range cmd.Subcommands {
 				if cmd.Subcommands[i].Name == s.Name {
-					p := append(append([]string{}, n.path...), s.Name)
+					p := append(append([]string{}, n.path...), cmd.Subcommands[i].Name)
 					file = markdownRelFile(p)
 					break
 				}
 				for _, alias := range cmd.Subcommands[i].Aliases {
 					if alias == s.Name {
-						p := append(append([]string{}, n.path...), s.Name)
+						p := append(append([]string{}, n.path...), cmd.Subcommands[i].Name)
 						file = markdownRelFile(p)
 						break
 					}
@@ -393,6 +399,20 @@ func renderCommandPage(a *App, n cmdNode) string {
 	}
 
 	var allOptions []Option
+	// Collect app-level persistent options
+	for _, opt := range a.PersistentOptions {
+		if !opt.Hidden {
+			allOptions = append(allOptions, opt)
+		}
+	}
+	// Collect ancestor persistent options
+	for _, anc := range a.ancestorsForPath(n.path...) {
+		for _, opt := range anc.PersistentOptions {
+			if !opt.Hidden {
+				allOptions = append(allOptions, opt)
+			}
+		}
+	}
 	for _, f := range cmd.PersistentOptions {
 		if !f.Hidden {
 			allOptions = append(allOptions, f)
@@ -411,7 +431,7 @@ func renderCommandPage(a *App, n cmdNode) string {
 			if f.DefaultText != "" {
 				desc = desc + " (default: " + f.DefaultText + ")"
 			}
-			fmt.Fprintf(&b, "| %s | %s |\n", mdCode(f.Flags), desc)
+			fmt.Fprintf(&b, "| %s | %s |\n", mdCode(f.Flags), mdTableCell(desc))
 		}
 		b.WriteString("\n")
 	}
