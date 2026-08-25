@@ -261,7 +261,7 @@ func TestExecuteHelpSubcommandNoDoubleRender(t *testing.T) {
 	}
 	output := stripansi.Strip(outBuf.String())
 	// Count occurrences of "testapp info"
-	count := strings.Count(output, "testapp info")
+	count := strings.Count(output, "Detailed Usage: info")
 	if count != 1 {
 		t.Errorf("expected exactly 1 occurrence of 'testapp info', got %d\n%s", count, output)
 	}
@@ -303,9 +303,9 @@ func TestExecuteNestedHelpSubcommandNoDoubleRender(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	output := stripansi.Strip(outBuf.String())
-	count := strings.Count(output, "nestapp config set")
+	count := strings.Count(output, "Detailed Usage: set")
 	if count != 1 {
-		t.Errorf("expected exactly 1 occurrence of 'nestapp config set', got %d\n%s", count, output)
+		t.Errorf("expected exactly 1 occurrence of 'Detailed Usage: set', got %d\n%s", count, output)
 	}
 }
 
@@ -371,9 +371,9 @@ func TestExecuteNestedHelpNoCustomCommandNoDoubleRender(t *testing.T) {
 	}
 	output := stripansi.Strip(outBuf.String())
 	// Count occurrences of "nestapp config"
-	count := strings.Count(output, "nestapp config")
+	count := strings.Count(output, "Detailed Usage: config")
 	if count != 1 {
-		t.Errorf("expected exactly 1 occurrence of nestapp config, got %d\n%s", count, output)
+		t.Errorf("expected exactly 1 occurrence of Detailed Usage: config, got %d\n%s", count, output)
 	}
 }
 

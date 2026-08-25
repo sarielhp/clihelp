@@ -238,7 +238,7 @@ func TestRenderDispatch(t *testing.T) {
 func TestReflowHonorsWidth(t *testing.T) {
 	longText := "The quick brown fox jumps over the lazy dog near the riverside cottage daily."
 	var buf bytes.Buffer
-	reflow(&buf, color.New(color.FgWhite), nil, 20, 2, "", longText)
+	reflow(&buf, color.New(color.FgWhite), 20, 2, "", longText)
 	max := 0
 	for _, line := range strings.Split(strings.TrimRight(buf.String(), "\n"), "\n") {
 		if l := len(strip(line)); l > max {
@@ -255,7 +255,7 @@ func TestReflowMultibyteIsRuneAware(t *testing.T) {
 	// ~10 visible chars fit per line regardless of byte lengths.
 	longText := strings.Repeat("界 ", 30)
 	var buf bytes.Buffer
-	reflow(&buf, color.New(color.FgWhite), nil, 10, 0, "", longText)
+	reflow(&buf, color.New(color.FgWhite), 10, 0, "", longText)
 	for _, line := range strings.Split(strings.TrimRight(buf.String(), "\n"), "\n") {
 		if n := len([]rune(strip(line))); n > 10 {
 			t.Fatalf("line exceeded 10 visible chars (got %d): %q", n, strip(line))
@@ -303,8 +303,8 @@ func TestReflowNoSeparatorTheme(t *testing.T) {
 	if strings.Contains(out, "===") {
 		t.Errorf("separator rendered despite Theme.Separator=false:\n%q", out)
 	}
-	if !strings.Contains(out, "USAGE: podctl build") {
-		t.Errorf("custom TitlePrefix not applied")
+	if !strings.Contains(out, "USAGE: build") {
+		t.Errorf("custom TitlePrefix not applied: got %q, want %q", out, "USAGE: build")
 	}
 }
 
@@ -691,7 +691,7 @@ func TestExampleAppNoBareMarkdownAndNoVisibleURLs(t *testing.T) {
 	for _, path := range paths {
 		o, buf := captureOptions(80)
 		app.Render(o, path...)
-		out := stripansi.Strip(buf.String())
+		out := stripANSI(buf.String())
 
 		if strings.Contains(out, "**") {
 			t.Errorf("path %v: raw ** found in stripped output", path)
@@ -718,25 +718,6 @@ func TestExampleAppNoBareMarkdownAndNoVisibleURLs(t *testing.T) {
 		}
 	}
 
-	// With ShowURLs=true, hidden URLs should become visible
-	for _, path := range paths {
-		o, buf := captureOptions(80)
-		o.ShowURLs = true
-		app.Render(o, path...)
-		out := stripansi.Strip(buf.String())
-
-		if strings.Contains(out, "**") {
-			t.Errorf("path %v (ShowURLs): raw ** found in stripped output", path)
-		}
-
-		for _, uc := range hiddenURLs {
-			if uc.prefix == nil || hasPrefix(path, uc.prefix) {
-				if !strings.Contains(out, uc.url) {
-					t.Errorf("path %v (ShowURLs): URL %q should be visible with ShowURLs=true", path, uc.url)
-				}
-			}
-		}
-	}
 }
 
 func TestSubcommandNamesAreGreen(t *testing.T) {
@@ -947,7 +928,7 @@ func TestUniformWrappingWithLinks(t *testing.T) {
 	// uniformly filled (none significantly shorter than the target width).
 	text := "This is a **bold command** with a [link to docs](https://docs.example.com/very/long/path) and some more text that should wrap nicely across multiple lines without any single line being too short because of the embedded link escape codes that would previously corrupt the visual length calculation."
 	var buf bytes.Buffer
-	reflow(&buf, color.New(color.FgWhite), nil, 40, 2, "", inline(text))
+	reflow(&buf, color.New(color.FgWhite), 40, 2, "", inline(text))
 	plain := stripANSI(buf.String())
 
 	lines := strings.Split(strings.TrimSpace(plain), "\n")

@@ -21,6 +21,8 @@ type Theme struct {
 	Body *color.Color
 	// Accent colors the help header line, separators, and global command groups.
 	Accent *color.Color
+	// Subcommand colors subcommand names.
+	Subcommand *color.Color
 	// Separator toggles the horizontal rule drawn around the header block.
 	Separator bool
 	// TitlePrefix is prepended to the command help header line
@@ -33,6 +35,7 @@ func defaultTheme() Theme {
 		Hdr:         color.New(color.FgYellow, color.Bold),
 		Body:        color.New(color.FgWhite),
 		Accent:      color.New(color.FgCyan, color.Bold),
+		Subcommand:  color.New(color.FgGreen),
 		Separator:   true,
 		TitlePrefix: "Detailed Usage: ",
 	}
@@ -74,6 +77,9 @@ func (o Options) theme(a *App) Theme {
 	}
 	if src.Accent != nil {
 		th.Accent = src.Accent
+	}
+	if src.Subcommand != nil {
+		th.Subcommand = src.Subcommand
 	}
 	if src.TitlePrefix != "" {
 		th.TitlePrefix = src.TitlePrefix
@@ -129,11 +135,14 @@ func splitLines(text string) []string {
 // reflowSegment word-wraps a single paragraph (no newlines) so that no visual
 // line exceeds width columns. An optional prefix is placed in its own first-line
 // column and following lines are indented to align it.
-func reflowSegment(w io.Writer, c *color.Color, width, indent int, prefix, text string) {
+func reflowSegment(w io.Writer, c *color.Color, prefixColor *color.Color, width, indent int, prefix, text string) {
 	words := strings.Fields(text)
 
 	if prefix != "" {
 		prefixStr := fmt.Sprintf("  %-*s", indent-2, prefix)
+		if prefixColor != nil {
+			prefixStr = prefixColor.Sprint(prefixStr)
+		}
 		curLen := visualLen(prefixStr)
 		if curLen > indent {
 			c.Fprintln(w, prefixStr)
@@ -215,7 +224,11 @@ func reflowSegment(w io.Writer, c *color.Color, width, indent int, prefix, text 
 // and following lines are indented to align it. Width is measured in visible
 // characters, so ANSI escape codes and multi-byte runes are ignored when
 // deciding where to wrap.
-func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string) {
+func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string, prefixColors ...*color.Color) {
+	var prefixColor *color.Color
+	if len(prefixColors) > 0 {
+		prefixColor = prefixColors[0]
+	}
 	if indent < 2 {
 		indent = 2
 	}
@@ -224,6 +237,9 @@ func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string)
 		if seg == "" && i+1 < len(segments) {
 			if prefix != "" {
 				prefixStr := fmt.Sprintf("  %-*s", indent-2, prefix)
+				if prefixColor != nil {
+					prefixStr = prefixColor.Sprint(prefixStr)
+				}
 				c.Fprintln(w, prefixStr)
 				prefix = ""
 			} else {
@@ -234,7 +250,7 @@ func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string)
 		if seg == "" {
 			continue
 		}
-		reflowSegment(w, c, width, indent, prefix, seg)
+		reflowSegment(w, c, prefixColor, width, indent, prefix, seg)
 		prefix = ""
 	}
 }
@@ -275,18 +291,31 @@ func subcommandEntries(c *Command) []Param {
 	return out
 }
 
+// min returns the smaller of two integers.
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+// wrapWidth calculates the effective wrapping width for a given terminal width and indent.
+func wrapWidth(termWidth, indent int) int {
+	return min(termWidth, indent+80)
+}
+
 // RenderGlobal writes the top-level application overview: a "Usage of <name>:"
 // header, the command list with aliases, shortcut commands, global flags, and
 // (when set) config path and version.
 func (a *App) RenderGlobal(o Options) {
 	th := o.theme(a)
 	w := o.out()
-	wrapW := min(o.width(), 80)
+	termWidth := o.width()
 
 	th.Hdr.Fprintf(w, "Usage of %s:\n\n", a.Name)
 
 	if a.Description != "" {
-		reflow(w, th.Body, wrapW, 2, "", inline(a.Description))
+		reflow(w, th.Body, wrapWidth(termWidth, 2), 2, "", inline(a.Description))
 		fmt.Fprintln(w)
 	}
 
@@ -300,7 +329,7 @@ func (a *App) RenderGlobal(o Options) {
 		}
 		indent := colIndent(params)
 		for _, p := range params {
-			reflow(w, th.Body, wrapW, indent, p.Name, inline(p.Description))
+			reflow(w, th.Body, wrapWidth(termWidth, indent), indent, p.Name, inline(p.Description), th.Subcommand)
 		}
 	}
 	fmt.Fprintln(w)
@@ -315,7 +344,7 @@ func (a *App) RenderGlobal(o Options) {
 		}
 		indent := colIndent(params)
 		for _, p := range params {
-			reflow(w, th.Body, wrapW, indent, p.Name, inline(p.Description))
+			reflow(w, th.Body, wrapWidth(termWidth, indent), indent, p.Name, inline(p.Description), th.Subcommand)
 		}
 		fmt.Fprintln(w)
 	}
@@ -340,28 +369,27 @@ func (a *App) RenderGlobal(o Options) {
 		}
 		indent := colIndent(params)
 		for _, p := range params {
-			reflow(w, th.Body, wrapW, indent, p.Name, inline(p.Description))
+			reflow(w, th.Body, wrapWidth(termWidth, indent), indent, p.Name, inline(p.Description))
 		}
 		fmt.Fprintln(w)
 	}
 
 	th.Hdr.Fprintln(w, "Detailed Help:")
-	fmt.Fprintf(w, "  To see more details and usage for any command, run:\n")
-	fmt.Fprintf(w, "  %s <command>\n\n", a.Name)
+	reflow(w, th.Body, wrapWidth(termWidth, 2), 2, "", fmt.Sprintf("Run '%s help <command>' for command-specific options.", a.Name))
 
 	if a.ConfigPath != "" {
 		th.Hdr.Fprintln(w, "Config file location:")
-		fmt.Fprintf(w, "  %s\n\n", a.ConfigPath)
+		reflow(w, th.Body, wrapWidth(termWidth, 2), 2, "", a.ConfigPath)
 	}
 
 	if a.Version != "" {
 		th.Hdr.Fprintln(w, "Version:")
-		fmt.Fprintf(w, "  %s\n", a.Version)
+		reflow(w, th.Body, wrapWidth(termWidth, 2), 2, "", a.Version)
 	}
 
 	if a.GlobalNote != "" {
 		fmt.Fprintln(w)
-		reflow(w, th.Body, wrapW, 2, "", inline(a.GlobalNote))
+		reflow(w, th.Body, wrapWidth(termWidth, 2), 2, "", inline(a.GlobalNote))
 	}
 }
 
@@ -378,32 +406,32 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 	w := o.out()
 
 	sepW := min(o.width(), 80)
-	wrapW := min(o.width(), 80)
+	termWidth := o.width()
 
 	fmt.Fprintln(w)
 	if th.Separator {
 		separator(w, th, sepW)
 	}
-	reflow(w, th.Accent, wrapW, 2, "", th.TitlePrefix+title(cmd))
+	reflow(w, th.Accent, wrapWidth(termWidth, 2), 2, "", th.TitlePrefix+title(cmd))
 	if th.Separator {
 		separator(w, th, sepW)
 	}
 
 	if cmd.Description != "" {
 		th.Hdr.Fprintln(w, "Description:")
-		reflow(w, th.Body, wrapW, 2, "", inline(cmd.Description))
+		reflow(w, th.Body, wrapWidth(termWidth, 2), 2, "", inline(cmd.Description))
 	}
 
 	if cmd.UsageLine != "" {
 		th.Hdr.Fprintln(w, "\nUsage:")
-		reflow(w, th.Body, wrapW, 2, "", cmd.UsageLine)
+		reflow(w, th.Body, wrapWidth(termWidth, 2), 2, "", inline(cmd.UsageLine))
 	}
 
 	if subs := subcommandEntries(cmd); len(subs) > 0 {
 		th.Hdr.Fprintln(w, "\nSubcommands:")
 		indent := colIndent(subs)
 		for _, s := range subs {
-			reflow(w, th.Body, wrapW, indent, s.Name, inline(s.Description))
+			reflow(w, th.Body, wrapWidth(termWidth, indent), indent, s.Name, inline(s.Description), th.Subcommand)
 		}
 	}
 
@@ -411,11 +439,23 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 		th.Hdr.Fprintln(w, "\nParameters:")
 		indent := colIndent(cmd.Parameters)
 		for _, p := range cmd.Parameters {
-			reflow(w, th.Body, wrapW, indent, p.Name, inline(p.Description))
+			reflow(w, th.Body, wrapWidth(termWidth, indent), indent, p.Name, inline(p.Description))
 		}
 	}
 
 	var allOptions []Option
+	for _, opt := range a.PersistentOptions {
+		if !opt.Hidden {
+			allOptions = append(allOptions, opt)
+		}
+	}
+	for _, anc := range a.ancestorsForPath(path...) {
+		for _, opt := range anc.PersistentOptions {
+			if !opt.Hidden {
+				allOptions = append(allOptions, opt)
+			}
+		}
+	}
 	for _, opt := range cmd.PersistentOptions {
 		if !opt.Hidden {
 			allOptions = append(allOptions, opt)
@@ -439,16 +479,16 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 		}
 		indent := colIndent(optParams)
 		for _, p := range optParams {
-			reflow(w, th.Body, wrapW, indent, p.Name, inline(p.Description))
+			reflow(w, th.Body, wrapWidth(termWidth, indent), indent, p.Name, inline(p.Description))
 		}
 	}
 
 	if len(cmd.Examples) > 0 {
 		th.Hdr.Fprintln(w, "\nExamples:")
 		for _, ex := range cmd.Examples {
-			reflow(w, th.Body, wrapW, 2, "", ex.Line)
+			reflow(w, th.Body, wrapWidth(termWidth, 2), 2, "", inline(ex.Line))
 			if ex.Description != "" {
-				reflow(w, th.Body, wrapW, 4, "", inline(ex.Description))
+				reflow(w, th.Body, wrapWidth(termWidth, 4), 4, "", inline(ex.Description))
 			}
 		}
 	}
@@ -457,7 +497,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 		if note.Heading != "" {
 			th.Hdr.Fprintln(w, "\n"+note.Heading+":")
 		}
-		reflow(w, th.Body, wrapW, 2, "", inline(note.Text))
+		reflow(w, th.Body, wrapWidth(termWidth, 2), 2, "", inline(note.Text))
 	}
 
 	if th.Separator {

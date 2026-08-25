@@ -2,6 +2,18 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.2.15] - 
+
+### Added
+- Green subcommand names in command and global help via `Theme.Subcommand` (default green).
+- Per-section wrap width: `wrapWidth(termWidth, indent) = min(termWidth, indent+80)` so indented lists can use more horizontal space.
+- Exported `Inline` helper for rendering inline markdown to ANSI/OSC8 strings.
+- `RenderCommand` now includes app-level and ancestor persistent options in the Flags section.
+
+### Fixed
+- `UsageLine` and `Examples` now pass through inline markdown rendering (no raw `**` or visible URLs).
+- Oracle test (`example/mail_cli_fake`) updated to match green subcommands, per-section wrap width, and inline rendering.
+
 ## [0.2.13] - 
 n### Fixed
 - Fixed nested help double-render for `podctl config help` and similar nested commands

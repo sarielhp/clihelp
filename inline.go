@@ -19,6 +19,12 @@ const (
 	sgrCodeOff   = "\x1b[39m"
 )
 
+// Inline renders inline markdown in s to a string with ANSI/OSC8 sequences.
+// It is the exported form of the internal inline helper used by the renderer.
+func Inline(s string) string {
+	return inline(s)
+}
+
 // renderInline writes s to w, translating inline markdown patterns into
 // ANSI escape sequences and OSC 8 hyperlinks for terminal display.
 //
