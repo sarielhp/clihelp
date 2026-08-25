@@ -236,3 +236,46 @@ func TestRenderCommandPageNestedUsesTables(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderMarkdownSkipsHiddenCommands(t *testing.T) {
+	app := testApp()
+	app.Commands = append(app.Commands, Command{Name: "secret", Hidden: true})
+	pages, err := renderMarkdownPages(app)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name := range pages {
+		if name == "secret.md" {
+			t.Error("hidden command produced a markdown page")
+		}
+	}
+	if strings.Contains(pages["index.md"], "secret") {
+		t.Error("hidden command appeared in index.md")
+	}
+	if strings.Contains(pages["nav.md"], "secret") {
+		t.Error("hidden command appeared in nav.md")
+	}
+}
+
+func TestRenderMarkdownSlugCollisionErrors(t *testing.T) {
+	app := &App{
+		Name: "collide",
+		Commands: []Command{
+			{Name: "set-up"},
+			{Name: "set up"},
+		},
+	}
+	_, err := renderMarkdownPages(app)
+	if err == nil {
+		t.Fatal("expected slug collision error, got nil")
+	}
+}
+
+func TestPageHeaderQuotesFrontMatter(t *testing.T) {
+	got := pageHeader(pageMeta{title: `weird: "title" with 'quote'`, parent: `p: 'q'`})
+	for _, want := range []string{"title: 'weird: \"title\" with ''quote'''", "parent: 'p: ''q'''"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("pageHeader missing quoted field %q, got:\n%s", want, got)
+		}
+	}
+}

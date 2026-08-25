@@ -5,7 +5,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/spf13/pflag"
 )
+
+func newFlagSetForTest(name string) *pflag.FlagSet {
+	return pflag.NewFlagSet(name, pflag.ContinueOnError)
+}
 
 type customValue struct {
 	val string
@@ -141,6 +147,42 @@ func TestParseFlagSpec(t *testing.T) {
 	toggleSpec := parseFlagSpec("--[no-]check-new")
 	if !toggleSpec.isToggle || toggleSpec.baseToggle != "check-new" {
 		t.Errorf("unexpected toggle spec: %+v", toggleSpec)
+	}
+}
+
+func TestParseFlagSpecEqualsForm(t *testing.T) {
+	spec := parseFlagSpec("-o, --output=PATH")
+	if len(spec.longNames) != 1 || spec.longNames[0] != "output" {
+		t.Errorf("--output=PATH should register long name 'output', got %v", spec.longNames)
+	}
+	if len(spec.shortNames) != 1 || spec.shortNames[0] != "o" {
+		t.Errorf("unexpected short names: %v", spec.shortNames)
+	}
+}
+
+func TestEnumRejectsInvalidDefault(t *testing.T) {
+	var env string
+	opt := Enum(&env, "--env <env>", []string{"dev", "prod"}, "qa", "target env")
+	err := opt.Binder(newFlagSetForTest("test"))
+	if err == nil {
+		t.Fatal("expected error for enum default outside allowed set, got nil")
+	}
+	if !strings.Contains(err.Error(), "qa") {
+		t.Errorf("error should mention the bad default, got: %v", err)
+	}
+}
+
+func TestStringSliceDoesNotAliasCallerSlice(t *testing.T) {
+	defaults := []string{"a", "b"}
+	var got []string
+	opt := StringSlice(&got, "--tag <t>", defaults, "tags")
+	fs := newFlagSetForTest("test")
+	if err := opt.Binder(fs); err != nil {
+		t.Fatal(err)
+	}
+	defaults[0] = "MUTATED"
+	if got[0] == "MUTATED" {
+		t.Error("StringSlice aliased the caller's backing array")
 	}
 }
 

@@ -41,6 +41,12 @@ func parseFlagSpec(spec string) flagSpec {
 		if token == "" {
 			continue
 		}
+		// --flag=VALUE and -o=VALUE: drop the placeholder value so the flag is
+		// registered under its bare name; the "=VALUE" form is a parse-time
+		// convention, not part of the spec.
+		if strings.HasPrefix(token, "-") && strings.Contains(token, "=") {
+			token = token[:strings.Index(token, "=")]
+		}
 		if strings.HasPrefix(token, "--[no-]") || strings.HasPrefix(token, "-[no-]") {
 			fs.isToggle = true
 			base := strings.TrimPrefix(token, "--[no-]")
@@ -295,19 +301,21 @@ func Duration(target *time.Duration, flags string, defaultVal time.Duration, usa
 
 // StringSlice binds a repeatable or comma-separated string slice flag to target.
 func StringSlice(target *[]string, flags string, defaultVal []string, usage string) Option {
-	*target = defaultVal
+	// Copy so the caller's slice backing array is not aliased by pflag.
+	*target = append([]string{}, defaultVal...)
 	spec := parseFlagSpec(flags)
 	return Option{
 		Flags:       flags,
 		Description: usage,
 		Binder: func(fs *pflag.FlagSet) error {
 			return bindHelper(fs, spec, func(long, short string) {
+				init := append([]string{}, defaultVal...)
 				if long != "" && short != "" {
-					fs.StringSliceVarP(target, long, short, defaultVal, usage)
+					fs.StringSliceVarP(target, long, short, init, usage)
 				} else if long != "" {
-					fs.StringSliceVar(target, long, defaultVal, usage)
+					fs.StringSliceVar(target, long, init, usage)
 				} else if short != "" {
-					fs.StringSliceVarP(target, "flag-"+short, short, defaultVal, usage)
+					fs.StringSliceVarP(target, "flag-"+short, short, init, usage)
 				}
 			})
 		},
@@ -357,6 +365,16 @@ func Enum(target *string, flags string, allowed []string, defaultVal string, usa
 			return matches
 		},
 		Binder: func(fs *pflag.FlagSet) error {
+			valid := false
+			for _, a := range allowed {
+				if a == defaultVal {
+					valid = true
+					break
+				}
+			}
+			if !valid {
+				return fmt.Errorf("flag spec %q: default value %q is not one of [%s]", flags, defaultVal, strings.Join(allowed, ", "))
+			}
 			val := &enumVal{target: target, allowed: allowed}
 			return bindHelper(fs, spec, func(long, short string) {
 				if long != "" && short != "" {

@@ -2,6 +2,27 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.2.17] - 
+
+### Added
+- `Options.MaxContentWidth` (default 80) makes the content wrap cap configurable (`min(termWidth, indent+MaxContentWidth)`).
+- `Command.Group` group headings in global command lists and structural subcommand lists.
+- `parseFlagSpec` now accepts `--flag=VALUE` specs.
+- `scripts/check.sh` verifies `example/main.go`'s `Version:` literal matches the `VERSION` file.
+- CJK-aware column measurement via `go-runewidth` (wide East-Asian chars count as two columns).
+
+### Fixed
+- `Enum` rejects a default value outside the allowed set at bind time.
+- `StringSlice` no longer aliases the caller's slice backing array.
+- Root `Run` handlers now receive positional args even when subcommands exist.
+- `--version` returns an error when `App.Version` is empty instead of silently exiting 0.
+- `Options.width()` probes the render Writer when it is a terminal before falling back to stdout.
+- `splitLines` strips trailing CR for CRLF input.
+- Markdown pages/nav/index skip `Hidden` commands; slug collisions error instead of silently overwriting; front-matter title/parent are YAML-quoted.
+- Completion supports `--flag=` prefixes, de-duplicates root command/shortcut names, and propagates `resolveCommand` errors.
+- `Command` tree traversal unified through `findCommand`; option collection unified through `App.collectOptions`.
+- Example Run handlers write to `ctx.Stdout` instead of `fmt.Printf`.
+
 ## [0.2.15] - 
 
 ### Added

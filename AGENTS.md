@@ -66,9 +66,9 @@ make run
 ## Version Management
 
 - Version is stored in `VERSION` file (semver: `major.minor.patch`)
-- Current version: `0.2.0`
+- Current version: `<read from VERSION at build time — kept in sync by scripts/check.sh>`
 - Run `make bump` to bump patch version, commit, tag, and push version in one step
-- `VERSION` file is the single source of truth for release versioning
+- `VERSION` file is the single source of truth for release versioning; `example/main.go`'s `Version:` literal must match it and is verified by `make check`
 
 ## API Stability & Backward Compatibility
 
@@ -85,9 +85,9 @@ make run
 
 - Go 1.26+ with minimal dependencies (`github.com/fatih/color`, `github.com/acarl005/stripansi`, `golang.org/x/term`)
 - Self-documenting, clean, formatted Go code (`gofmt -s -w .`)
-- **No direct ANSI escape codes** in code or tests (`\033`, `\x1b`) — always use external packages (`github.com/fatih/color`, `github.com/acarl005/stripansi`)
+- **No direct ANSI escape codes** in code or tests (`\033`, `\x1b`) — always use external packages (`github.com/fatih/color`, `github.com/acarl005/stripansi`). **Sole exception:** the SGR/OSC8 constants in `inline.go` (neither dependency can emit OSC8 link sequences). Do not add ANSI escapes anywhere else.
 - ANSI color formatting for terminal headers and labels
-- Terminal width auto-detection with fallback to 80 characters for non-TTY environments
+- Terminal width auto-detection with fallback to 70 characters for non-TTY environments
 - All functions return clean outputs; no `os.Exit` inside library code
 
 ## File Organization

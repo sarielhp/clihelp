@@ -168,6 +168,38 @@ func TestExecuteVersionAndHelpInterception(t *testing.T) {
 	}
 }
 
+func TestExecuteRootRunReceivesPositionalArgs(t *testing.T) {
+	var received []string
+	in := make(chan []string, 1)
+	app := &App{
+		Name: "rootcli",
+		Run: func(ctx *Context) error {
+			received = append(received, ctx.Args...)
+			in <- ctx.Args
+			return nil
+		},
+		Commands: []Command{
+			{Name: "known", Run: func(ctx *Context) error { return nil }},
+		},
+	}
+	err := app.ExecuteContext(context.Background(), []string{"some", "positional"})
+	if err != nil {
+		t.Fatalf("root Run with positional args should not error, got: %v", err)
+	}
+	<-in
+	if len(received) != 2 || received[0] != "some" || received[1] != "positional" {
+		t.Errorf("root Run received %v, want [some positional]", received)
+	}
+}
+
+func TestExecuteEmptyVersionErrors(t *testing.T) {
+	app := &App{Name: "novers"}
+	err := app.ExecuteContext(context.Background(), []string{"--version"})
+	if err == nil {
+		t.Fatal("expected error for --version with empty App.Version, got nil")
+	}
+}
+
 func TestExecuteNestedPersistentOptions(t *testing.T) {
 	var (
 		appGlobal string

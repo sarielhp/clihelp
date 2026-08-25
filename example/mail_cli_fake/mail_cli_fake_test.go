@@ -181,7 +181,7 @@ func oracleSubs(cmd *clihelp.Command) []clihelp.Param {
 	return out
 }
 
-func oracleDetailedUsage(out io.Writer, cmd *clihelp.Command) {
+func oracleDetailedUsage(out io.Writer, a *clihelp.App, path []string, cmd *clihelp.Command) {
 	title := cmd.Title
 	if title == "" {
 		title = cmd.Name
@@ -224,16 +224,40 @@ func oracleDetailedUsage(out io.Writer, cmd *clihelp.Command) {
 			oracleReflow(out, oBody, nil, indent, pp.Name, pp.Description)
 		}
 	}
-	if len(cmd.Options) > 0 {
+
+	// Flags mirror clihelp.collectOptions: app persistent + global flags,
+	// each ancestor's persistent options, then the target's persistent and
+	// local options.
+	var allOpts []clihelp.Option
+	addOpts := func(list []clihelp.Option) {
+		for _, o := range list {
+			if !o.Hidden {
+				allOpts = append(allOpts, o)
+			}
+		}
+	}
+	addOpts(a.PersistentOptions)
+	addOpts(a.GlobalFlags)
+	var ancPath []string
+	for _, p := range path[:len(path)-1] {
+		ancPath = append(ancPath, p)
+		if anc := a.LookupCommand(ancPath...); anc != nil {
+			addOpts(anc.PersistentOptions)
+		}
+	}
+	addOpts(cmd.PersistentOptions)
+	addOpts(cmd.Options)
+
+	if len(allOpts) > 0 {
 		oHdr.Fprintln(out, "\nFlags:")
 		maxW := 0
-		for _, o := range cmd.Options {
+		for _, o := range allOpts {
 			if len(o.Flags) > maxW {
 				maxW = len(o.Flags)
 			}
 		}
 		indent := maxW + 4
-		for _, o := range cmd.Options {
+		for _, o := range allOpts {
 			oracleReflow(out, oBody, nil, indent, o.Flags, o.Description)
 		}
 	}
@@ -367,7 +391,7 @@ func TestMailCLIReconstruction(t *testing.T) {
 		var got, want bytes.Buffer
 		app.RenderCommand(clihelp.Options{Writer: &got, Width: 70}, path...)
 		cmd := app.LookupCommand(path...)
-		oracleDetailedUsage(&want, cmd)
+		oracleDetailedUsage(&want, app, path, cmd)
 
 		if got.String() != want.String() {
 			t.Errorf("detailed page %q mismatch (raw)\n--- got ---\n%s\n--- want ---\n%s",

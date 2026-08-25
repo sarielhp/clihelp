@@ -10,15 +10,23 @@ import (
 func (a *App) handleComplete(ctx context.Context, args []string) error {
 	w := a.stdout()
 	if len(args) == 0 {
-		// Output all root commands
+		// Output all root commands, de-duplicating shortcut/command names.
+		seen := map[string]bool{}
+		emit := func(name, desc string) {
+			if seen[name] {
+				return
+			}
+			seen[name] = true
+			fmt.Fprintf(w, "%s\t%s\n", name, desc)
+		}
 		for _, cmd := range a.Commands {
 			if !cmd.Hidden {
-				fmt.Fprintf(w, "%s\t%s\n", cmd.Name, cmd.Description)
+				emit(cmd.Name, cmd.Description)
 			}
 		}
 		for _, s := range a.Shortcuts {
 			if !s.Hidden {
-				fmt.Fprintf(w, "%s\t%s\n", s.Name, s.Description)
+				emit(s.Name, s.Description)
 			}
 		}
 		return nil
@@ -31,18 +39,13 @@ func (a *App) handleComplete(ctx context.Context, args []string) error {
 	}
 
 	// Resolve the active command path from the args up to len(args)-1
-	currentCmd, ancestors, _, _, _, _ := a.resolveCommand(args[:len(args)-1])
+	currentCmd, _, path, _, _, err := a.resolveCommand(args[:len(args)-1])
+	if err != nil {
+		return err
+	}
 
 	// Collect active options
-	var activeOptions []Option
-	activeOptions = append(activeOptions, a.PersistentOptions...)
-	for _, anc := range ancestors {
-		activeOptions = append(activeOptions, anc.PersistentOptions...)
-	}
-	if currentCmd != nil {
-		activeOptions = append(activeOptions, currentCmd.PersistentOptions...)
-		activeOptions = append(activeOptions, currentCmd.Options...)
-	}
+	activeOptions := a.collectOptions(path, currentCmd)
 
 	// 1. If previous word was a flag, check if that option has a dynamic completion callback
 	if strings.HasPrefix(prevWord, "-") {
@@ -73,8 +76,44 @@ func (a *App) handleComplete(ctx context.Context, args []string) error {
 		}
 	}
 
-	// 2. If toComplete starts with '-', suggest flag names
+	// 2. If toComplete starts with '-', suggest flag names. When "=" is already
+	// typed the flag name is fixed; emit dynamic values or a completed "=".
 	if strings.HasPrefix(toComplete, "-") {
+		if eq := strings.Index(toComplete, "="); eq >= 0 {
+			namePart := toComplete[:eq]
+			for _, opt := range activeOptions {
+				if opt.Hidden {
+					continue
+				}
+				spec := parseFlagSpec(opt.Flags)
+				nameOk := false
+				for _, long := range spec.longNames {
+					if "--"+long == namePart {
+						nameOk = true
+						break
+					}
+				}
+				if !nameOk {
+					for _, short := range spec.shortNames {
+						if "-"+short == namePart {
+							nameOk = true
+							break
+						}
+					}
+				}
+				if !nameOk {
+					continue
+				}
+				if opt.Complete != nil {
+					for _, res := range opt.Complete(toComplete[eq+1:]) {
+						fmt.Fprintf(w, "%s=%s\t%s\n", namePart, res, opt.Description)
+					}
+				} else {
+					fmt.Fprintf(w, "%s=\t%s\n", namePart, opt.Description)
+				}
+			}
+			return nil
+		}
 		for _, opt := range activeOptions {
 			if opt.Hidden {
 				continue
@@ -116,12 +155,19 @@ func (a *App) handleComplete(ctx context.Context, args []string) error {
 		}
 	}
 
-	// Include shortcut commands at root level
+	// Include shortcut commands at root level, de-duplicating command names.
 	if currentCmd == nil {
+		seen := map[string]bool{}
+		for _, sub := range a.Commands {
+			if !sub.Hidden {
+				seen[sub.Name] = true
+			}
+		}
 		for _, s := range a.Shortcuts {
-			if s.Hidden {
+			if s.Hidden || seen[s.Name] {
 				continue
 			}
+			seen[s.Name] = true
 			if strings.HasPrefix(s.Name, toComplete) {
 				fmt.Fprintf(w, "%s\t%s\n", s.Name, s.Description)
 			}

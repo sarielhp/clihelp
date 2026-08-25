@@ -18,7 +18,7 @@ type Option struct {
 	Hidden      bool                             // Hidden from help and completion output
 	Deprecated  string                           // Deprecation notice
 	Complete    func(toComplete string) []string // Dynamic shell tab-completion callback
-	Binder      func(fs *pflag.FlagSet) error    // Internal pflag flag binder
+	Binder      func(fs *pflag.FlagSet) error    // Registers the flag on fs; returns an error on duplicate/help-flag conflicts
 }
 
 // Example represents a usage line demonstration in command help text.
@@ -116,6 +116,22 @@ func (a *App) stderr() io.Writer {
 	return os.Stderr
 }
 
+// findCommand searches cmds for name, matching both Name and Aliases. It
+// returns the matching Command pointer and its index (or nil, -1).
+func findCommand(cmds []Command, name string) (*Command, int) {
+	for i := range cmds {
+		if cmds[i].Name == name {
+			return &cmds[i], i
+		}
+		for _, alias := range cmds[i].Aliases {
+			if alias == name {
+				return &cmds[i], i
+			}
+		}
+	}
+	return nil, -1
+}
+
 // LookupCommand traverses the command hierarchy and returns the matching
 // Command pointer, or nil if not found. Matches both Name and Aliases.
 func (a *App) LookupCommand(path ...string) *Command {
@@ -125,22 +141,7 @@ func (a *App) LookupCommand(path ...string) *Command {
 	currentSlice := a.Commands
 	var found *Command
 	for _, p := range path {
-		found = nil
-		for i := range currentSlice {
-			if currentSlice[i].Name == p {
-				found = &currentSlice[i]
-				break
-			}
-			for _, alias := range currentSlice[i].Aliases {
-				if alias == p {
-					found = &currentSlice[i]
-					break
-				}
-			}
-			if found != nil {
-				break
-			}
-		}
+		found, _ = findCommand(currentSlice, p)
 		if found == nil {
 			return nil
 		}
@@ -158,21 +159,36 @@ func (a *App) ancestorsForPath(path ...string) []*Command {
 	var ancestors []*Command
 	currentSlice := a.Commands
 	for i := 0; i < len(path)-1; i++ {
-		p := path[i]
-		for j := range currentSlice {
-			if currentSlice[j].Name == p {
-				ancestors = append(ancestors, &currentSlice[j])
-				currentSlice = currentSlice[j].Subcommands
-				break
-			}
-			for _, alias := range currentSlice[j].Aliases {
-				if alias == p {
-					ancestors = append(ancestors, &currentSlice[j])
-					currentSlice = currentSlice[j].Subcommands
-					break
-				}
+		found, _ := findCommand(currentSlice, path[i])
+		if found == nil {
+			return ancestors
+		}
+		ancestors = append(ancestors, found)
+		currentSlice = found.Subcommands
+	}
+	return ancestors
+}
+
+// collectOptions returns the ordered option set for a command path: app
+// PersistentOptions and GlobalFlags, each ancestor's PersistentOptions, then
+// the target's PersistentOptions and Options. Hidden options are skipped.
+func (a *App) collectOptions(path []string, cmd *Command) []Option {
+	var opts []Option
+	appendAll := func(optSlice []Option) {
+		for _, o := range optSlice {
+			if !o.Hidden {
+				opts = append(opts, o)
 			}
 		}
 	}
-	return ancestors
+	appendAll(a.PersistentOptions)
+	appendAll(a.GlobalFlags)
+	for _, anc := range a.ancestorsForPath(path...) {
+		appendAll(anc.PersistentOptions)
+	}
+	if cmd != nil {
+		appendAll(cmd.PersistentOptions)
+		appendAll(cmd.Options)
+	}
+	return opts
 }

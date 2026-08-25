@@ -47,7 +47,7 @@ func main() {
 	app := &clihelp.App{
 		Name:        "podctl",
 		Description: "[podctl](https://podctl.example.com) — A podcast distribution & audio processing tool.",
-		Version:     "0.2.13",
+		Version:     "0.2.17",
 		GlobalNote:  "Documentation & source: [https://github.com/sarielhp/clihelp](https://github.com/sarielhp/clihelp)\nRun 'podctl <command> --help' for command-specific options.",
 		PersistentOptions: []clihelp.Option{
 			clihelp.Bool(&globals.Verbose, "-v, --verbose", false, "Enable verbose output logs"),
@@ -76,7 +76,7 @@ func main() {
 					},
 				},
 				Run: func(ctx *clihelp.Context) error {
-					fmt.Printf("Compiling audio episode '%s' (bitrate: %d kbps, output: %q)...\nSuccess.\n",
+					fmt.Fprintf(ctx.Stdout, "Compiling audio episode '%s' (bitrate: %d kbps, output: %q)...\nSuccess.\n",
 						ctx.Args[0], buildBitrate, buildOutput)
 					return nil
 				},
@@ -95,7 +95,7 @@ func main() {
 					{Line: "podctl serve --port 9090 --no-live-reload"},
 				},
 				Run: func(ctx *clihelp.Context) error {
-					fmt.Printf("Starting local RSS development server on http://%s:%d (live reload: %v)...\n",
+					fmt.Fprintf(ctx.Stdout, "Starting local RSS development server on http://%s:%d (live reload: %v)...\n",
 						serveHost, servePort, serveLiveReload)
 					return nil
 				},
@@ -120,7 +120,7 @@ func main() {
 									clihelp.Bool(&configSpaceAuto, "--auto-cleanup", false, "Purge oldest temporary cache files"),
 								},
 								Run: func(ctx *clihelp.Context) error {
-									fmt.Printf("Config space set to %s %s (auto-cleanup: %v)\n", ctx.Args[0], configSpaceUnit, configSpaceAuto)
+									fmt.Fprintf(ctx.Stdout, "Config space set to %s %s (auto-cleanup: %v)\n", ctx.Args[0], configSpaceUnit, configSpaceAuto)
 									return nil
 								},
 							},
@@ -132,7 +132,7 @@ func main() {
 						UsageLine:   "podctl config get <attribute>",
 						Args:        clihelp.ExactArgs(1),
 						Run: func(ctx *clihelp.Context) error {
-							fmt.Printf("%s = 5 (default)\n", ctx.Args[0])
+							fmt.Fprintf(ctx.Stdout, "%s = 5 (default)\n", ctx.Args[0])
 							return nil
 						},
 					},
@@ -155,7 +155,7 @@ func main() {
 					},
 				},
 				Run: func(ctx *clihelp.Context) error {
-					fmt.Printf("Deploying podcast feed to environment '%s' (dry-run: %v, timeout: %v)...\nSuccess.\n",
+					fmt.Fprintf(ctx.Stdout, "Deploying podcast feed to environment '%s' (dry-run: %v, timeout: %v)...\nSuccess.\n",
 						deployStage, deployDryRun, deployTimeout)
 					return nil
 				},
@@ -170,9 +170,9 @@ func main() {
 				},
 				Run: func(ctx *clihelp.Context) error {
 					if statusJSON {
-						fmt.Println(`{"health": "OK", "feed": "active", "downloads": 12450}`)
+						fmt.Fprintln(ctx.Stdout, `{"health": "OK", "feed": "active", "downloads": 12450}`)
 					} else {
-						fmt.Printf("Stage: %s | Health: OK | Feed: Active | Downloads: 12,450\n", statusStage)
+						fmt.Fprintf(ctx.Stdout, "Stage: %s | Health: OK | Feed: Active | Downloads: 12,450\n", statusStage)
 					}
 					return nil
 				},
@@ -258,7 +258,7 @@ func buildSubTree(name string, path []string, depth int) clihelp.Command {
 		}
 	} else {
 		cmd.Run = func(ctx *clihelp.Context) error {
-			fmt.Printf("Executing leaf command: %s\n", strings.Join(path, " "))
+			fmt.Fprintf(ctx.Stdout, "Executing leaf command: %s\n", strings.Join(path, " "))
 			return nil
 		}
 	}

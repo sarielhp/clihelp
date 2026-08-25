@@ -125,6 +125,12 @@ Descriptions and notes support markdown-like inline formatting:
 | `[Label](https://example.com)` | Clickable OSC 8 terminal hyperlink |
 | `\X` | Escapes special character `X` |
 
+### Width & wrapping
+
+- Terminal width is auto-detected with a **70-column fallback** for non-TTY output.
+- Content wraps at `indent + MaxContentWidth` columns (default `MaxContentWidth` is 80), so indented lists gain extra horizontal room without exceeding the terminal width. Set `Options.MaxContentWidth` to change the content cap.
+- Command lists can be grouped with `Command.Group`; a group heading is rendered when the group value changes.
+
 ---
 
 ## Migrating from v0.1.x

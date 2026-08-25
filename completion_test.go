@@ -353,3 +353,65 @@ source %q
 		}
 	})
 }
+
+func TestShellCompletionEqualsForm(t *testing.T) {
+	var outBuf bytes.Buffer
+	var unit string
+	app := &App{
+		Name:   "deploy",
+		Stdout: &outBuf,
+		Commands: []Command{
+			{
+				Name: "go",
+				Options: []Option{
+					Enum(&unit, "--unit <size>", []string{"MB", "GB"}, "MB", "size unit"),
+				},
+			},
+		},
+	}
+	err := app.ExecuteContext(context.Background(), []string{"__complete", "go", "--unit="})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	out := outBuf.String()
+	for _, want := range []string{"--unit=MB", "--unit=GB"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("equals-form completion missing %q, got: %q", want, out)
+		}
+	}
+}
+
+func TestShellCompletionDedupeShortcuts(t *testing.T) {
+	var outBuf bytes.Buffer
+	app := &App{
+		Name:   "dedupe",
+		Stdout: &outBuf,
+		Commands: []Command{
+			{Name: "scan", Description: "Scan"},
+		},
+		Shortcuts: []Command{
+			{Name: "scan", Description: "Duplicated shortcut"},
+		},
+	}
+	if err := app.ExecuteContext(context.Background(), []string{"__complete"}); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Count(outBuf.String(), "scan\t"); got != 1 {
+		t.Errorf("expected exactly one 'scan' completion, got %d:\n%s", got, outBuf.String())
+	}
+}
+
+func TestShellCompletionPropagatesResolveError(t *testing.T) {
+	var outBuf bytes.Buffer
+	app := &App{
+		Name:   "errcli",
+		Stdout: &outBuf,
+		Commands: []Command{
+			{Name: "parent", Subcommands: []Command{{Name: "child"}}},
+		},
+	}
+	err := app.ExecuteContext(context.Background(), []string{"__complete", "parent", "bogus", "x"})
+	if err == nil {
+		t.Fatal("expected resolve error to propagate from handleComplete, got nil")
+	}
+}

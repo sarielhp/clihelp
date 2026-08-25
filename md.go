@@ -113,6 +113,9 @@ func collectNodes(a *App) []cmdNode {
 }
 
 func collect(c Command, prefix []string, out *[]cmdNode) {
+	if c.Hidden {
+		return
+	}
 	path := append(append([]string{}, prefix...), c.Name)
 	*out = append(*out, cmdNode{path: path, cmd: c})
 	for _, sub := range c.Subcommands {
@@ -128,7 +131,11 @@ func renderMarkdownPages(a *App) (map[string]string, error) {
 		"nav.md":   renderNav(a),
 	}
 	for _, n := range collectNodes(a) {
-		pages[markdownRelFile(n.path)] = renderCommandPage(a, n)
+		file := markdownRelFile(n.path)
+		if _, dup := pages[file]; dup {
+			return nil, fmt.Errorf("markdown page collision: %q (%s) duplicates an existing page; rename conflicting commands", file, strings.Join(n.path, " "))
+		}
+		pages[file] = renderCommandPage(a, n)
 	}
 	return pages, nil
 }
@@ -210,15 +217,21 @@ type pageMeta struct {
 	parent      string
 }
 
+// yamlQuote returns s wrapped in YAML single quotes, doubling any embedded
+// single quote so the value cannot break out of the front-matter field.
+func yamlQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
+}
+
 // pageHeader renders Jekyll front matter from meta.
 func pageHeader(m pageMeta) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "---\ntitle: %s\n", m.title)
+	fmt.Fprintf(&b, "---\ntitle: %s\n", yamlQuote(m.title))
 	if m.hasChildren {
 		fmt.Fprintf(&b, "has_children: true\n")
 	}
 	if m.parent != "" {
-		fmt.Fprintf(&b, "parent: %s\n", m.parent)
+		fmt.Fprintf(&b, "parent: %s\n", yamlQuote(m.parent))
 	}
 	b.WriteString("---\n\n")
 	return b.String()
@@ -232,6 +245,9 @@ func renderNav(a *App) string {
 	if len(a.Commands) > 0 {
 		b.WriteString("## Commands\n\n")
 		for _, c := range a.Commands {
+			if c.Hidden {
+				continue
+			}
 			renderNavNode(&b, c, []string{c.Name}, 0)
 		}
 		b.WriteString("\n")
@@ -239,6 +255,9 @@ func renderNav(a *App) string {
 	if len(a.Shortcuts) > 0 {
 		b.WriteString("## Shortcut Commands\n\n")
 		for _, s := range a.Shortcuts {
+			if s.Hidden {
+				continue
+			}
 			renderNavNode(&b, s, []string{s.Name}, 0)
 		}
 		b.WriteString("\n")
@@ -255,6 +274,9 @@ func renderNavNode(b *strings.Builder, c Command, path []string, depth int) {
 	}
 	b.WriteString("\n")
 	for _, sub := range c.Subcommands {
+		if sub.Hidden {
+			continue
+		}
 		subPath := append(append([]string{}, path...), sub.Name)
 		renderNavNode(b, sub, subPath, depth+1)
 	}
@@ -272,6 +294,9 @@ func renderIndex(a *App) string {
 	if len(a.Commands) > 0 {
 		b.WriteString("## Commands\n\n| Command | Description |\n|---------|-------------|\n")
 		for _, c := range a.Commands {
+			if c.Hidden {
+				continue
+			}
 			desc := c.Description
 			if desc == "" {
 				desc = "—"
@@ -284,6 +309,9 @@ func renderIndex(a *App) string {
 	if len(a.Shortcuts) > 0 {
 		b.WriteString("## Shortcut Commands\n\n| Command | Description |\n|---------|-------------|\n")
 		for _, s := range a.Shortcuts {
+			if s.Hidden {
+				continue
+			}
 			desc := s.Description
 			if desc == "" {
 				desc = "—"
@@ -398,31 +426,7 @@ func renderCommandPage(a *App, n cmdNode) string {
 		b.WriteString("\n")
 	}
 
-	var allOptions []Option
-	// Collect app-level persistent options
-	for _, opt := range a.PersistentOptions {
-		if !opt.Hidden {
-			allOptions = append(allOptions, opt)
-		}
-	}
-	// Collect ancestor persistent options
-	for _, anc := range a.ancestorsForPath(n.path...) {
-		for _, opt := range anc.PersistentOptions {
-			if !opt.Hidden {
-				allOptions = append(allOptions, opt)
-			}
-		}
-	}
-	for _, f := range cmd.PersistentOptions {
-		if !f.Hidden {
-			allOptions = append(allOptions, f)
-		}
-	}
-	for _, f := range cmd.Options {
-		if !f.Hidden {
-			allOptions = append(allOptions, f)
-		}
-	}
+	allOptions := a.collectOptions(n.path, &cmd)
 
 	if len(allOptions) > 0 {
 		b.WriteString("## Flags\n\n| Flag | Description |\n|------|-------------|\n")

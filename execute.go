@@ -34,12 +34,13 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 	// 2. Check for top-level version flag
 	if len(args) == 1 && (args[0] == "--version" || args[0] == "version") {
 		if !a.hasCommandNamed("version") {
-			if a.Version != "" {
-				if a.Name != "" {
-					fmt.Fprintf(a.stdout(), "%s %s\n", a.Name, a.Version)
-				} else {
-					fmt.Fprintln(a.stdout(), a.Version)
-				}
+			if a.Version == "" {
+				return fmt.Errorf("%s: no version is set for this application", appName(a))
+			}
+			if a.Name != "" {
+				fmt.Fprintf(a.stdout(), "%s %s\n", a.Name, a.Version)
+			} else {
+				fmt.Fprintln(a.stdout(), a.Version)
 			}
 			return nil
 		}
@@ -71,12 +72,10 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 	fs := pflag.NewFlagSet(cmdName, pflag.ContinueOnError)
 	fs.SetOutput(a.stderr())
 
-	// Add help flag if not explicitly defined
+	// Register the built-in help flag for -h/--help handling.
 	var helpRequested bool
-	if fs.Lookup("help") == nil {
-		fs.BoolVarP(&helpRequested, "help", "h", false, "Help for "+cmdName)
-		_ = fs.MarkHidden("help")
-	}
+	fs.BoolVarP(&helpRequested, "help", "h", false, "Help for "+cmdName)
+	_ = fs.MarkHidden("help")
 
 	// Bind App PersistentOptions
 	for _, opt := range a.PersistentOptions {
@@ -205,12 +204,8 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 }
 
 func (a *App) hasCommandNamed(name string) bool {
-	for _, c := range a.Commands {
-		if c.Name == name {
-			return true
-		}
-	}
-	return false
+	cmd, _ := findCommand(a.Commands, name)
+	return cmd != nil
 }
 
 func hasSubcommandNamed(cmds []Command, name string) bool {
@@ -254,22 +249,7 @@ func (a *App) resolveCommand(args []string) (*Command, []*Command, []string, []s
 		}
 
 		// Look for matching command or alias
-		var matched *Command
-		for i := range currentCommands {
-			if currentCommands[i].Name == arg {
-				matched = &currentCommands[i]
-				break
-			}
-			for _, alias := range currentCommands[i].Aliases {
-				if alias == arg {
-					matched = &currentCommands[i]
-					break
-				}
-			}
-			if matched != nil {
-				break
-			}
-		}
+		matched, _ := findCommand(currentCommands, arg)
 
 		if matched != nil {
 			if currentCmd != nil {
@@ -282,8 +262,10 @@ func (a *App) resolveCommand(args []string) (*Command, []*Command, []string, []s
 			continue
 		}
 
-		// Unknown command token: if current node has subcommands and no Run handler, treat as typo/error
-		if len(currentCommands) > 0 && (currentCmd == nil || currentCmd.Run == nil) {
+		// Unknown command token: if the receiving node has subcommands and no
+		// Run handler (root uses a.Run), treat as typo/error. Otherwise it is
+		// a positional argument.
+		if len(currentCommands) > 0 && ((currentCmd == nil && a.Run == nil) || (currentCmd != nil && currentCmd.Run == nil)) {
 			parentName := a.Name
 			if currentCmd != nil {
 				parentName = currentCmd.Name
