@@ -2,6 +2,7 @@ package clihelp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -217,8 +218,32 @@ func hasSubcommandNamed(cmds []Command, name string) bool {
 	return false
 }
 
-func (a *App) resolveCommand(args []string) (*Command, []*Command, []string, []string, bool, error) {
-	currentCommands := a.Commands
+// filterCommandsByPrefix returns all non-hidden commands whose Name or any
+// Alias starts with the given prefix.
+func filterCommandsByPrefix(cmds []Command, prefix string) []*Command {
+	var result []*Command
+	for i := range cmds {
+		cmd := &cmds[i]
+		if cmd.Hidden {
+			continue
+		}
+		if strings.HasPrefix(cmd.Name, prefix) {
+			result = append(result, cmd)
+			continue
+		}
+		for _, alias := range cmd.Aliases {
+			if strings.HasPrefix(alias, prefix) {
+				result = append(result, cmd)
+				break
+			}
+		}
+	}
+	return result
+}
+
+// resolveCommandPath resolves a path of command names, using prefix matching when
+// AbbrevCommands is enabled and exact match fails.
+func (a *App) resolveCommandPath(args []string, currentCommands []Command) (*Command, []*Command, []string, []string, bool, error) {
 	var currentCmd *Command
 	var ancestors []*Command
 	var path []string
@@ -262,6 +287,34 @@ func (a *App) resolveCommand(args []string) (*Command, []*Command, []string, []s
 			continue
 		}
 
+		// If exact match failed and abbreviation is enabled, try prefix matching
+		if a.AbbrevCommands {
+			matches := filterCommandsByPrefix(currentCommands, arg)
+			if len(matches) == 1 {
+				// Unique prefix match
+				if currentCmd != nil {
+					ancestors = append(ancestors, currentCmd)
+				}
+				currentCmd = matches[0]
+				path = append(path, matches[0].Name)
+				currentCommands = matches[0].Subcommands
+				idx++
+				continue
+			} else if len(matches) > 1 {
+				// Ambiguous prefix - show all candidates
+				names := make([]string, len(matches))
+				for i, cmd := range matches {
+					names[i] = cmd.Name
+				}
+				var buf strings.Builder
+				buf.WriteString(fmt.Sprintf("command %q is ambiguous. Did you mean one of these?\n", arg))
+				for _, name := range names {
+					buf.WriteString(fmt.Sprintf("  %s\n", name))
+				}
+				return nil, nil, nil, nil, false, errors.New(buf.String())
+			}
+		}
+
 		// Unknown command token: if the receiving node has subcommands and no
 		// Run handler (root uses a.Run), treat as typo/error. Otherwise it is
 		// a positional argument.
@@ -282,6 +335,11 @@ func (a *App) resolveCommand(args []string) (*Command, []*Command, []string, []s
 	}
 
 	return currentCmd, ancestors, path, args[idx:], false, nil
+}
+
+func (a *App) resolveCommand(args []string) (*Command, []*Command, []string, []string, bool, error) {
+	currentCommands := a.Commands
+	return a.resolveCommandPath(args, currentCommands)
 }
 
 func suggestCommand(typed string, available []Command) string {

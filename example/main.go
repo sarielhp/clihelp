@@ -45,10 +45,11 @@ func main() {
 	deepCmd := buildDeepTree()
 
 	app := &clihelp.App{
-		Name:        "podctl",
-		Description: "[podctl](https://podctl.example.com) — A podcast distribution & audio processing tool.",
-		Version:     "0.2.17",
-		GlobalNote:  "Documentation & source: [https://github.com/sarielhp/clihelp](https://github.com/sarielhp/clihelp)\nRun 'podctl <command> --help' for command-specific options.",
+		Name:           "podctl",
+		Description:    "[podctl](https://podctl.example.com) — A podcast distribution & audio processing tool.",
+		Version:        "0.2.17",
+		GlobalNote:     "Documentation & source: [https://github.com/sarielhp/clihelp](https://github.com/sarielhp/clihelp)\nRun 'podctl <command> --help' for command-specific options.",
+		AbbrevCommands: true,
 		PersistentOptions: []clihelp.Option{
 			clihelp.Bool(&globals.Verbose, "-v, --verbose", false, "Enable verbose output logs"),
 			clihelp.Bool(&globals.Silent, "-s, --silent", false, "Suppress non-error output"),

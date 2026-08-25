@@ -141,16 +141,14 @@ func (a *App) handleComplete(ctx context.Context, args []string) error {
 		subcommands = currentCmd.Subcommands
 	}
 
-	for _, sub := range subcommands {
-		if sub.Hidden {
-			continue
-		}
-		if strings.HasPrefix(sub.Name, toComplete) {
-			fmt.Fprintf(w, "%s\t%s\n", sub.Name, sub.Description)
-		}
-		for _, alias := range sub.Aliases {
+	// Use the same prefix filtering logic as resolveCommand
+	matches := filterCommandsByPrefix(subcommands, toComplete)
+	for _, cmd := range matches {
+		fmt.Fprintf(w, "%s\t%s\n", cmd.Name, cmd.Description)
+		// Also include aliases as separate completions
+		for _, alias := range cmd.Aliases {
 			if strings.HasPrefix(alias, toComplete) {
-				fmt.Fprintf(w, "%s\t%s\n", alias, sub.Description)
+				fmt.Fprintf(w, "%s\t%s\n", alias, cmd.Description)
 			}
 		}
 	}

@@ -81,6 +81,20 @@ make run
 - **Trigger**: Split into logical units when exceeding 600 lines
 - **Rationale**: Keeping files under 300 lines maintains focused AI agent context and improves AST editing accuracy.
 
+## Hard Constraints & Code Hygiene
+
+- **Error Handling & Exit Hygiene**:
+  - **Never use `log.Fatalf` or `os.Exit` in libraries or handlers**.
+  - All domain logic, storage operations, and command handlers must return errors upward using `fmt.Errorf("context: %w", err)`.
+  - Use a centralized `handleError(err)` helper at the presentation/CLI boundary.
+  - Reserve `log.Fatalf` strictly for fatal, unrecoverable startup configuration failures in `main.go`.
+- **Context Propagation**:
+  - Always accept `ctx context.Context` as the first parameter for I/O, database, network calls, and background workers.
+  - Never store `Context` in a struct.
+- **Goroutine & Resource Management**:
+  - Always ensure deterministic cleanup of goroutines, channels, timers, and file descriptors.
+  - Use `context.Context` for cancellation, `sync.WaitGroup` for synchronization, and `defer` for resource cleanup.
+
 ## Code Style
 
 - Go 1.26+ with minimal dependencies (`github.com/fatih/color`, `github.com/acarl005/stripansi`, `golang.org/x/term`)
@@ -89,6 +103,14 @@ make run
 - ANSI color formatting for terminal headers and labels
 - Terminal width auto-detection with fallback to 70 characters for non-TTY environments
 - All functions return clean outputs; no `os.Exit` inside library code
+
+## Testing
+
+- **Table-Driven Tests**: Use table-driven tests (`[]struct{ name string, ... }` with `t.Run(tt.name, func(t *testing.T) { ... })`) as the default testing idiom for Go.
+- **Race Detection**: Always run tests with `-race` enabled during verification:
+  ```bash
+  go test -v -race ./...
+  ```
 
 ## File Organization
 
@@ -112,3 +134,11 @@ make run
 5. **No Direct ANSI Codes**: Do not hardcode ANSI escape sequences (`\033`, `\x1b`) in source or test files — use `fatih/color` or `stripansi`.
 6. **Backward Compatibility**: Maintain strict backward compatibility for exported APIs. Introduce non-breaking additive fields or methods rather than modifying existing public signatures.
 7. **Commit Messages**: Use conventional commits format (`feat:`, `fix:`, `chore:`, `docs:`, `test:`).
+
+## AI Agent Keywords
+
+These keywords can be used to trigger specific workflows when working with AI agents:
+
+- `audit`: Run file line counts, staticcheck, and error propagation checks.
+- `harden`: Add edge-case table tests (nil pointers, context cancellation, empty slices, malformed inputs).
+- `simplify`: Remove dead code, redundant abstractions, and simplify complex loops/conditionals without changing behavior.

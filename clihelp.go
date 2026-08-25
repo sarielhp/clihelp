@@ -80,6 +80,11 @@ type App struct {
 	AfterRun          func(ctx *Context) error
 	Run               func(ctx *Context) error
 
+	// AbbrevCommands enables prefix-based command matching. When true, a unique
+	// prefix of a command name (or alias) is accepted as a match. When the prefix
+	// is ambiguous, an error listing the candidates is returned.
+	AbbrevCommands bool
+
 	// Presentation overrides
 	Theme       *Theme
 	GlobalFlags []Option
