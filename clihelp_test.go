@@ -909,6 +909,27 @@ func TestStripANSI(t *testing.T) {
 	}
 }
 
+func TestRenderTree(t *testing.T) {
+	app := testApp()
+	var buf bytes.Buffer
+	o := Options{Writer: &buf, Width: 80}
+	app.RenderTree(o)
+	out := strip(buf.String())
+
+	// Should contain the main commands
+	if !strings.Contains(out, "build") {
+		t.Errorf("Tree output missing 'build': %q", out)
+	}
+	if !strings.Contains(out, "config") {
+		t.Errorf("Tree output missing 'config': %q", out)
+	}
+
+	// Should contain the description
+	if !strings.Contains(out, "Compile audio episodes") {
+		t.Errorf("Tree output missing description: %q", out)
+	}
+}
+
 func TestVisualLenWithOSC8Links(t *testing.T) {
 	// A word containing an OSC 8 hyperlink should have its visual length
 	// computed as only the visible link text, not the full escape sequence.

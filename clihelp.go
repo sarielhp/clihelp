@@ -84,6 +84,10 @@ type App struct {
 	// prefix of a command name (or alias) is accepted as a match. When the prefix
 	// is ambiguous, an error listing the candidates is returned.
 	AbbrevCommands bool
+	// Pager enables automatic paging through $PAGER when output exceeds
+	// the terminal height. When true, help output is buffered and piped through
+	// the pager only when it doesn't fit on one screen.
+	Pager bool
 
 	// Presentation overrides
 	Theme       *Theme

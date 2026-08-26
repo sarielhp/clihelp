@@ -132,10 +132,11 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 
 	// Render help if -h / --help was passed
 	if helpRequested {
+		o := Options{Writer: a.stdout(), Pager: a.Pager}
 		if len(path) == 0 {
-			a.RenderGlobal(Options{Writer: a.stdout()})
+			a.RenderGlobal(o)
 		} else {
-			a.RenderCommand(Options{Writer: a.stdout()}, path...)
+			a.RenderCommand(o, path...)
 		}
 		return nil
 	}
@@ -256,14 +257,14 @@ func (a *App) resolveCommandPath(args []string, currentCommands []Command) (*Com
 		if arg == "help" && !a.hasCommandNamed("help") && !hasSubcommandNamed(currentCommands, "help") {
 			helpPath := append(path, args[idx+1:]...)
 			if len(helpPath) == 0 {
-				a.RenderGlobal(Options{Writer: a.stdout(), Theme: a.Theme})
+				a.RenderGlobal(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
 			} else {
 				// Validate that the help path resolves to a command
 				helpCmd := a.LookupCommand(helpPath...)
 				if helpCmd == nil {
 					return nil, nil, nil, nil, false, fmt.Errorf("unknown help topic %q", helpPath[0])
 				}
-				a.RenderCommand(Options{Writer: a.stdout(), Theme: a.Theme}, helpPath...)
+				a.RenderCommand(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager}, helpPath...)
 			}
 			return nil, nil, nil, nil, true, nil
 		}

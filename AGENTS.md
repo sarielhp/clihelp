@@ -112,6 +112,12 @@ make run
   go test -v -race ./...
   ```
 
+## New Features
+
+- **Pager Support**: When `App.Pager` or `Options.Pager` is true, help output is automatically paged through `$PAGER` when it exceeds terminal height.
+- **Command Tree View**: Added `App.RenderTree()` method to render the full command hierarchy as a tree with box-drawing characters.
+- **Prefix Command Matching**: Added `App.AbbrevCommands` field to enable abbreviated command names (e.g. `podctl b` instead of `podctl build`).
+
 ## File Organization
 
 | File | Purpose |

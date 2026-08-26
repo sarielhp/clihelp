@@ -56,6 +56,10 @@ type Options struct {
 	// Theme overrides the App.Theme and the package default. When nil the
 	// App's theme (or the default) applies.
 	Theme *Theme
+	// Pager enables automatic paging through $PAGER when output exceeds
+	// the terminal height. When true, output is buffered and piped through
+	// the pager only when it doesn't fit on one screen.
+	Pager bool
 }
 
 // maxContent resolves the content width cap, defaulting to 80.
@@ -574,4 +578,63 @@ func inline(s string) string {
 	var buf strings.Builder
 	renderInline(&buf, s)
 	return buf.String()
+}
+
+// RenderTree writes a tree view of the command hierarchy to w.
+func (a *App) RenderTree(o Options) {
+	a.renderTreeTo(o, a.Commands, "", false)
+	if len(a.Shortcuts) > 0 {
+		fmt.Fprintln(o.out(), "\nShortcut Commands:")
+		a.renderTreeTo(o, a.Shortcuts, "", true)
+	}
+}
+
+// renderTreeTo recursively renders a command tree with box-drawing characters.
+func (a *App) renderTreeTo(o Options, commands []Command, prefix string, isLast bool) {
+	if len(commands) == 0 {
+		return
+	}
+
+	for i, cmd := range commands {
+		if cmd.Hidden {
+			continue
+		}
+
+		isLastCmd := (i == len(commands)-1)
+		currentPrefix := prefix
+		if prefix != "" {
+			if isLastCmd {
+				currentPrefix += "└── "
+			} else {
+				currentPrefix += "├── "
+			}
+		}
+
+		// Format command name with aliases
+		name := cmd.Name
+		if len(cmd.Aliases) > 0 {
+			name += fmt.Sprintf(" (%s)", strings.Join(cmd.Aliases, ", "))
+		}
+
+		// Write the command line
+		th := o.theme(a)
+		if cmd.Description != "" {
+			reflow(o.out(), th.Subcommand, o.width(), 0, currentPrefix+name, inline(cmd.Description))
+		} else {
+			fmt.Fprintf(o.out(), "%s%s\n", currentPrefix, name)
+		}
+
+		// Recursively render subcommands
+		if len(cmd.Subcommands) > 0 {
+			subPrefix := prefix
+			if prefix != "" {
+				if isLastCmd {
+					subPrefix += "    "
+				} else {
+					subPrefix += "│   "
+				}
+			}
+			a.renderTreeTo(o, cmd.Subcommands, subPrefix, isLastCmd)
+		}
+	}
 }

@@ -17,10 +17,13 @@ It provides clean, structured usage messages with support for ANSI colors and cl
 - **Execution Lifecycle Hooks** — Coordinated `BeforeRun`, `PreRun`, `Run`, `PostRun`, and `AfterRun` lifecycle execution with context propagation.
 - **Positional Argument Validation** — Built-in validators (`ExactArgs`, `RangeArgs`, `MinimumNArgs`, `NoArgs`) executed after flag extraction.
 - **Fuzzy Typo Suggestions** — Levenshtein-distance suggestions for mistyped commands (e.g. *Did you mean "build"?*).
+- **Prefix Command Matching** — Enable abbreviated commands (e.g. `podctl b` instead of `podctl build`).
 - **Shell Autocompletion** — Built-in `__complete` protocol with generators for Bash, Zsh, and Fish, plus dynamic completion callbacks.
 - **Rich Terminal Styling** — Theme-driven ANSI colors, auto-detected terminal width with 70-column fallback, and ANSI-aware word wrapping.
 - **Inline Markdown & OSC 8 Hyperlinks** — Rich text formatting in descriptions: bold, italic, code, strikethrough, and clickable terminal hyperlinks.
 - **Markdown Documentation Generator** — Automatically generates navigable, GitHub-friendly Markdown doc trees with SHA-256 change-detection caching.
+- **Automatic Paging** — When enabled, help output is automatically paged through `$PAGER` when it exceeds terminal height.
+- **Command Tree View** — Render the full command hierarchy as a tree with box-drawing characters.
 - **AI & LLM-Optimized** — Token-efficient single-file [`llms.txt`](llms.txt) specification and declarative syntax eliminating common LLM hallucinations.
 
 ---
