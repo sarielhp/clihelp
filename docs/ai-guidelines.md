@@ -61,6 +61,7 @@ func main() {
         Name:        "myapp",
         Description: "Sample CLI tool",
         Version:     "1.0.0",
+        Pager:       true,
         PersistentOptions: []clihelp.Option{
             clihelp.Bool(&cfg.Verbose, "-v, --verbose", false, "Enable verbose output"),
         },

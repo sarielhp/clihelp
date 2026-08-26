@@ -48,7 +48,7 @@ func main() {
 		Name:           "podctl",
 		Description:    "[podctl](https://podctl.example.com) — A podcast distribution & audio processing tool.",
 		Version:        "0.2.20",
-		GlobalNote:     "Documentation & source: [https://github.com/sarielhp/clihelp](https://github.com/sarielhp/clihelp)\nRun 'podctl <command> --help' for command-specific options.",
+		GlobalNote:     "Documentation & source: [https://github.com/sarielhp/clihelp](https://github.com/sarielhp/clihelp)",
 		AbbrevCommands: true,
 		Pager:          true,
 		PersistentOptions: []clihelp.Option{
@@ -58,7 +58,7 @@ func main() {
 		Commands: []clihelp.Command{
 			{
 				Name:        "build",
-				Description: "Compile, encode, and package raw audio source files into fully tagged MP3 podcast episodes with configurable bitrate, loudness normalization, and embedded ID3 metadata tags for distribution across multiple platforms and aggregators like Apple Podcasts, Spotify, and Google Podcasts.",
+				Description: "Compile, encode, and package raw audio into MP3 podcast episodes. Supports configurable bitrate, loudness normalization, and embedded ID3 tags for distribution across Apple Podcasts, Spotify, and Google Podcasts.",
 				UsageLine:   "podctl build [options] <source-file>",
 				Args:        clihelp.ExactArgs(1),
 				Options: []clihelp.Option{
@@ -85,7 +85,7 @@ func main() {
 			},
 			{
 				Name:        "serve",
-				Description: "Start a local development HTTP server that serves your podcast RSS feed and episode audio files with live-reload support, CORS headers for cross-origin testing, and a built-in web dashboard for previewing feed metadata before deploying to your production CDN and cloud storage endpoints.",
+				Description: "Start a local HTTP development server for RSS feeds and audio files. Includes live-reload support, CORS headers for cross-origin testing, and a built-in web dashboard for previewing feed metadata before deploying to production.",
 				UsageLine:   "podctl serve [options]",
 				Options: []clihelp.Option{
 					clihelp.Int(&servePort, "-p, --port N", 8080, "Listen HTTP port number"),
@@ -104,17 +104,17 @@ func main() {
 			},
 			{
 				Name:        "config",
-				Description: "View, inspect, set, modify, and manage your application configuration settings including storage locations, disk space allocation limits, CDN bucket names, API keys, RSS feed metadata defaults, and podcast episode publishing preferences via a hierarchy of dedicated subcommands.",
+				Description: "View, inspect, set, and manage application configuration settings. Controls storage locations, disk space limits, CDN bucket names, API keys, and publishing preferences via dedicated subcommands.",
 				UsageLine:   "podctl config <subcommand> [options]",
 				Subcommands: []clihelp.Command{
 					{
 						Name:        "set",
-						Description: "Assign, update, or override one or more configuration attribute values in the persistent application configuration store, supporting nested key paths and bulk operations for efficient environment setup across development, staging, and production deployment targets.",
+						Description: "Assign, update, or override configuration attribute values. Supports nested key paths and bulk operations for efficient setup across development, staging, and production targets.",
 						UsageLine:   "podctl config set <attribute> <value> [options]",
 						Subcommands: []clihelp.Command{
 							{
 								Name:        "space",
-								Description: "Set the maximum disk space allocation for temporary cache and episode build artifacts in megabytes or gigabytes, with an optional automatic cleanup policy that purges the oldest temporary cache files when the configured limit is exceeded.",
+								Description: "Set maximum disk space allocation for temporary cache and build artifacts. Configurable in megabytes or gigabytes with an optional automatic cleanup policy.",
 								UsageLine:   "podctl config set space <megabytes> [options]",
 								Args:        clihelp.ExactArgs(1),
 								Options: []clihelp.Option{
@@ -130,7 +130,7 @@ func main() {
 					},
 					{
 						Name:        "get",
-						Description: "Display, inspect, and print the current configured value for one or more application configuration attributes, reading from the persistent configuration store or falling back to built-in defaults when no explicit user configuration value has been set for that attribute.",
+						Description: "Display, inspect, and print configured attribute values. Reads from the persistent store or falls back to built-in defaults when no explicit user configuration value has been set.",
 						UsageLine:   "podctl config get <attribute>",
 						Args:        clihelp.ExactArgs(1),
 						Run: func(ctx *clihelp.Context) error {
@@ -142,7 +142,7 @@ func main() {
 			},
 			{
 				Name:        "deploy",
-				Description: "Publish your compiled podcast RSS feed XML and encoded audio episode MP3 files to cloud storage providers like Amazon S3 and Google Cloud Storage with optional CDN cache invalidation, dry-run simulation mode, configurable timeout, and multi-stage deployment to staging and production environments.",
+				Description: "Publish compiled podcast RSS feeds and MP3 files to cloud storage. Supports Amazon S3, Google Cloud Storage, CDN cache invalidation, dry-run simulation, and multi-stage deployments.",
 				UsageLine:   "podctl deploy [options]",
 				Options: []clihelp.Option{
 					clihelp.Enum(&deployStage, "-S, --stage STAGE", []string{"staging", "production"}, "staging", "Target deployment environment"),
@@ -164,7 +164,7 @@ func main() {
 			},
 			{
 				Name:        "status",
-				Description: "Check and display comprehensive health metrics for your podcast RSS feed, CDN edge cache status, episode download statistics over configurable time windows, origin server connectivity, and real-time feed validation status across all configured deployment stages and environments.",
+				Description: "Check and display comprehensive health and validation metrics. Monitors RSS feed status, CDN edge cache, episode download statistics, and origin server connectivity across environments.",
 				UsageLine:   "podctl status [options]",
 				Options: []clihelp.Option{
 					clihelp.Enum(&statusStage, "-S, --stage STAGE", []string{"staging", "production"}, "production", "Environment to inspect"),
@@ -181,7 +181,7 @@ func main() {
 			},
 			{
 				Name:        "completion",
-				Description: "Generate and print shell autocompletion scripts for bash or zsh shells that enable tab-completion for all podctl commands, subcommands, flags, and option values to improve command-line efficiency and reduce typing errors during daily usage of the tool.",
+				Description: "Generate shell autocompletion scripts for bash or zsh. Enables fast tab-completion for all podctl commands, subcommands, flags, and option values.",
 				UsageLine:   "podctl completion <bash|zsh>",
 				Args:        clihelp.ExactArgs(1),
 				Run: func(ctx *clihelp.Context) error {
@@ -246,14 +246,14 @@ func buildDeepTree() clihelp.Command {
 func buildSubTree(name string, path []string, depth int) clihelp.Command {
 	cmd := clihelp.Command{
 		Name:        name,
-		Description: fmt.Sprintf("**%s** — This is the [%s command](https://example.com/%s) at depth %d with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines.", strings.Join(path, " "), name, strings.Join(path, "/"), depth),
+		Description: fmt.Sprintf("This is the [%s command](https://example.com/%s) at depth %d with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines.", name, strings.Join(path, "/"), depth),
 		UsageLine:   fmt.Sprintf("podctl %s [options] [arguments...] — This is a **very long usage line** for the [%s command](https://example.com/%s) that should definitely trigger word-wrapping in the help output because it exceeds typical terminal widths and needs to be reflowed properly by the formatter.", strings.Join(path, " "), name, strings.Join(path, "/")),
 	}
 
 	if depth < 5 {
 		suffixes := levelSuffixes[depth]
-		child1 := name + "-" + suffixes[0]
-		child2 := name + "-" + suffixes[1]
+		child1 := name + "_" + suffixes[0]
+		child2 := name + "_" + suffixes[1]
 		cmd.Subcommands = []clihelp.Command{
 			buildSubTree(child1, append(path, child1), depth+1),
 			buildSubTree(child2, append(path, child2), depth+1),

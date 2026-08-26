@@ -10,6 +10,7 @@ Welcome to the `clihelp` documentation hub.
 - [Flag & Option Specification Reference](flags-and-options.md) — Flag spec syntax, constructors table, toggle pairs, custom value types, and the help collision trap.
 - [Shell Autocompletion](completion.md) — Bash, Zsh, Fish script generators, dynamic completion callbacks, and live testing.
 - [GitHub Markdown Documentation Generator](markdown-generation.md) — Automatic Markdown help tree generation with SHA-256 caching.
+- [Recipes & Common Patterns](recipes-and-patterns.md) — Signal cancellation, unit testing commands, dynamic completion, command tree rendering, custom theming, and command abbreviations.
 - [AI Coding Agent Guidelines](ai-guidelines.md) — Best practices for LLM assistants constructing CLIs with `clihelp`.
 - [AI Context Specification (`llms.txt`)](../llms.txt) — Token-efficient single-file specification for LLM context ingestion.
 - [Comparison with `spf13/cobra`](comparison-with-cobra.md) — Differences, design philosophy, code comparisons, and architectural tradeoffs.

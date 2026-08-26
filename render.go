@@ -37,8 +37,8 @@ func defaultTheme() Theme {
 		Body:        color.New(color.FgWhite),
 		Accent:      color.New(color.FgCyan, color.Bold),
 		Subcommand:  color.New(color.FgGreen),
-		Separator:   true,
-		TitlePrefix: "Detailed Usage: ",
+		Separator:   false,
+		TitlePrefix: "",
 	}
 }
 
@@ -123,6 +123,20 @@ func (o Options) width() int {
 	return w
 }
 
+// height resolves the layout height: the Writer's terminal height is used
+// when it is a terminal file, falling back to stdout. Returns 0 for non-terminals.
+func (o Options) height() int {
+	fd := int(os.Stdout.Fd())
+	if f, ok := o.Writer.(*os.File); ok {
+		fd = int(f.Fd())
+	}
+	_, h, err := term.GetSize(fd)
+	if err != nil || h <= 0 {
+		return 0
+	}
+	return h
+}
+
 // stripANSI removes both CSI escape sequences (e.g. \x1b[31m) and OSC
 // sequences (e.g. \x1b]8;;url\x1b\ for hyperlinks, \x1b]0;title\x07 for
 // window titles) from s, returning only the visible text.
@@ -162,19 +176,26 @@ func reflowSegment(w io.Writer, c *color.Color, prefixColor *color.Color, width,
 	words := strings.Fields(text)
 
 	if prefix != "" {
-		prefixStr := fmt.Sprintf("  %-*s", indent-2, prefix)
+		prefixDisplay := "  " + prefix
 		if prefixColor != nil {
-			prefixStr = prefixColor.Sprint(prefixStr)
+			prefixDisplay = prefixColor.Sprint(prefixDisplay)
 		}
-		curLen := visualLen(prefixStr)
-		if curLen > indent {
-			c.Fprintln(w, prefixStr)
+		var prefixStr string
+		var curLen int
+		if visualLen(prefixDisplay)+2 > indent {
+			c.Fprintln(w, prefixDisplay)
 			prefixStr = strings.Repeat(" ", indent)
 			curLen = indent
+		} else {
+			prefixStr = fmt.Sprintf("  %-*s", indent-2, prefix)
+			if prefixColor != nil {
+				prefixStr = prefixColor.Sprint(prefixStr)
+			}
+			curLen = visualLen(prefixStr)
 		}
 		if len(words) == 0 {
-			if curLen > 0 {
-				c.Fprintln(w, prefixStr)
+			if visualLen(prefixDisplay)+2 <= indent {
+				c.Fprintln(w, prefixDisplay)
 			}
 			return
 		}
@@ -252,7 +273,7 @@ func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string,
 	if len(prefixColors) > 0 {
 		prefixColor = prefixColors[0]
 	}
-	if indent < 2 {
+	if prefix != "" && indent < 2 {
 		indent = 2
 	}
 	segments := splitLines(strings.TrimSpace(text))
@@ -283,12 +304,96 @@ func separator(w io.Writer, th Theme, width int) {
 	th.Accent.Fprintln(w, strings.Repeat("=", width))
 }
 
-// displayName renders a command name followed by its aliases in parentheses.
-func displayName(c Command) string {
+// FirstSentence returns the first sentence of s, or the first line/paragraph if shorter.
+func FirstSentence(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	if idx := strings.Index(s, "\n\n"); idx != -1 {
+		s = strings.TrimSpace(s[:idx])
+	}
+	if idx := strings.Index(s, "\n"); idx != -1 {
+		s = strings.TrimSpace(s[:idx])
+	}
+	if idx := strings.Index(s, ". "); idx != -1 {
+		return s[:idx+1]
+	}
+	return s
+}
+
+// firstSentence is an internal alias for FirstSentence.
+func firstSentence(s string) string {
+	return FirstSentence(s)
+}
+
+// commandArgs extracts the positional argument signature for cmd, if any.
+func commandArgs(cmd Command) string {
+	if len(cmd.Parameters) > 0 {
+		var parts []string
+		for _, p := range cmd.Parameters {
+			if p.Name != "" {
+				parts = append(parts, p.Name)
+			}
+		}
+		if len(parts) > 0 {
+			return strings.Join(parts, " ")
+		}
+	}
+
+	if cmd.UsageLine == "" {
+		return ""
+	}
+
+	synopsis := strings.Split(cmd.UsageLine, " — ")[0]
+	synopsis = strings.Split(synopsis, " - ")[0]
+	words := strings.Fields(synopsis)
+	if len(words) <= 1 {
+		return ""
+	}
+
+	var args []string
+	for _, w := range words {
+		lower := strings.ToLower(w)
+		switch lower {
+		case "[options]", "[flags]", "[options...]", "[flags...]",
+			"<subcommand>", "[subcommand]", "<command>", "[command]",
+			cmd.Name, strings.ToLower(cmd.Name):
+			continue
+		}
+		if strings.HasPrefix(w, "<") || strings.HasPrefix(w, "[") {
+			args = append(args, w)
+		}
+	}
+	return strings.Join(args, " ")
+}
+
+// DisplayName renders a command name followed by its aliases in parentheses.
+func DisplayName(c Command) string {
 	if len(c.Aliases) == 0 {
 		return c.Name
 	}
 	return c.Name + " (" + strings.Join(c.Aliases, ", ") + ")"
+}
+
+// displayName is an internal alias for DisplayName.
+func displayName(c Command) string {
+	return DisplayName(c)
+}
+
+// DisplayNameWithArgs renders a command name with aliases and positional argument signature.
+func DisplayNameWithArgs(c Command) string {
+	name := DisplayName(c)
+	args := commandArgs(c)
+	if args != "" {
+		name += " " + args
+	}
+	return name
+}
+
+// displayNameWithArgs is an internal alias for DisplayNameWithArgs.
+func displayNameWithArgs(c Command) string {
+	return DisplayNameWithArgs(c)
 }
 
 // title returns the explicit help title of cmd, falling back to its name.
@@ -308,7 +413,10 @@ func subcommandEntries(c *Command) []Param {
 	var out []Param
 	for i := range c.Subcommands {
 		if !c.Subcommands[i].Hidden {
-			out = append(out, Param{Name: c.Subcommands[i].Name, Description: c.Subcommands[i].Description})
+			out = append(out, Param{
+				Name:        displayNameWithArgs(c.Subcommands[i]),
+				Description: c.Subcommands[i].Description,
+			})
 		}
 	}
 	return out
@@ -347,7 +455,10 @@ func (a *App) renderCommandGrouped(w io.Writer, th Theme, o Options, termWidth i
 		if c.Hidden {
 			continue
 		}
-		params = append(params, Param{Name: displayName(c), Description: c.Description})
+		params = append(params, Param{
+			Name:        displayNameWithArgs(c),
+			Description: firstSentence(c.Description),
+		})
 		groups = append(groups, c.Group)
 	}
 	if len(params) == 0 {
@@ -355,6 +466,23 @@ func (a *App) renderCommandGrouped(w io.Writer, th Theme, o Options, termWidth i
 	}
 	indent := colIndent(params)
 	prev := ""
+
+	isMultiLine := func(p Param) bool {
+		textWidth := wrapWidth(termWidth, indent, o.maxContent()) - indent
+		if textWidth <= 0 {
+			textWidth = 40
+		}
+		return visualLen(p.Description) > textWidth || strings.Contains(p.Description, "\n")
+	}
+
+	anyMultiLine := false
+	for _, p := range params {
+		if isMultiLine(p) {
+			anyMultiLine = true
+			break
+		}
+	}
+
 	for i, p := range params {
 		g := groups[i]
 		if g != "" && g != prev {
@@ -363,101 +491,129 @@ func (a *App) renderCommandGrouped(w io.Writer, th Theme, o Options, termWidth i
 			}
 			th.Accent.Fprintln(w, g+":")
 			prev = g
+		} else if anyMultiLine && i > 0 {
+			fmt.Fprintln(w)
 		}
 		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Subcommand)
 	}
 }
 
-// RenderGlobal writes the top-level application overview: a "Usage of <name>:"
-// header, the command list with aliases, shortcut commands, global flags, and
-// (when set) config path and version.
-func (a *App) RenderGlobal(o Options) {
-	th := o.theme(a)
-	w := o.out()
-	termWidth := o.width()
-
-	th.Hdr.Fprintf(w, "Usage of %s:\n\n", appName(a))
-
-	if a.Description != "" {
-		reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", inline(a.Description))
-		fmt.Fprintln(w)
+// usageLine returns the command-line usage template for the app.
+func (a *App) usageLine() string {
+	if a.UsageLine != "" {
+		return a.UsageLine
 	}
-
-	var visibleCommands []Command
+	name := appName(a)
+	hasFlags := len(a.PersistentOptions) > 0 || len(a.GlobalFlags) > 0
+	hasCmds := false
 	for _, c := range a.Commands {
 		if !c.Hidden {
-			visibleCommands = append(visibleCommands, c)
+			hasCmds = true
+			break
 		}
 	}
-	if len(visibleCommands) > 0 {
-		th.Accent.Fprintln(w, "Commands:")
-		a.renderCommandGrouped(w, th, o, termWidth, a.Commands)
-		fmt.Fprintln(w)
-	}
-
-	if len(a.Shortcuts) > 0 {
-		th.Accent.Fprintln(w, "Shortcut Commands:")
-		params := make([]Param, 0, len(a.Shortcuts))
-		for _, s := range a.Shortcuts {
-			if !s.Hidden {
-				params = append(params, Param{Name: displayName(s), Description: s.Description})
-			}
-		}
-		indent := colIndent(params)
-		for _, p := range params {
-			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Subcommand)
-		}
-		fmt.Fprintln(w)
-	}
-
-	var globalFlags []Option
-	for _, f := range a.PersistentOptions {
-		if !f.Hidden {
-			globalFlags = append(globalFlags, f)
-		}
-	}
-	for _, f := range a.GlobalFlags {
-		if !f.Hidden {
-			globalFlags = append(globalFlags, f)
-		}
-	}
-
-	if len(globalFlags) > 0 {
-		th.Accent.Fprintln(w, "Global Flags:")
-		params := make([]Param, 0, len(globalFlags))
-		for _, f := range globalFlags {
-			params = append(params, Param{Name: f.Flags, Description: f.Description})
-		}
-		indent := colIndent(params)
-		for _, p := range params {
-			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description))
-		}
-		fmt.Fprintln(w)
-	}
-
-	if len(a.Commands) > 0 || len(a.Shortcuts) > 0 {
-		th.Hdr.Fprintln(w, "Detailed Help:")
-		reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", fmt.Sprintf("Run '%s help <command>' for command-specific options.", appName(a)))
-	}
-
-	if a.ConfigPath != "" {
-		th.Hdr.Fprintln(w, "Config file location:")
-		reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", a.ConfigPath)
-	}
-
-	if a.Version != "" {
-		th.Hdr.Fprintln(w, "Version:")
-		reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", a.Version)
-	}
-
-	if a.GlobalNote != "" {
-		fmt.Fprintln(w)
-		reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", inline(a.GlobalNote))
+	switch {
+	case hasCmds && hasFlags:
+		return fmt.Sprintf("%s [flags] <command> [args]", name)
+	case hasCmds:
+		return fmt.Sprintf("%s <command> [args]", name)
+	case hasFlags:
+		return fmt.Sprintf("%s [flags] [args]", name)
+	default:
+		return fmt.Sprintf("%s [args]", name)
 	}
 }
 
+// RenderGlobal writes the top-level application overview: a command-line usage
+// template, description, command list with aliases, shortcut commands,
+// global flags, and help footer.
+func (a *App) RenderGlobal(o Options) {
+	a.pageOutput(o, func(w io.Writer) {
+		th := o.theme(a)
+		termWidth := o.width()
+
+		th.Hdr.Fprint(w, "Usage:  ")
+		fmt.Fprintln(w, a.usageLine())
+
+		if a.Description != "" {
+			fmt.Fprintln(w)
+			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", inline(a.Description))
+		}
+		fmt.Fprintln(w)
+
+		var visibleCommands []Command
+		for _, c := range a.Commands {
+			if !c.Hidden {
+				visibleCommands = append(visibleCommands, c)
+			}
+		}
+		if len(visibleCommands) > 0 {
+			th.Accent.Fprintln(w, "Commands:")
+			a.renderCommandGrouped(w, th, o, termWidth, a.Commands)
+			fmt.Fprintln(w)
+		}
+
+		if len(a.Shortcuts) > 0 {
+			th.Accent.Fprintln(w, "Shortcut Commands:")
+			params := make([]Param, 0, len(a.Shortcuts))
+			for _, s := range a.Shortcuts {
+				if !s.Hidden {
+					params = append(params, Param{
+						Name:        displayNameWithArgs(s),
+						Description: firstSentence(s.Description),
+					})
+				}
+			}
+			indent := colIndent(params)
+			for _, p := range params {
+				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Subcommand)
+			}
+			fmt.Fprintln(w)
+		}
+
+		var globalFlags []Option
+		for _, f := range a.PersistentOptions {
+			if !f.Hidden {
+				globalFlags = append(globalFlags, f)
+			}
+		}
+		for _, f := range a.GlobalFlags {
+			if !f.Hidden {
+				globalFlags = append(globalFlags, f)
+			}
+		}
+
+		if len(globalFlags) > 0 {
+			th.Accent.Fprintln(w, "Global Flags:")
+			params := make([]Param, 0, len(globalFlags))
+			for _, f := range globalFlags {
+				desc := f.Description
+				if f.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
+					desc = desc + " (default: " + f.DefaultText + ")"
+				}
+				params = append(params, Param{Name: f.Flags, Description: desc})
+			}
+			indent := colIndent(params)
+			for _, p := range params {
+				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description))
+			}
+			fmt.Fprintln(w)
+		}
+
+		if len(visibleCommands) > 0 || len(a.Shortcuts) > 0 {
+			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", fmt.Sprintf("Run '%s <command> --help' for more information on a command.", appName(a)))
+		}
+
+		if a.ConfigPath != "" {
+			fmt.Fprintln(w)
+			th.Hdr.Fprint(w, "Config: ")
+			fmt.Fprintln(w, a.ConfigPath)
+		}
+	})
+}
+
 // RenderCommand writes help for the command at path (e.g. "config" "set"),
-// rendering any of these present sections in order: Description, Usage,
+// rendering any of these present sections in order: Usage, Description,
 // Subcommands, Parameters, Flags, Examples, Notes. Returns true if the path
 // exists.
 func (a *App) RenderCommand(o Options, path ...string) bool {
@@ -465,90 +621,124 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 	if cmd == nil {
 		return false
 	}
-	th := o.theme(a)
-	w := o.out()
+	a.pageOutput(o, func(w io.Writer) {
+		th := o.theme(a)
+		sepW := min(o.width(), o.maxContent())
+		termWidth := o.width()
 
-	sepW := min(o.width(), o.maxContent())
-	termWidth := o.width()
-
-	fmt.Fprintln(w)
-	if th.Separator {
-		separator(w, th, sepW)
-	}
-	reflow(w, th.Accent, wrapWidth(termWidth, 2, o.maxContent()), 2, "", th.TitlePrefix+title(cmd))
-	if th.Separator {
-		separator(w, th, sepW)
-	}
-
-	if cmd.Description != "" {
-		th.Hdr.Fprintln(w, "Description:")
-		reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", inline(cmd.Description))
-	}
-
-	if cmd.UsageLine != "" {
-		th.Hdr.Fprintln(w, "\nUsage:")
-		reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", inline(cmd.UsageLine))
-	}
-
-	if subs := subcommandEntries(cmd); len(subs) > 0 {
-		th.Hdr.Fprintln(w, "\nSubcommands:")
-		if len(cmd.SubcommandEntries) > 0 {
-			indent := colIndent(subs)
-			for _, s := range subs {
-				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, s.Name, inline(s.Description), th.Subcommand)
+		if th.Separator || th.TitlePrefix != "" {
+			fmt.Fprintln(w)
+			if th.Separator {
+				separator(w, th, sepW)
 			}
-		} else {
-			a.renderCommandGrouped(w, th, o, termWidth, cmd.Subcommands)
-		}
-	}
-
-	if len(cmd.Parameters) > 0 {
-		th.Hdr.Fprintln(w, "\nParameters:")
-		indent := colIndent(cmd.Parameters)
-		for _, p := range cmd.Parameters {
-			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description))
-		}
-	}
-
-	allOptions := a.collectOptions(path, cmd)
-
-	if len(allOptions) > 0 {
-		th.Hdr.Fprintln(w, "\nFlags:")
-		optParams := make([]Param, 0, len(allOptions))
-		for _, o0 := range allOptions {
-			desc := o0.Description
-			if o0.DefaultText != "" {
-				desc = desc + " (default: " + o0.DefaultText + ")"
-			}
-			optParams = append(optParams, Param{Name: o0.Flags, Description: desc})
-		}
-		indent := colIndent(optParams)
-		for _, p := range optParams {
-			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description))
-		}
-	}
-
-	if len(cmd.Examples) > 0 {
-		th.Hdr.Fprintln(w, "\nExamples:")
-		for _, ex := range cmd.Examples {
-			reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", inline(ex.Line))
-			if ex.Description != "" {
-				reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", inline(ex.Description))
+			reflow(w, th.Accent, wrapWidth(termWidth, 2, o.maxContent()), 2, "", th.TitlePrefix+title(cmd))
+			if th.Separator {
+				separator(w, th, sepW)
 			}
 		}
-	}
 
-	for _, note := range cmd.Notes {
-		if note.Heading != "" {
-			th.Hdr.Fprintln(w, "\n"+note.Heading+":")
+		usage := cmd.UsageLine
+		if usage == "" {
+			fullPath := strings.Join(append([]string{appName(a)}, path...), " ")
+			hasFlags := len(a.collectOptions(path, cmd)) > 0
+			hasSubs := len(cmd.Subcommands) > 0
+			switch {
+			case hasSubs && hasFlags:
+				usage = fmt.Sprintf("%s [flags] <subcommand> [args]", fullPath)
+			case hasSubs:
+				usage = fmt.Sprintf("%s <subcommand> [args]", fullPath)
+			case hasFlags:
+				usage = fmt.Sprintf("%s [flags] [args]", fullPath)
+			default:
+				usage = fmt.Sprintf("%s [args]", fullPath)
+			}
 		}
-		reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", inline(note.Text))
-	}
 
-	if th.Separator {
-		separator(w, th, sepW)
-	}
-	fmt.Fprintln(w)
+		th.Hdr.Fprint(w, "Usage:  ")
+		fmt.Fprintln(w, inline(usage))
+
+		if cmd.Description != "" {
+			fmt.Fprintln(w)
+			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", inline(cmd.Description))
+		}
+
+		if subs := subcommandEntries(cmd); len(subs) > 0 {
+			th.Hdr.Fprintln(w, "\nSubcommands:")
+			if len(cmd.SubcommandEntries) > 0 {
+				indent := colIndent(subs)
+				for _, s := range subs {
+					reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, s.Name, inline(s.Description), th.Subcommand)
+				}
+			} else {
+				a.renderCommandGrouped(w, th, o, termWidth, cmd.Subcommands)
+			}
+		}
+
+		if len(cmd.Parameters) > 0 {
+			th.Hdr.Fprintln(w, "\nParameters:")
+			indent := colIndent(cmd.Parameters)
+			for _, p := range cmd.Parameters {
+				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description))
+			}
+		}
+
+		localOptions := a.collectLocalOptions(cmd)
+		globalOptions := a.collectGlobalOptions(path, cmd)
+
+		if len(localOptions) > 0 {
+			th.Hdr.Fprintln(w, "\nFlags:")
+			optParams := make([]Param, 0, len(localOptions))
+			for _, o0 := range localOptions {
+				desc := o0.Description
+				if o0.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
+					desc = desc + " (default: " + o0.DefaultText + ")"
+				}
+				optParams = append(optParams, Param{Name: o0.Flags, Description: desc})
+			}
+			indent := colIndent(optParams)
+			for _, p := range optParams {
+				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description))
+			}
+		}
+
+		if len(globalOptions) > 0 {
+			th.Hdr.Fprintln(w, "\nGlobal Flags:")
+			optParams := make([]Param, 0, len(globalOptions))
+			for _, o0 := range globalOptions {
+				desc := o0.Description
+				if o0.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
+					desc = desc + " (default: " + o0.DefaultText + ")"
+				}
+				optParams = append(optParams, Param{Name: o0.Flags, Description: desc})
+			}
+			indent := colIndent(optParams)
+			for _, p := range optParams {
+				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description))
+			}
+		}
+
+		if len(cmd.Examples) > 0 {
+			th.Hdr.Fprintln(w, "\nExamples:")
+			for _, ex := range cmd.Examples {
+				reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", inline(ex.Line))
+				if ex.Description != "" {
+					reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", inline(ex.Description))
+				}
+			}
+		}
+
+		for _, note := range cmd.Notes {
+			if note.Heading != "" {
+				th.Hdr.Fprintln(w, "\n"+note.Heading+":")
+			}
+			reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", inline(note.Text))
+		}
+
+		if th.Separator {
+			separator(w, th, sepW)
+		}
+		fmt.Fprintln(w)
+	})
 	return true
 }
 
@@ -561,14 +751,22 @@ func (a *App) Render(o Options, path ...string) bool {
 	return a.RenderCommand(o, path...)
 }
 
-// colIndent returns the indent (max visible width + 4) so that every entry in
-// params lines up its name column with the longest name.
+// DefaultMaxColIndent defines the standard column threshold for description
+// text alignment in two-column command and option listings (GNU standard: 24).
+const DefaultMaxColIndent = 24
+
+// colIndent returns the indent (max visible width + 4, capped at DefaultMaxColIndent)
+// so that entries line up cleanly without excessive horizontal spacing.
 func colIndent(params []Param) int {
 	maxW := 0
 	for _, p := range params {
-		if l := visualLen(p.Name); l > maxW {
+		l := visualLen(p.Name)
+		if l+4 <= DefaultMaxColIndent && l > maxW {
 			maxW = l
 		}
+	}
+	if maxW == 0 {
+		return DefaultMaxColIndent
 	}
 	return maxW + 4
 }
@@ -582,59 +780,148 @@ func inline(s string) string {
 
 // RenderTree writes a tree view of the command hierarchy to w.
 func (a *App) RenderTree(o Options) {
-	a.renderTreeTo(o, a.Commands, "", false)
-	if len(a.Shortcuts) > 0 {
-		fmt.Fprintln(o.out(), "\nShortcut Commands:")
-		a.renderTreeTo(o, a.Shortcuts, "", true)
-	}
+	a.pageOutput(o, func(w io.Writer) {
+		name := appName(a)
+		th := o.theme(a)
+		treeColor := th.Subcommand
+		if treeColor == nil {
+			treeColor = color.New(color.FgGreen)
+		}
+		treeColor.Fprintln(w, name)
+		a.renderTreeTo(w, o, a.Commands, "", nil, false)
+		if len(a.Shortcuts) > 0 {
+			fmt.Fprintln(w, "\nShortcut Commands:")
+			a.renderTreeTo(w, o, a.Shortcuts, "", nil, true)
+		}
+	})
 }
 
-// renderTreeTo recursively renders a command tree with box-drawing characters.
-func (a *App) renderTreeTo(o Options, commands []Command, prefix string, isLast bool) {
+// renderTreeTo recursively renders a command tree with continuous vertical box-drawing connectors.
+func (a *App) renderTreeTo(w io.Writer, o Options, commands []Command, prefix string, path []string, isLast bool) {
 	if len(commands) == 0 {
 		return
 	}
 
-	for i, cmd := range commands {
-		if cmd.Hidden {
-			continue
+	var visible []Command
+	for _, c := range commands {
+		if !c.Hidden {
+			visible = append(visible, c)
+		}
+	}
+
+	th := o.theme(a)
+	treeColor := th.Subcommand
+	if treeColor == nil {
+		treeColor = color.New(color.FgGreen)
+	}
+	cmdColor := th.Hdr
+	if cmdColor == nil {
+		cmdColor = color.New(color.FgYellow)
+	}
+
+	for i, cmd := range visible {
+		isLastCmd := (i == len(visible)-1)
+		branch := "├── "
+		if isLastCmd {
+			branch = "└── "
 		}
 
-		isLastCmd := (i == len(commands)-1)
-		currentPrefix := prefix
-		if prefix != "" {
-			if isLastCmd {
-				currentPrefix += "└── "
+		currentPath := append(append([]string(nil), path...), cmd.Name)
+		label := strings.Join(currentPath, " ")
+		if len(cmd.Aliases) > 0 {
+			label += fmt.Sprintf(" (%s)", strings.Join(cmd.Aliases, ", "))
+		}
+
+		treeBranch := prefix + branch
+		firstLineCmd := treeColor.Sprint(treeBranch) + cmdColor.Sprint(label)
+		rawFirstPrefix := treeBranch + label + "  "
+		firstWidth := visualLen(rawFirstPrefix)
+		maxWidth := wrapWidth(o.width(), 0, o.maxContent())
+		remainingWidth := maxWidth - firstWidth
+
+		var contBase string
+		if len(cmd.Subcommands) > 0 {
+			if !isLastCmd {
+				contBase = prefix + "│   │   "
 			} else {
-				currentPrefix += "├── "
+				contBase = prefix + "    │   "
+			}
+		} else {
+			if !isLastCmd {
+				contBase = prefix + "│   "
+			} else {
+				contBase = prefix + "    "
 			}
 		}
 
-		// Format command name with aliases
-		name := cmd.Name
-		if len(cmd.Aliases) > 0 {
-			name += fmt.Sprintf(" (%s)", strings.Join(cmd.Aliases, ", "))
-		}
-
-		// Write the command line
-		th := o.theme(a)
-		if cmd.Description != "" {
-			reflow(o.out(), th.Subcommand, o.width(), 0, currentPrefix+name, inline(cmd.Description))
+		if cmd.Description == "" {
+			fmt.Fprintln(w, firstLineCmd)
+		} else if firstWidth > 24 || remainingWidth < 45 {
+			// Long command line: start description on next line below the command
+			fmt.Fprintln(w, firstLineCmd)
+			descPrefix := treeColor.Sprint(contBase) + "  "
+			descIndent := visualLen(contBase) + 2
+			reflowTree(w, th.Body, descIndent, maxWidth, descPrefix, descPrefix, inline(firstSentence(cmd.Description)))
 		} else {
-			fmt.Fprintf(o.out(), "%s%s\n", currentPrefix, name)
+			// Short command line: inline description to the right
+			firstPrefixFormatted := firstLineCmd + "  "
+			totalWidth := firstWidth
+			contPrefixFormatted := treeColor.Sprint(contBase)
+			if rem := totalWidth - visualLen(contBase); rem > 0 {
+				contPrefixFormatted += strings.Repeat(" ", rem)
+			}
+			reflowTree(w, th.Body, totalWidth, maxWidth, firstPrefixFormatted, contPrefixFormatted, inline(firstSentence(cmd.Description)))
 		}
 
 		// Recursively render subcommands
 		if len(cmd.Subcommands) > 0 {
-			subPrefix := prefix
-			if prefix != "" {
-				if isLastCmd {
-					subPrefix += "    "
-				} else {
-					subPrefix += "│   "
-				}
+			nextPrefix := prefix + "│   "
+			if isLastCmd {
+				nextPrefix = prefix + "    "
 			}
-			a.renderTreeTo(o, cmd.Subcommands, subPrefix, isLastCmd)
+			a.renderTreeTo(w, o, cmd.Subcommands, nextPrefix, currentPath, isLastCmd)
 		}
+	}
+}
+
+// reflowTree word-wraps text across lines where the first line starts with firstPrefixFormatted
+// and all continuation lines preserve vertical connectors in contPrefixFormatted.
+func reflowTree(w io.Writer, bodyColor *color.Color, indent, width int, firstPrefixFormatted, contPrefixFormatted, text string) {
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		fmt.Fprintln(w, strings.TrimRight(firstPrefixFormatted, " "))
+		return
+	}
+
+	var cur strings.Builder
+	cur.WriteString(firstPrefixFormatted)
+	curLen := indent
+	lineHasWords := false
+
+	for _, word := range words {
+		wlen := visualLen(word)
+		space := 0
+		if lineHasWords {
+			space = 1
+		}
+		if lineHasWords && curLen+space+wlen > width {
+			fmt.Fprintln(w, cur.String())
+			cur.Reset()
+			cur.WriteString(contPrefixFormatted)
+			cur.WriteString(word)
+			curLen = indent + wlen
+			lineHasWords = true
+		} else {
+			if space > 0 {
+				cur.WriteString(" ")
+				curLen++
+			}
+			cur.WriteString(word)
+			curLen += wlen
+			lineHasWords = true
+		}
+	}
+	if lineHasWords {
+		fmt.Fprintln(w, cur.String())
 	}
 }

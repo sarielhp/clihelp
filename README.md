@@ -61,6 +61,7 @@ func main() {
 		Description: "Podcast distribution & audio processing tool",
 		Version:     "1.0.0",
 		GlobalNote:  "Run 'podctl <command> --help' for command-specific options.",
+		Pager:       true,
 		PersistentOptions: []clihelp.Option{
 			clihelp.Bool(&verbose, "-v, --verbose", false, "Enable verbose logging"),
 		},
@@ -109,6 +110,7 @@ Detailed technical guides and reference documentation are available in the [`doc
 | 🏷️ [**Flags & Options Reference**](docs/flags-and-options.md) | Flag spec syntax, constructor reference table (`String`, `Int`, `BoolToggle`, `Enum`, etc.), aliases, custom binders, and help collision safety. |
 | 💻 [**Shell Autocompletion**](docs/completion.md) | Setting up Bash, Zsh, and Fish completion, wiring the `completion` command, dynamic callbacks, and live testing. |
 | 📄 [**Markdown Doc Generation**](docs/markdown-generation.md) | Generating navigable GitHub Markdown docs with `RenderMarkdown` and SHA-256 change-detection caching. |
+| 🍳 [**Recipes & Patterns**](docs/recipes-and-patterns.md) | Practical patterns for signal cancellation (`ExecuteContext`), unit testing commands, dynamic completion callbacks, command tree view (`RenderTree`), custom themes (`Theme`), and prefix abbreviations (`AbbrevCommands`). |
 | 🤖 [**AI Coding Agent Guidelines**](docs/ai-guidelines.md) | Best practices and prompt rules for LLM coding agents and pair programmers building CLIs with `clihelp`. |
 | 🧠 [**AI Context Specification (`llms.txt`)**](llms.txt) | Compact single-file specification formatted for direct ingestion by LLMs and AI developer tools. |
 | ⚖️ [**Comparison with Cobra**](docs/comparison-with-cobra.md) | In-depth comparison with `spf13/cobra`, architectural differences, code patterns, and tradeoffs. |

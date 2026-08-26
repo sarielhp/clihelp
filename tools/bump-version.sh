@@ -10,6 +10,8 @@ tag="v$new"
 echo "$new" > VERSION
 ruby -pi -e "sub(/Version:\s+\"[^\"]+\"/, %Q{Version:        \"$new\"})" example/main.go
 
+bash tools/check.sh > /dev/null 2>&1
+
 git add VERSION example/main.go > /dev/null 2>&1
 git commit -m "chore: bump version to $new" > /dev/null 2>&1
 git tag -a "$tag" -m "Release $tag" > /dev/null 2>&1

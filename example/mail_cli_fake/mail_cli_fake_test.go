@@ -27,14 +27,6 @@ func oracleWidth() int {
 	return 70
 }
 
-func oracleSeparator(out io.Writer) {
-	width := oracleWidth()
-	if width > 70 {
-		width = 70
-	}
-	oAccent.Fprintln(out, strings.Repeat("=", width))
-}
-
 func oracleSplitLines(text string) []string {
 	if text == "" {
 		return nil
@@ -52,26 +44,35 @@ func oracleSplitLines(text string) []string {
 }
 
 func oracleReflowSegment(out io.Writer, c *color.Color, prefixColor *color.Color, width, indent int, prefix, text string) {
+	words := strings.Fields(text)
+
 	if prefix != "" {
-		prefixStr := "  " + padRight(prefix, indent-2)
+		prefixDisplay := "  " + prefix
 		if prefixColor != nil {
-			prefixStr = prefixColor.Sprint(prefixStr)
+			prefixDisplay = prefixColor.Sprint(prefixDisplay)
 		}
-		if oracleVisualLen(prefixStr) > indent {
-			c.Fprintln(out, prefixStr)
+		var prefixStr string
+		var curLen int
+		if oracleVisualLen(prefixDisplay)+2 > indent {
+			c.Fprintln(out, prefixDisplay)
 			prefixStr = strings.Repeat(" ", indent)
+			curLen = indent
+		} else {
+			prefixStr = "  " + padRight(prefix, indent-2)
+			if prefixColor != nil {
+				prefixStr = prefixColor.Sprint(prefixStr)
+			}
+			curLen = oracleVisualLen(prefixStr)
 		}
-		words := strings.Fields(text)
 		if len(words) == 0 {
-			if len(strings.TrimSpace(prefixStr)) > 0 {
-				c.Fprintln(out, prefixStr)
+			if oracleVisualLen(prefixDisplay)+2 <= indent {
+				c.Fprintln(out, prefixDisplay)
 			}
 			return
 		}
 		indentStr := strings.Repeat(" ", indent)
 		var current strings.Builder
 		current.WriteString(prefixStr)
-		curLen := oracleVisualLen(prefixStr)
 		for _, word := range words {
 			wlen := oracleVisualLen(word)
 			space := 0
@@ -99,7 +100,7 @@ func oracleReflowSegment(out io.Writer, c *color.Color, prefixColor *color.Color
 		return
 	}
 
-	words := strings.Fields(text)
+	words = strings.Fields(text)
 	if len(words) == 0 {
 		return
 	}
@@ -143,7 +144,7 @@ func oracleReflow(out io.Writer, c *color.Color, prefixColor *color.Color, inden
 	if width > 80 {
 		width = 80
 	}
-	if indent < 2 {
+	if prefix != "" && indent < 2 {
 		indent = 2
 	}
 	segments := oracleSplitLines(strings.TrimSpace(text))
@@ -181,45 +182,53 @@ func oracleSubs(cmd *clihelp.Command) []clihelp.Param {
 	return out
 }
 
+func oracleColIndent(params []clihelp.Param) int {
+	maxW := 0
+	for _, p := range params {
+		l := oracleVisualLen(p.Name)
+		if l+4 <= clihelp.DefaultMaxColIndent && l > maxW {
+			maxW = l
+		}
+	}
+	if maxW == 0 {
+		return clihelp.DefaultMaxColIndent
+	}
+	return maxW + 4
+}
+
 func oracleDetailedUsage(out io.Writer, a *clihelp.App, path []string, cmd *clihelp.Command) {
-	title := cmd.Title
-	if title == "" {
-		title = cmd.Name
+	usage := cmd.UsageLine
+	if usage == "" {
+		fullPath := strings.Join(append([]string{a.Name}, path...), " ")
+		hasFlags := len(cmd.Options) > 0
+		hasSubs := len(cmd.Subcommands) > 0
+		switch {
+		case hasSubs && hasFlags:
+			usage = fmt.Sprintf("%s [flags] <subcommand> [args]", fullPath)
+		case hasSubs:
+			usage = fmt.Sprintf("%s <subcommand> [args]", fullPath)
+		case hasFlags:
+			usage = fmt.Sprintf("%s [flags] [args]", fullPath)
+		default:
+			usage = fmt.Sprintf("%s [args]", fullPath)
+		}
 	}
-	io.WriteString(out, "\n")
-	oracleSeparator(out)
-	oracleReflow(out, oAccent, nil, 2, "", "Detailed Usage: "+title)
-	oracleSeparator(out)
+	oHdr.Fprint(out, "Usage:  ")
+	io.WriteString(out, clihelp.Inline(usage)+"\n")
 	if cmd.Description != "" {
-		oHdr.Fprintln(out, "Description:")
-		oracleReflow(out, oBody, nil, 2, "", cmd.Description)
-	}
-	if cmd.UsageLine != "" {
-		oHdr.Fprintln(out, "\nUsage:")
-		oracleReflow(out, oBody, nil, 2, "", clihelp.Inline(cmd.UsageLine))
+		io.WriteString(out, "\n")
+		oracleReflow(out, oBody, nil, 0, "", cmd.Description)
 	}
 	if subs := oracleSubs(cmd); len(subs) > 0 {
 		oHdr.Fprintln(out, "\nSubcommands:")
-		maxW := 0
-		for _, s := range subs {
-			if len(s.Name) > maxW {
-				maxW = len(s.Name)
-			}
-		}
-		indent := maxW + 4
+		indent := oracleColIndent(subs)
 		for _, s := range subs {
 			oracleReflow(out, oBody, oSub, indent, s.Name, s.Description)
 		}
 	}
 	if len(cmd.Parameters) > 0 {
 		oHdr.Fprintln(out, "\nParameters:")
-		maxW := 0
-		for _, pp := range cmd.Parameters {
-			if len(pp.Name) > maxW {
-				maxW = len(pp.Name)
-			}
-		}
-		indent := maxW + 4
+		indent := oracleColIndent(cmd.Parameters)
 		for _, pp := range cmd.Parameters {
 			oracleReflow(out, oBody, nil, indent, pp.Name, pp.Description)
 		}
@@ -228,11 +237,18 @@ func oracleDetailedUsage(out io.Writer, a *clihelp.App, path []string, cmd *clih
 	// Flags mirror clihelp.collectOptions: app persistent + global flags,
 	// each ancestor's persistent options, then the target's persistent and
 	// local options.
-	var allOpts []clihelp.Option
+	var localOpts []clihelp.Option
+	for _, o := range cmd.Options {
+		if !o.Hidden {
+			localOpts = append(localOpts, o)
+		}
+	}
+
+	var globalOpts []clihelp.Option
 	addOpts := func(list []clihelp.Option) {
 		for _, o := range list {
 			if !o.Hidden {
-				allOpts = append(allOpts, o)
+				globalOpts = append(globalOpts, o)
 			}
 		}
 	}
@@ -246,19 +262,28 @@ func oracleDetailedUsage(out io.Writer, a *clihelp.App, path []string, cmd *clih
 		}
 	}
 	addOpts(cmd.PersistentOptions)
-	addOpts(cmd.Options)
 
-	if len(allOpts) > 0 {
+	if len(localOpts) > 0 {
 		oHdr.Fprintln(out, "\nFlags:")
-		maxW := 0
-		for _, o := range allOpts {
-			if len(o.Flags) > maxW {
-				maxW = len(o.Flags)
-			}
+		params := make([]clihelp.Param, 0, len(localOpts))
+		for _, o := range localOpts {
+			params = append(params, clihelp.Param{Name: o.Flags, Description: o.Description})
 		}
-		indent := maxW + 4
-		for _, o := range allOpts {
-			oracleReflow(out, oBody, nil, indent, o.Flags, o.Description)
+		indent := oracleColIndent(params)
+		for _, p := range params {
+			oracleReflow(out, oBody, nil, indent, p.Name, p.Description)
+		}
+	}
+
+	if len(globalOpts) > 0 {
+		oHdr.Fprintln(out, "\nGlobal Flags:")
+		params := make([]clihelp.Param, 0, len(globalOpts))
+		for _, o := range globalOpts {
+			params = append(params, clihelp.Param{Name: o.Flags, Description: o.Description})
+		}
+		indent := oracleColIndent(params)
+		for _, p := range params {
+			oracleReflow(out, oBody, nil, indent, p.Name, p.Description)
 		}
 	}
 	if len(cmd.Examples) > 0 {
@@ -273,37 +298,34 @@ func oracleDetailedUsage(out io.Writer, a *clihelp.App, path []string, cmd *clih
 		}
 		oracleReflow(out, oBody, nil, 2, "", n.Text)
 	}
-	oracleSeparator(out)
 	io.WriteString(out, "\n")
 }
 
-func oracleDisplayName(c clihelp.Command) string {
-	if len(c.Aliases) == 0 {
-		return c.Name
-	}
-	return c.Name + " (" + strings.Join(c.Aliases, ", ") + ")"
-}
-
 func oracleGlobalUsage(out io.Writer, a *clihelp.App) {
-	oHdr.Fprintf(out, "Usage of %s:\n\n", a.Name)
+	oHdr.Fprint(out, "Usage:  ")
+	io.WriteString(out, a.Name+" [flags] <command> [args]\n\n")
 	if a.Description != "" {
-		oracleReflow(out, oBody, nil, 2, "", a.Description)
+		oracleReflow(out, oBody, nil, 0, "", a.Description)
 		io.WriteString(out, "\n")
 	}
 	oAccent.Fprintln(out, "Commands:")
 	{
 		params := make([]clihelp.Param, 0, len(a.Commands))
 		for _, c := range a.Commands {
-			params = append(params, clihelp.Param{Name: oracleDisplayName(c), Description: c.Description})
+			params = append(params, clihelp.Param{Name: clihelp.DisplayNameWithArgs(c), Description: clihelp.FirstSentence(c.Description)})
 		}
-		maxW := 0
+		indent := oracleColIndent(params)
+		anyMultiLine := false
 		for _, p := range params {
-			if len(p.Name) > maxW {
-				maxW = len(p.Name)
+			if oracleVisualLen(p.Name)+4 > indent || oracleVisualLen(p.Description) > 70-indent || strings.Contains(p.Description, "\n") {
+				anyMultiLine = true
+				break
 			}
 		}
-		indent := maxW + 4
-		for _, p := range params {
+		for i, p := range params {
+			if anyMultiLine && i > 0 {
+				io.WriteString(out, "\n")
+			}
 			oracleReflow(out, oBody, oSub, indent, p.Name, p.Description)
 		}
 	}
@@ -312,15 +334,9 @@ func oracleGlobalUsage(out io.Writer, a *clihelp.App) {
 		oAccent.Fprintln(out, "Shortcut Commands:")
 		params := make([]clihelp.Param, 0, len(a.Shortcuts))
 		for _, s := range a.Shortcuts {
-			params = append(params, clihelp.Param{Name: oracleDisplayName(s), Description: s.Description})
+			params = append(params, clihelp.Param{Name: clihelp.DisplayNameWithArgs(s), Description: clihelp.FirstSentence(s.Description)})
 		}
-		maxW := 0
-		for _, p := range params {
-			if len(p.Name) > maxW {
-				maxW = len(p.Name)
-			}
-		}
-		indent := maxW + 4
+		indent := oracleColIndent(params)
 		for _, p := range params {
 			oracleReflow(out, oBody, oSub, indent, p.Name, p.Description)
 		}
@@ -341,29 +357,23 @@ func oracleGlobalUsage(out io.Writer, a *clihelp.App) {
 		oAccent.Fprintln(out, "Global Flags:")
 		params := make([]clihelp.Param, 0, len(globalFlags))
 		for _, f := range globalFlags {
-			params = append(params, clihelp.Param{Name: f.Flags, Description: f.Description})
-		}
-		maxW := 0
-		for _, p := range params {
-			if len(p.Name) > maxW {
-				maxW = len(p.Name)
+			desc := f.Description
+			if f.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
+				desc = desc + " (default: " + f.DefaultText + ")"
 			}
+			params = append(params, clihelp.Param{Name: f.Flags, Description: desc})
 		}
-		indent := maxW + 4
+		indent := oracleColIndent(params)
 		for _, p := range params {
 			oracleReflow(out, oBody, nil, indent, p.Name, p.Description)
 		}
 		io.WriteString(out, "\n")
 	}
-	oHdr.Fprintln(out, "Detailed Help:")
-	oracleReflow(out, oBody, nil, 2, "", fmt.Sprintf("Run '%s help <command>' for command-specific options.", a.Name))
+	oracleReflow(out, oBody, nil, 0, "", fmt.Sprintf("Run '%s <command> --help' for more information on a command.", a.Name))
 	if a.ConfigPath != "" {
-		oHdr.Fprintln(out, "Config file location:")
-		oracleReflow(out, oBody, nil, 2, "", a.ConfigPath)
-	}
-	if a.Version != "" {
-		oHdr.Fprintln(out, "Version:")
-		oracleReflow(out, oBody, nil, 2, "", a.Version)
+		io.WriteString(out, "\n")
+		oHdr.Fprint(out, "Config: ")
+		io.WriteString(out, a.ConfigPath+"\n")
 	}
 }
 
@@ -418,5 +428,12 @@ func TestMailCLIGlobalOverview(t *testing.T) {
 	}
 	if stripansi.Strip(got.String()) != stripansi.Strip(want.String()) {
 		t.Errorf("global overview mismatch (ansi-stripped)")
+	}
+}
+
+func TestMailCLIPagerEnabled(t *testing.T) {
+	app := buildApp()
+	if !app.Pager {
+		t.Errorf("expected buildApp().Pager to be true, got false")
 	}
 }

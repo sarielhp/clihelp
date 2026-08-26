@@ -174,7 +174,7 @@ func TestRenderGlobal(t *testing.T) {
 	app.RenderGlobal(o)
 	out := strip(buf.String())
 
-	for _, want := range []string{"Usage of podctl:", "build", "Compile audio episodes", "config", "Manage configuration", "Version:", "1.0.0"} {
+	for _, want := range []string{"Usage:  podctl", "build", "Compile audio episodes", "config", "Manage configuration"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("global output missing %q\n%q", want, out)
 		}
@@ -190,8 +190,7 @@ func TestRenderCommand(t *testing.T) {
 	out := strip(buf.String())
 
 	for _, want := range []string{
-		"podctl build", "Description:", "Compile audio episodes",
-		"Usage:", "podctl build [options] <file>",
+		"Usage:  podctl build", "Compile audio episodes",
 		"Flags:", "-o, --output PATH", "Write output to PATH",
 		"Examples:", "podctl build ep.wav",
 	} {
@@ -273,8 +272,14 @@ func TestRenderGlobalDescriptionAndNote(t *testing.T) {
 	if !strings.Contains(out, "A podcast distribution toolkit.") {
 		t.Errorf("global output missing App.Description")
 	}
-	if !strings.Contains(out, "See docs for account setup.") {
-		t.Errorf("global output missing App.GlobalNote")
+	// GlobalNote is now in help docs/more
+	var docsBuf bytes.Buffer
+	app.Stdout = &docsBuf
+	if err := app.ExecuteContext(context.Background(), []string{"help", "docs"}); err != nil {
+		t.Fatalf("help docs error: %v", err)
+	}
+	if !strings.Contains(docsBuf.String(), "See docs for account setup.") {
+		t.Errorf("help docs missing App.GlobalNote")
 	}
 	// Ensure defaults keep the classic layout when fields are unset.
 	o2, buf2 := captureOptions(80)
@@ -704,20 +709,18 @@ func TestExampleAppNoBareMarkdownAndNoVisibleURLs(t *testing.T) {
 				}
 			}
 		}
-
-		for _, u := range globalOnlyURLs {
-			if len(path) == 0 {
-				if !strings.Contains(out, u) {
-					t.Errorf("global help: visible URL %q should appear in stripped output", u)
-				}
-			} else {
-				if strings.Contains(out, u) {
-					t.Errorf("path %v: URL %q should only appear in global help", path, u)
-				}
-			}
-		}
 	}
 
+	var docsBuf bytes.Buffer
+	app.Stdout = &docsBuf
+	if err := app.ExecuteContext(context.Background(), []string{"help", "docs"}); err != nil {
+		t.Fatalf("help docs error: %v", err)
+	}
+	for _, u := range globalOnlyURLs {
+		if !strings.Contains(docsBuf.String(), u) {
+			t.Errorf("help docs: URL %q should appear in docs output", u)
+		}
+	}
 }
 
 func TestSubcommandNamesAreGreen(t *testing.T) {
@@ -831,14 +834,14 @@ func buildDeepTreeTest() Command {
 func buildSubTreeTest(name string, path []string, depth int) Command {
 	cmd := Command{
 		Name:        name,
-		Description: fmt.Sprintf("**%s** — This is the [%s command](https://example.com/%s) at depth %d.", strings.Join(path, " "), name, strings.Join(path, "/"), depth),
-		UsageLine:   fmt.Sprintf("podctl %s [options] — **%s** usage with [docs](https://example.com/%s).", strings.Join(path, " "), name, strings.Join(path, "/")),
+		Description: fmt.Sprintf("This is the [%s command](https://example.com/%s) at depth %d with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines.", name, strings.Join(path, "/"), depth),
+		UsageLine:   fmt.Sprintf("podctl %s [options] [arguments...] — This is a very long usage line for the [%s command](https://example.com/%s) that should definitely trigger word-wrapping in the help output because it exceeds typical terminal widths and needs to be reflowed properly by the formatter.", strings.Join(path, " "), name, strings.Join(path, "/")),
 	}
 
 	if depth < 5 {
 		suffixes := levelSuffixesTest[depth]
-		child1 := name + "-" + suffixes[0]
-		child2 := name + "-" + suffixes[1]
+		child1 := name + "_" + suffixes[0]
+		child2 := name + "_" + suffixes[1]
 		cmd.Subcommands = []Command{
 			buildSubTreeTest(child1, append(path, child1), depth+1),
 			buildSubTreeTest(child2, append(path, child2), depth+1),

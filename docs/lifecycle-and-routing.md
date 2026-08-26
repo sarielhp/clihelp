@@ -71,7 +71,8 @@ Lifecycle hooks allow you to structure global pre-flight checks (like loading co
 
 ```go
 app := &clihelp.App{
-    Name: "mycli",
+    Name:  "mycli",
+    Pager: true,
     BeforeRun: func(ctx *clihelp.Context) error {
         // Global pre-flight (e.g. initialize logger)
         return nil
@@ -143,7 +144,8 @@ Options defined on `App.PersistentOptions` or parent `Command.PersistentOptions`
 
 ```go
 app := &clihelp.App{
-    Name: "podctl",
+    Name:  "podctl",
+    Pager: true,
     PersistentOptions: []clihelp.Option{
         clihelp.Bool(&verbose, "-v, --verbose", false, "Verbose output"),
     },

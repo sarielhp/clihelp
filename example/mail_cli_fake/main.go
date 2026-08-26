@@ -28,6 +28,14 @@ func main() {
 		return
 	}
 
+	if len(os.Args) > 1 {
+		if err := app.Execute(os.Args[1:]); err != nil {
+			app.PrintError(err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	app.RenderGlobal(clihelp.Options{Writer: os.Stderr})
 
 	for _, path := range detailedPaths(app) {

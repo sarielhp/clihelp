@@ -74,6 +74,7 @@ type App struct {
 	Description       string
 	Version           string
 	GlobalNote        string
+	UsageLine         string
 	PersistentOptions []Option
 	Commands          []Command
 	BeforeRun         func(ctx *Context) error
@@ -178,10 +179,22 @@ func (a *App) ancestorsForPath(path ...string) []*Command {
 	return ancestors
 }
 
-// collectOptions returns the ordered option set for a command path: app
-// PersistentOptions and GlobalFlags, each ancestor's PersistentOptions, then
-// the target's PersistentOptions and Options. Hidden options are skipped.
-func (a *App) collectOptions(path []string, cmd *Command) []Option {
+// collectLocalOptions returns non-hidden command-specific Options for cmd.
+func (a *App) collectLocalOptions(cmd *Command) []Option {
+	if cmd == nil {
+		return nil
+	}
+	var opts []Option
+	for _, o := range cmd.Options {
+		if !o.Hidden {
+			opts = append(opts, o)
+		}
+	}
+	return opts
+}
+
+// collectGlobalOptions returns non-hidden app and ancestor persistent/global options for path and cmd.
+func (a *App) collectGlobalOptions(path []string, cmd *Command) []Option {
 	var opts []Option
 	appendAll := func(optSlice []Option) {
 		for _, o := range optSlice {
@@ -197,7 +210,16 @@ func (a *App) collectOptions(path []string, cmd *Command) []Option {
 	}
 	if cmd != nil {
 		appendAll(cmd.PersistentOptions)
-		appendAll(cmd.Options)
 	}
+	return opts
+}
+
+// collectOptions returns the ordered option set for a command path: app
+// PersistentOptions and GlobalFlags, each ancestor's PersistentOptions, then
+// the target's PersistentOptions and Options. Hidden options are skipped.
+func (a *App) collectOptions(path []string, cmd *Command) []Option {
+	var opts []Option
+	opts = append(opts, a.collectGlobalOptions(path, cmd)...)
+	opts = append(opts, a.collectLocalOptions(cmd)...)
 	return opts
 }

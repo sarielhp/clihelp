@@ -129,6 +129,7 @@ func String(target *string, flags string, defaultVal string, usage string) Optio
 	return Option{
 		Flags:       flags,
 		Description: usage,
+		DefaultText: defaultVal,
 		Binder: func(fs *pflag.FlagSet) error {
 			return bindHelper(fs, spec, func(long, short string) {
 				if long != "" && short != "" {
@@ -147,9 +148,14 @@ func String(target *string, flags string, defaultVal string, usage string) Optio
 func Int(target *int, flags string, defaultVal int, usage string) Option {
 	*target = defaultVal
 	spec := parseFlagSpec(flags)
+	defaultText := ""
+	if defaultVal != 0 {
+		defaultText = strconv.Itoa(defaultVal)
+	}
 	return Option{
 		Flags:       flags,
 		Description: usage,
+		DefaultText: defaultText,
 		Binder: func(fs *pflag.FlagSet) error {
 			return bindHelper(fs, spec, func(long, short string) {
 				if long != "" && short != "" {
@@ -168,9 +174,14 @@ func Int(target *int, flags string, defaultVal int, usage string) Option {
 func Bool(target *bool, flags string, defaultVal bool, usage string) Option {
 	*target = defaultVal
 	spec := parseFlagSpec(flags)
+	defaultText := ""
+	if defaultVal {
+		defaultText = "true"
+	}
 	return Option{
 		Flags:       flags,
 		Description: usage,
+		DefaultText: defaultText,
 		Binder: func(fs *pflag.FlagSet) error {
 			return bindHelper(fs, spec, func(long, short string) {
 				if long != "" && short != "" {
@@ -233,6 +244,7 @@ func BoolToggle(target *bool, flags string, defaultVal bool, usage string) Optio
 	return Option{
 		Flags:       flags,
 		Description: usage,
+		DefaultText: strconv.FormatBool(defaultVal),
 		Binder: func(fs *pflag.FlagSet) error {
 			if spec.hasHelpFlag() {
 				return fmt.Errorf("flag spec %q: -h/--help flags are automatically managed by clihelp and must not be declared in Options", flags)
@@ -282,9 +294,14 @@ func BoolToggle(target *bool, flags string, defaultVal bool, usage string) Optio
 func Duration(target *time.Duration, flags string, defaultVal time.Duration, usage string) Option {
 	*target = defaultVal
 	spec := parseFlagSpec(flags)
+	defaultText := ""
+	if defaultVal != 0 {
+		defaultText = defaultVal.String()
+	}
 	return Option{
 		Flags:       flags,
 		Description: usage,
+		DefaultText: defaultText,
 		Binder: func(fs *pflag.FlagSet) error {
 			return bindHelper(fs, spec, func(long, short string) {
 				if long != "" && short != "" {
@@ -304,9 +321,14 @@ func StringSlice(target *[]string, flags string, defaultVal []string, usage stri
 	// Copy so the caller's slice backing array is not aliased by pflag.
 	*target = append([]string{}, defaultVal...)
 	spec := parseFlagSpec(flags)
+	defaultText := ""
+	if len(defaultVal) > 0 {
+		defaultText = strings.Join(defaultVal, ",")
+	}
 	return Option{
 		Flags:       flags,
 		Description: usage,
+		DefaultText: defaultText,
 		Binder: func(fs *pflag.FlagSet) error {
 			return bindHelper(fs, spec, func(long, short string) {
 				init := append([]string{}, defaultVal...)
@@ -355,6 +377,7 @@ func Enum(target *string, flags string, allowed []string, defaultVal string, usa
 	return Option{
 		Flags:       flags,
 		Description: usage,
+		DefaultText: defaultVal,
 		Complete: func(toComplete string) []string {
 			var matches []string
 			for _, a := range allowed {

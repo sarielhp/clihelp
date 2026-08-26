@@ -60,7 +60,7 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 
 	// If resolved to help subcommand
 	if targetCmd == nil && len(path) == 0 && len(remaining) == 0 && a.Run == nil {
-		a.RenderGlobal(Options{Writer: a.stdout()})
+		a.RenderGlobal(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
 		return nil
 	}
 
@@ -132,7 +132,7 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 
 	// Render help if -h / --help was passed
 	if helpRequested {
-		o := Options{Writer: a.stdout(), Pager: a.Pager}
+		o := Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager}
 		if len(path) == 0 {
 			a.RenderGlobal(o)
 		} else {
@@ -182,10 +182,11 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 		}
 	} else {
 		// Default to rendering help when command has no Run handler
+		o := Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager}
 		if len(path) == 0 {
-			a.RenderGlobal(Options{Writer: a.stdout()})
+			a.RenderGlobal(o)
 		} else {
-			a.RenderCommand(Options{Writer: a.stdout()}, path...)
+			a.RenderCommand(o, path...)
 		}
 		return nil
 	}
@@ -208,15 +209,6 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 func (a *App) hasCommandNamed(name string) bool {
 	cmd, _ := findCommand(a.Commands, name)
 	return cmd != nil
-}
-
-func hasSubcommandNamed(cmds []Command, name string) bool {
-	for _, c := range cmds {
-		if c.Name == name {
-			return true
-		}
-	}
-	return false
 }
 
 // filterCommandsByPrefix returns all non-hidden commands whose Name or any
@@ -242,6 +234,55 @@ func filterCommandsByPrefix(cmds []Command, prefix string) []*Command {
 	return result
 }
 
+func isHelpToken(arg string, cmds []Command, abbrev bool) bool {
+	cmd, _ := findCommand(cmds, arg)
+	if cmd != nil {
+		return false
+	}
+	if arg == "help" || arg == "h" {
+		return true
+	}
+	if abbrev && strings.HasPrefix("help", arg) {
+		if len(filterCommandsByPrefix(cmds, arg)) == 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *App) lookupCommandPath(path []string) (*Command, []string) {
+	if len(path) == 0 {
+		return nil, nil
+	}
+	currentSlice := a.Commands
+	var found *Command
+	var resolvedPath []string
+	for idx, p := range path {
+		cmd, _ := findCommand(currentSlice, p)
+		if cmd == nil && idx == 0 && len(a.Shortcuts) > 0 {
+			cmd, _ = findCommand(a.Shortcuts, p)
+		}
+		if cmd == nil && a.AbbrevCommands {
+			matches := filterCommandsByPrefix(currentSlice, p)
+			if len(matches) == 1 {
+				cmd = matches[0]
+			} else if idx == 0 && len(a.Shortcuts) > 0 {
+				shortcutMatches := filterCommandsByPrefix(a.Shortcuts, p)
+				if len(shortcutMatches) == 1 {
+					cmd = shortcutMatches[0]
+				}
+			}
+		}
+		if cmd == nil {
+			return nil, nil
+		}
+		found = cmd
+		resolvedPath = append(resolvedPath, cmd.Name)
+		currentSlice = cmd.Subcommands
+	}
+	return found, resolvedPath
+}
+
 // resolveCommandPath resolves a path of command names, using prefix matching when
 // AbbrevCommands is enabled and exact match fails.
 func (a *App) resolveCommandPath(args []string, currentCommands []Command) (*Command, []*Command, []string, []string, bool, error) {
@@ -253,20 +294,56 @@ func (a *App) resolveCommandPath(args []string, currentCommands []Command) (*Com
 	for idx < len(args) {
 		arg := args[idx]
 
-		// If help subcommand is passed: e.g. "app help scan"
-		if arg == "help" && !a.hasCommandNamed("help") && !hasSubcommandNamed(currentCommands, "help") {
+		// If help subcommand is passed: e.g. "app help scan", "app h", "app h build", "app help tree"
+		if isHelpToken(arg, currentCommands, a.AbbrevCommands) {
 			helpPath := append(path, args[idx+1:]...)
 			if len(helpPath) == 0 {
 				a.RenderGlobal(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
-			} else {
-				// Validate that the help path resolves to a command
-				helpCmd := a.LookupCommand(helpPath...)
-				if helpCmd == nil {
-					return nil, nil, nil, nil, false, fmt.Errorf("unknown help topic %q", helpPath[0])
-				}
-				a.RenderCommand(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager}, helpPath...)
+				return nil, nil, nil, nil, true, nil
 			}
-			return nil, nil, nil, nil, true, nil
+
+			// If command exists at this path, render it
+			if helpCmd, resolvedPath := a.lookupCommandPath(helpPath); helpCmd != nil {
+				a.RenderCommand(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager}, resolvedPath...)
+				return nil, nil, nil, nil, true, nil
+			}
+
+			// Built-in root help topics
+			if len(helpPath) == 1 {
+				topic := helpPath[0]
+				switch {
+				case topic == "t" || topic == "-t" || topic == "tree" || topic == "--tree" || (a.AbbrevCommands && strings.HasPrefix("tree", topic)):
+					a.RenderTree(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+					return nil, nil, nil, nil, true, nil
+				case topic == "v" || topic == "-v" || topic == "version" || topic == "--version" || (a.AbbrevCommands && strings.HasPrefix("version", topic)):
+					if a.Version == "" {
+						return nil, nil, nil, nil, false, fmt.Errorf("%s: no version is set for this application", appName(a))
+					}
+					if a.Name != "" {
+						fmt.Fprintf(a.stdout(), "%s %s\n", a.Name, a.Version)
+					} else {
+						fmt.Fprintln(a.stdout(), a.Version)
+					}
+					return nil, nil, nil, nil, true, nil
+				case topic == "d" || topic == "-d" || topic == "docs" || topic == "doc" || topic == "more" || (a.AbbrevCommands && (strings.HasPrefix("docs", topic) || strings.HasPrefix("more", topic))):
+					th := a.Theme
+					if th == nil {
+						t := defaultTheme()
+						th = &t
+					}
+					o := Options{Writer: a.stdout(), Theme: th, Pager: a.Pager}
+					if a.GlobalNote != "" {
+						reflow(a.stdout(), th.Body, wrapWidth(o.width(), 0, o.maxContent()), 0, "", inline(a.GlobalNote))
+					} else if a.Description != "" {
+						reflow(a.stdout(), th.Body, wrapWidth(o.width(), 0, o.maxContent()), 0, "", inline(a.Description))
+					} else {
+						fmt.Fprintf(a.stdout(), "No extended documentation available for %s.\n", appName(a))
+					}
+					return nil, nil, nil, nil, true, nil
+				}
+			}
+
+			return nil, nil, nil, nil, false, fmt.Errorf("unknown help topic %q", helpPath[0])
 		}
 
 		// Flags denote end of command tree traversal

@@ -31,6 +31,7 @@
 //			Name:        "demo",
 //			Description: "Demonstration command-line tool",
 //			Version:     "1.0.0",
+//			Pager:       true,
 //			Commands: []clihelp.Command{
 //				{
 //					Name:        "build",

@@ -630,6 +630,7 @@ func buildApp() *clihelp.App {
 		Name:       "mail_cli",
 		Version:    "0.5.4",
 		ConfigPath: filepath.Join(configDir, "config.json"),
+		Pager:      true,
 		Shortcuts: []clihelp.Command{
 			{Name: "ss", Description: "Shortcut alias for: scan spam"},
 			{Name: "sb", Description: "Shortcut alias for: spam bye"},

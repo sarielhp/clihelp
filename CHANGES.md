@@ -11,7 +11,7 @@ All notable changes to `clihelp` will be documented in this file.
 - `Options.MaxContentWidth` (default 80) makes the content wrap cap configurable (`min(termWidth, indent+MaxContentWidth)`).
 - `Command.Group` group headings in global command lists and structural subcommand lists.
 - `parseFlagSpec` now accepts `--flag=VALUE` specs.
-- `scripts/check.sh` verifies `example/main.go`'s `Version:` literal matches the `VERSION` file.
+- `tools/check.sh` verifies `example/main.go`'s `Version:` literal matches the `VERSION` file.
 - CJK-aware column measurement via `go-runewidth` (wide East-Asian chars count as two columns).
 
 ### Fixed
@@ -32,7 +32,7 @@ All notable changes to `clihelp` will be documented in this file.
 - `Options.MaxContentWidth` (default 80) makes the content wrap cap configurable (`min(termWidth, indent+MaxContentWidth)`).
 - `Command.Group` group headings in global command lists and structural subcommand lists.
 - `parseFlagSpec` now accepts `--flag=VALUE` specs.
-- `scripts/check.sh` verifies `example/main.go`'s `Version:` literal matches the `VERSION` file.
+- `tools/check.sh` verifies `example/main.go`'s `Version:` literal matches the `VERSION` file.
 - CJK-aware column measurement via `go-runewidth` (wide East-Asian chars count as two columns).
 
 ### Fixed

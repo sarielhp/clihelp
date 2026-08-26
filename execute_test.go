@@ -153,7 +153,7 @@ func TestExecuteVersionAndHelpInterception(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(outBuf.String(), "Usage of versionapp:") {
+	if !strings.Contains(outBuf.String(), "Usage:  versionapp") {
 		t.Errorf("help output missing, got: %q", outBuf.String())
 	}
 
@@ -293,7 +293,7 @@ func TestExecuteHelpSubcommandNoDoubleRender(t *testing.T) {
 	}
 	output := stripansi.Strip(outBuf.String())
 	// Count occurrences of "testapp info"
-	count := strings.Count(output, "Detailed Usage: info")
+	count := strings.Count(output, "Usage:  testapp info")
 	if count != 1 {
 		t.Errorf("expected exactly 1 occurrence of 'testapp info', got %d\n%s", count, output)
 	}
@@ -305,9 +305,9 @@ func TestExecuteHelpSubcommandNoDoubleRender(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	output = outBuf.String()
-	count = strings.Count(output, "Usage of testapp:")
+	count = strings.Count(output, "Usage:  testapp")
 	if count != 1 {
-		t.Errorf("expected exactly 1 occurrence of 'Usage of testapp:', got %d\n%s", count, output)
+		t.Errorf("expected exactly 1 occurrence of 'Usage:  testapp', got %d\n%s", count, output)
 	}
 }
 
@@ -335,9 +335,9 @@ func TestExecuteNestedHelpSubcommandNoDoubleRender(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	output := stripansi.Strip(outBuf.String())
-	count := strings.Count(output, "Detailed Usage: set")
+	count := strings.Count(output, "Usage:  nestapp config set")
 	if count != 1 {
-		t.Errorf("expected exactly 1 occurrence of 'Detailed Usage: set', got %d\n%s", count, output)
+		t.Errorf("expected exactly 1 occurrence of 'Usage:  nestapp config set', got %d\n%s", count, output)
 	}
 }
 
@@ -403,9 +403,9 @@ func TestExecuteNestedHelpNoCustomCommandNoDoubleRender(t *testing.T) {
 	}
 	output := stripansi.Strip(outBuf.String())
 	// Count occurrences of "nestapp config"
-	count := strings.Count(output, "Detailed Usage: config")
+	count := strings.Count(output, "Usage:  nestapp config")
 	if count != 1 {
-		t.Errorf("expected exactly 1 occurrence of Detailed Usage: config, got %d\n%s", count, output)
+		t.Errorf("expected exactly 1 occurrence of Usage:  nestapp config, got %d\n%s", count, output)
 	}
 }
 
@@ -434,5 +434,137 @@ func TestExecuteVersionWithVerboseFlag(t *testing.T) {
 	}
 	if !globalVerbose {
 		t.Errorf("expected verbose flag to be set to true")
+	}
+}
+
+func TestExecuteHelpTree(t *testing.T) {
+	var outBuf bytes.Buffer
+	app := &App{
+		Name:   "treeapp",
+		Stdout: &outBuf,
+		Commands: []Command{
+			{
+				Name:        "config",
+				Description: "Config command",
+				Subcommands: []Command{
+					{
+						Name:        "set",
+						Description: "Set value",
+						Run:         func(ctx *Context) error { return nil },
+					},
+				},
+			},
+			{
+				Name:        "build",
+				Description: "Build command",
+				Run:         func(ctx *Context) error { return nil },
+			},
+		},
+	}
+
+	err := app.ExecuteContext(context.Background(), []string{"help", "tree"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	output := stripansi.Strip(outBuf.String())
+	if !strings.Contains(output, "treeapp") {
+		t.Errorf("tree output missing root app name:\n%s", output)
+	}
+	if !strings.Contains(output, "config") || !strings.Contains(output, "set") || !strings.Contains(output, "build") {
+		t.Errorf("tree output missing commands:\n%s", output)
+	}
+	if !strings.Contains(output, "├──") && !strings.Contains(output, "└──") {
+		t.Errorf("tree output missing box drawing characters:\n%s", output)
+	}
+}
+
+func TestExecuteHelpVersionAndDocs(t *testing.T) {
+	var outBuf bytes.Buffer
+	app := &App{
+		Name:        "mycli",
+		Version:     "2.4.6",
+		GlobalNote:  "Read full documentation at https://example.com/docs",
+		Description: "A CLI tool",
+		Stdout:      &outBuf,
+	}
+
+	// Test "help version"
+	outBuf.Reset()
+	if err := app.ExecuteContext(context.Background(), []string{"help", "version"}); err != nil {
+		t.Fatalf("help version error: %v", err)
+	}
+	if !strings.Contains(outBuf.String(), "mycli 2.4.6") {
+		t.Errorf("expected 'mycli 2.4.6', got: %q", outBuf.String())
+	}
+
+	// Test "help docs"
+	outBuf.Reset()
+	if err := app.ExecuteContext(context.Background(), []string{"help", "docs"}); err != nil {
+		t.Fatalf("help docs error: %v", err)
+	}
+	if !strings.Contains(outBuf.String(), "Read full documentation at https://example.com/docs") {
+		t.Errorf("expected GlobalNote content in help docs, got: %q", outBuf.String())
+	}
+
+	// Test "help more"
+	outBuf.Reset()
+	if err := app.ExecuteContext(context.Background(), []string{"help", "more"}); err != nil {
+		t.Fatalf("help more error: %v", err)
+	}
+	if !strings.Contains(outBuf.String(), "Read full documentation at https://example.com/docs") {
+		t.Errorf("expected GlobalNote content in help more, got: %q", outBuf.String())
+	}
+}
+
+func TestExecuteShortHelpCommand(t *testing.T) {
+	var outBuf bytes.Buffer
+	app := &App{
+		Name:           "shorthapp",
+		Version:        "1.2.3",
+		AbbrevCommands: true,
+		Stdout:         &outBuf,
+		Commands: []Command{
+			{
+				Name:        "build",
+				Description: "Build command",
+				Run:         func(ctx *Context) error { return nil },
+			},
+		},
+	}
+
+	// Test "h" alone -> renders global help
+	outBuf.Reset()
+	if err := app.ExecuteContext(context.Background(), []string{"h"}); err != nil {
+		t.Fatalf("h error: %v", err)
+	}
+	if !strings.Contains(outBuf.String(), "Usage:  shorthapp") {
+		t.Errorf("expected global help, got: %q", outBuf.String())
+	}
+
+	// Test "h build" -> renders build command help
+	outBuf.Reset()
+	if err := app.ExecuteContext(context.Background(), []string{"h", "build"}); err != nil {
+		t.Fatalf("h build error: %v", err)
+	}
+	if !strings.Contains(outBuf.String(), "Usage:  shorthapp build") {
+		t.Errorf("expected build command help, got: %q", outBuf.String())
+	}
+
+	// Test "h b" with abbreviation -> renders build command help
+	outBuf.Reset()
+	if err := app.ExecuteContext(context.Background(), []string{"h", "b"}); err != nil {
+		t.Fatalf("h b error: %v", err)
+	}
+	if !strings.Contains(outBuf.String(), "Usage:  shorthapp build") {
+		t.Errorf("expected build command help for abbreviated 'b', got: %q", outBuf.String())
+	}
+
+	// Test "h v" with abbreviation -> version
+	outBuf.Reset()
+	if err := app.ExecuteContext(context.Background(), []string{"h", "v"}); err != nil {
+		t.Fatalf("h v error: %v", err)
+	}
+	if !strings.Contains(outBuf.String(), "shorthapp 1.2.3") {
+		t.Errorf("expected version output, got: %q", outBuf.String())
 	}
 }

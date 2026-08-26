@@ -67,6 +67,7 @@ func NewApp(cfg *Config) *clihelp.App {
     return &clihelp.App{
         Name:        "app",
         Description: "Application root",
+        Pager:       true,
         Commands: []clihelp.Command{
             {
                 Name:      "build",

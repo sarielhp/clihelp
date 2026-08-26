@@ -1,0 +1,33 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "fileutils"
+
+root_dir = File.expand_path("..", __dir__)
+bin_dir = File.join(root_dir, "bin")
+bin_path = File.join(bin_dir, "podctl")
+
+FileUtils.mkdir_p(bin_dir)
+
+needs_build = false
+if !File.exist?(bin_path)
+  needs_build = true
+else
+  bin_mtime = File.mtime(bin_path)
+  watched_patterns = [
+    File.join(root_dir, "*.go"),
+    File.join(root_dir, "go.mod"),
+    File.join(root_dir, "go.sum"),
+    File.join(root_dir, "example", "**", "*.go")
+  ]
+  watched_files = Dir.glob(watched_patterns).reject { |f| f.end_with?("_test.go") }
+  needs_build = watched_files.any? { |src| File.mtime(src) > bin_mtime }
+end
+
+if needs_build
+  Dir.chdir(root_dir) do
+    system("go", "build", "-o", bin_path, "./example") || exit($?.exitstatus || 1)
+  end
+end
+
+exec(bin_path, *ARGV)

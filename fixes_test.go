@@ -79,8 +79,8 @@ func TestRenderGlobalEmptyApp(t *testing.T) {
 	o, buf := captureOptions(80)
 	app.RenderGlobal(o)
 	out := strip(buf.String())
-	if !strings.Contains(out, "Usage of app:") {
-		t.Errorf("expected 'Usage of app:' fallback, got:\n%s", out)
+	if !strings.Contains(out, "Usage:  app") {
+		t.Errorf("expected 'Usage:  app' fallback, got:\n%s", out)
 	}
 	if strings.Contains(out, "Commands:") {
 		t.Errorf("empty app should not render a Commands section:\n%s", out)

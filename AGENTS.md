@@ -8,19 +8,21 @@
 - Lint: `go vet ./...` then `staticcheck ./...`
 - Format: `gofmt -s -w .` before committing
 
-## Automation Scripts (`scripts/`)
+## Automation Scripts (`tools/`)
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/check.sh` | Full quality gate: format → tidy → vet → staticcheck → test → build example |
-| `scripts/format.sh` | Run `gofmt -s -w .` only |
-| `scripts/lint.sh` | Static analysis: `go vet` + `staticcheck` |
-| `scripts/map.sh` | Print package structure, key types, and exported functions |
-| `scripts/version.sh` | Print current version from `VERSION` file |
-| `scripts/bump-version.sh` | Bump patch version in `VERSION`, git add/commit/push |
-| `scripts/commit.sh <msg>` | Quality gate + stage + commit (silent, outputs "Success <msg>") |
-| `scripts/checkpoint.sh` | Auto micro-commit of all changes (saves work state) |
-| `scripts/run_example.sh` | Run the demonstration CLI application (`example/main.go`) |
+| `tools/check.sh` | Full quality gate: format → tidy → vet → staticcheck → test → build example |
+| `tools/format.sh` | Run `gofmt -s -w .` only |
+| `tools/lint.sh` | Static analysis: `go vet` + `staticcheck` |
+| `tools/map.sh` | Print package structure, key types, and exported functions |
+| `tools/version.sh` | Print current version from `VERSION` file |
+| `tools/bump-version.sh` | Bump patch version in `VERSION`, git add/commit/push |
+| `tools/commit.sh <msg>` | Quality gate + stage + commit (silent, outputs "Success <msg>") |
+| `tools/checkpoint.sh` | Auto micro-commit of all changes (saves work state) |
+| `tools/ex_podcl [args]` | Incrementally build and execute `podctl` example with CLI arguments |
+| `tools/ex_mail_cli [args]` | Incrementally build and execute `mail_cli` example with CLI arguments |
+| `tools/run_example.sh` | Run the demonstration CLI application (`example/main.go`) |
 
 ## Makefile
 
@@ -66,7 +68,7 @@ make run
 ## Version Management
 
 - Version is stored in `VERSION` file (semver: `major.minor.patch`)
-- Current version: `<read from VERSION at build time — kept in sync by scripts/check.sh>`
+- Current version: `<read from VERSION at build time — kept in sync by tools/check.sh>`
 - Run `make bump` to bump patch version, commit, tag, and push version in one step
 - `VERSION` file is the single source of truth for release versioning; `example/main.go`'s `Version:` literal must match it and is verified by `make check`
 
@@ -129,7 +131,7 @@ make run
 | `Makefile` | Make targets for standard workflows |
 | `VERSION` | Version source of truth |
 | `CHANGES.md` | Version changelog |
-| `scripts/` | Automation shell scripts |
+| `tools/` | Automation shell scripts |
 
 ## Agent Development Rules
 

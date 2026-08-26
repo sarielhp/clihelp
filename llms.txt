@@ -1,0 +1,158 @@
+# clihelp — Declarative Go CLI Framework & Help Text Formatter
+
+> `clihelp` is a Go library for parsing command-line arguments and generating clean, detailed usage and help messages (similar in functionality to Cobra). It features pflag-backed option parsing, hierarchical routing, lifecycle hooks, prefix command matching, command tree rendering, pager integration, terminal theming with ANSI/OSC 8 link support, and GitHub Markdown documentation generation.
+
+## Package Architecture
+
+- Import path: `github.com/sarielhp/clihelp`
+- Main entry point: `app.Execute(os.Args[1:])` or `app.ExecuteContext(ctx, os.Args[1:])`
+- Error rendering: `clihelp.PrintError(err)`
+- Tree rendering: `app.RenderTree(clihelp.Options{Writer: w})`
+
+## Core Types
+
+```go
+type App struct {
+    Name              string
+    Description       string
+    Version           string
+    GlobalNote        string
+    AbbrevCommands    bool       // Enable prefix command abbreviation matching (e.g. "b" -> "build")
+    Pager             bool       // Enable automatic paging via $PAGER when output exceeds terminal height
+    Theme             Theme      // ANSI styling configuration
+    PersistentOptions []Option
+    Commands          []Command
+    BeforeRun         func(ctx *Context) error
+    AfterRun          func(ctx *Context) error
+    Run               func(ctx *Context) error
+    Stdout            io.Writer
+    Stderr            io.Writer
+}
+
+type Command struct {
+    Name              string
+    Aliases           []string
+    Description       string
+    UsageLine         string
+    Group             string     // Group heading in command lists
+    Hidden            bool       // Hide from help listings
+    PersistentOptions []Option
+    Options           []Option
+    Subcommands       []Command
+    Examples          []Example
+    Args              ArgsValidator
+    PreRun            func(ctx *Context) error
+    Run               func(ctx *Context) error
+    PostRun           func(ctx *Context) error
+}
+
+type Context struct {
+    Context context.Context
+    App     *App
+    Command *Command
+    Args    []string   // Validated positional arguments (flags stripped)
+    RawArgs []string   // Original arguments slice
+    Stdout  io.Writer
+    Stderr  io.Writer
+}
+```
+
+## Execution Pipeline & Lifecycle Hooks
+
+Hook Execution Order:
+1. `App.BeforeRun(ctx)`
+2. `Command.PreRun(ctx)`
+3. `Command.Run(ctx)` (or `App.Run(ctx)` if root command without subcommand)
+4. `Command.PostRun(ctx)`
+5. `App.AfterRun(ctx)`
+
+Abort Semantics:
+- If flag parsing fails, argument validation fails, or any hook returns a non-nil `error`, execution aborts immediately and downstream hooks are skipped.
+
+## Option Constructors
+
+| Constructor | Spec Syntax Example | Target Type | Behavior |
+|---|---|---|---|
+| `clihelp.String(target, spec, default, usage)` | `"-o, --output PATH"` | `*string` | Binds string flag. Sets `*target = default`. |
+| `clihelp.Int(target, spec, default, usage)` | `"-p, --port N"` | `*int` | Binds int flag. Sets `*target = default`. |
+| `clihelp.Bool(target, spec, default, usage)` | `"-v, --verbose"` | `*bool` | Binds boolean flag (`true` when passed). |
+| `clihelp.BoolToggle(target, spec, default, usage)` | `"--[no-]cache"` | `*bool` | Binds `--cache` (`true`) and `--no-cache` (`false`). |
+| `clihelp.Duration(target, spec, default, usage)` | `"-t, --timeout SEC"` | `*time.Duration` | Binds duration string (e.g. `"30s"`, `"1m"`). |
+| `clihelp.StringSlice(target, spec, default, usage)` | `"-i, --include ITEM"` | `*[]string` | Repeatable / comma-separated string list. |
+| `clihelp.Enum(target, spec, allowed, default, usage)` | `"-s, --stage STAGE"` | `*string` | Restricts values to `allowed` slice; auto-completes. |
+| `clihelp.Var(targetValue, spec, usage)` | `"--custom VAL"` | `pflag.Value` | Binds custom `pflag.Value` type. |
+
+## Positional Argument Validators
+
+- `clihelp.NoArgs`: Enforces 0 positional arguments.
+- `clihelp.ExactArgs(n)`: Enforces exactly `n` positional arguments.
+- `clihelp.MinimumNArgs(n)`: Enforces at least `n` positional arguments.
+- `clihelp.MaximumNArgs(n)`: Enforces at most `n` positional arguments.
+- `clihelp.RangeArgs(min, max)`: Enforces between `min` and `max` positional arguments.
+
+## Shell Autocompletion
+
+- Generators: `clihelp.GenBashCompletion(app, w)`, `clihelp.GenZshCompletion(app, w)`.
+- Dynamic Option Completion: attach `Complete: func(toComplete string) []string` to any `Option`.
+
+## Critical AI Agent Rules & Pitfalls
+
+1. **NEVER manually declare `-h` or `--help` in Options**: `clihelp` automatically binds and manages help flags for all commands. Explicitly declaring a help flag will return a validation error.
+2. **Always bind pointers to persistent structs**: Pass `&opts.Field` or `&cfg.Field` to option constructors.
+3. **Always read positional parameters from `ctx.Args`**: In `Run` handlers, positional parameters are already validated and accessible via `ctx.Args[i]`. Do NOT inspect `os.Args`.
+4. **Use `Command.Subcommands` for nested routing**: Never manually parse subcommand words inside a root `Run` function.
+5. **Use `clihelp.PrintError(err)`**: Standardizes red-bold error prefix to `os.Stderr`.
+
+## Canonical Minimal Application
+
+```go
+package main
+
+import (
+    "fmt"
+    "os"
+
+    "github.com/sarielhp/clihelp"
+)
+
+type Config struct {
+    Verbose bool
+    Output  string
+}
+
+func main() {
+    var cfg Config
+
+    app := &clihelp.App{
+        Name:        "mycli",
+        Description: "Sample CLI tool",
+        Version:     "1.0.0",
+        Pager:       true,
+        PersistentOptions: []clihelp.Option{
+            clihelp.Bool(&cfg.Verbose, "-v, --verbose", false, "Enable verbose output"),
+        },
+        Commands: []clihelp.Command{
+            {
+                Name:        "build",
+                Description: "Build output artifact",
+                UsageLine:   "mycli build [options] <target>",
+                Args:        clihelp.ExactArgs(1),
+                Options: []clihelp.Option{
+                    clihelp.String(&cfg.Output, "-o, --output PATH", "dist/app", "Output path"),
+                },
+                Run: func(ctx *clihelp.Context) error {
+                    target := ctx.Args[0]
+                    fmt.Fprintf(ctx.Stdout, "Building %s -> %s (verbose=%v)
+", target, cfg.Output, cfg.Verbose)
+                    return nil
+                },
+            },
+        },
+    }
+
+    if err := app.Execute(os.Args[1:]); err != nil {
+        clihelp.PrintError(err)
+        os.Exit(1)
+    }
+}
+```

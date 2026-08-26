@@ -9,7 +9,7 @@ fi
 
 msg="$*"
 
-bash scripts/check.sh > /dev/null 2>&1
+bash tools/check.sh > /dev/null 2>&1
 
 git add -A > /dev/null 2>&1
 git commit -m "$msg" > /dev/null 2>&1

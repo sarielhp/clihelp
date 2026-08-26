@@ -3,10 +3,10 @@
 all: check
 
 check:
-	@./scripts/check.sh
+	@./tools/check.sh
 
 lint:
-	@./scripts/lint.sh
+	@./tools/lint.sh
 
 test:
 	@go test -timeout 30s ./...
@@ -15,7 +15,7 @@ build:
 	@go build -o /dev/null ./example
 
 format:
-	@./scripts/format.sh
+	@./tools/format.sh
 
 tidy:
 	@go mod tidy
@@ -27,26 +27,26 @@ staticcheck:
 	@staticcheck ./...
 
 map:
-	@./scripts/map.sh
+	@./tools/map.sh
 
 version:
-	@./scripts/version.sh
+	@./tools/version.sh
 
 bump:
-	@./scripts/bump-version.sh
+	@./tools/bump-version.sh
 
 commit:
-	@./scripts/commit.sh $(ARGS)
+	@./tools/commit.sh $(ARGS)
 
 push: bump
 
 ci: check
 
 checkpoint:
-	@./scripts/checkpoint.sh
+	@./tools/checkpoint.sh
 
 run:
-	@./scripts/run_example.sh
+	@./tools/run_example.sh
 
 clean:
 	@go clean
