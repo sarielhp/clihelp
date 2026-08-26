@@ -116,7 +116,8 @@ make run
 
 ## New Features
 
-- **Pager Support**: When `App.Pager` or `Options.Pager` is true, help output is automatically paged through `$PAGER` when it exceeds terminal height.
+- **Pager Support**: When `App.Pager` or `Options.Pager` is true, help output is automatically paged through `$PAGER` when it exceeds terminal height. Automatically injects `-no-linenumbers` when `moar` is detected as the pager.
+- **GNU-Standard Column Formatting**: Two-column command/option listings cap the description column at `DefaultMaxColIndent = 24`. Long command or flag signatures automatically place description text on the next line indented at column 24.
 - **Command Tree View**: Added `App.RenderTree()` method to render the full command hierarchy as a tree with box-drawing characters.
 - **Prefix Command Matching**: Added `App.AbbrevCommands` field to enable abbreviated command names (e.g. `podctl b` instead of `podctl build`).
 
