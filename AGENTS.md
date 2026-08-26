@@ -125,9 +125,16 @@ make run
 
 | File | Purpose |
 |------|---------|
-| `clihelp.go` | Core CLI help printing logic, section layout, string wrapping, and terminal width helpers |
-| `md.go` | GitHub-friendly markdown help-page generator (RenderMarkdown, MarkdownOptions) |
-| `clihelp_test.go` | Unit tests for formatting, wrapping, ANSI stripping, usage output, and markdown generation |
+| `clihelp.go` | Core data types (`App`, `Command`, `Option`, `Param`, `Example`, `Note`, `Context`) |
+| `render.go` | Terminal help rendering for global app, individual commands, command tree, and grouped commands |
+| `format.go` | Text layout, word-wrapping, string reflow, ANSI stripping, and column indentation utilities |
+| `execute.go` | Command lookup, flag parsing, command execution dispatch, alias handling, and error formatting |
+| `options.go` | Option builder functions (`Bool`, `String`, `Int`, `Duration`, `Enum`, `StringSlice`) and flag binding |
+| `inline.go` | Inline markdown parsing and ANSI/OSC8 terminal formatting (bold, italic, code, hyperlinks) |
+| `pager.go` | Pager detection/execution (`$PAGER`, `less`, `moar`), terminal height check, and paged output |
+| `completion.go` | Shell autocompletion script generation (Bash and Zsh) |
+| `md.go` | GitHub-friendly markdown documentation generator (`RenderMarkdown`, `MarkdownOptions`) |
+| `clihelp_test.go` | Unit tests for help formatting, wrapping, ANSI stripping, usage output, and tree rendering |
 | `example/main.go` | Demonstration CLI app using `clihelp` |
 | `Makefile` | Make targets for standard workflows |
 | `VERSION` | Version source of truth |
