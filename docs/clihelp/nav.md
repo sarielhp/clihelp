@@ -14,7 +14,11 @@ title: 'podctl — Navigation'
   - [get](config-get.md) — Display, inspect, and print configured attribute values. Reads from the persistent store or falls back to built-in defaults when no explicit user configuration value has been set.
 - [deploy](deploy.md) — Publish compiled podcast RSS feeds and MP3 files to cloud storage. Supports Amazon S3, Google Cloud Storage, CDN cache invalidation, dry-run simulation, and multi-stage deployments.
 - [status](status.md) — Check and display comprehensive health and validation metrics. Monitors RSS feed status, CDN edge cache, episode download statistics, and origin server connectivity across environments.
-- [completion](completion.md) — Generate shell autocompletion scripts for bash or zsh. Enables fast tab-completion for all podctl commands, subcommands, flags, and option values.
+- [completion](completion.md) — Generate or install shell tab-completion scripts
+  - [bash](completion-bash.md) — Generate Bash tab-completion script
+  - [zsh](completion-zsh.md) — Generate Zsh tab-completion script
+  - [fish](completion-fish.md) — Generate Fish tab-completion script
+  - [install](completion-install.md) — Install tab-completion script to standard user directory
 - [deep](deep.md) — **deep** — This is the [deep command](https://example.com/deep) at the root of the demonstration hierarchy with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines for testing purposes.
   - [alpha](deep-alpha.md) — This is the [alpha command](https://example.com/deep/alpha) at depth 2 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines.
     - [alpha\_one](deep-alpha-alpha-one.md) — This is the [alpha_one command](https://example.com/deep/alpha/alpha_one) at depth 3 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines.

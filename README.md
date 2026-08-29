@@ -2,6 +2,7 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/sarielhp/clihelp.svg)](https://pkg.go.dev/github.com/sarielhp/clihelp)
 [![Go Report Card](https://goreportcard.com/badge/github.com/sarielhp/clihelp)](https://goreportcard.com/report/github.com/sarielhp/clihelp)
+[![llms.txt](https://img.shields.io/badge/llms.txt-standard-blue.svg)](llms.txt)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 `clihelp` is a Go library for parsing command-line arguments and generating clean, detailed usage and help messages. Similar in functionality to [Cobra](https://github.com/spf13/cobra), it was written by an AI agent as a reusable tool to be used across other projects.
@@ -18,7 +19,7 @@ It provides clean, structured usage messages with support for ANSI colors and cl
 - **Positional Argument Validation** — Built-in validators (`ExactArgs`, `RangeArgs`, `MinimumNArgs`, `NoArgs`) executed after flag extraction.
 - **Fuzzy Typo Suggestions** — Levenshtein-distance suggestions for mistyped commands (e.g. *Did you mean "build"?*).
 - **Prefix Command Matching** — Enable abbreviated commands (e.g. `podctl b` instead of `podctl build`).
-- **Shell Autocompletion** — Built-in `__complete` protocol with generators for Bash, Zsh, and Fish, plus dynamic completion callbacks.
+- **Shell Autocompletion & Auto-Installation** — Built-in `__complete` protocol with generators for Bash, Zsh, and Fish, zero-boilerplate `CompletionCommand()`, and one-command user XDG self-installation (`InstallCompletion`).
 - **Rich Terminal Styling** — Theme-driven ANSI colors, auto-detected terminal width with 70-column fallback, and ANSI-aware word wrapping.
 - **Inline Markdown & OSC 8 Hyperlinks** — Rich text formatting in descriptions: bold, italic, code, strikethrough, and clickable terminal hyperlinks.
 - **Markdown Documentation Generator** — Automatically generates navigable, GitHub-friendly Markdown doc trees with SHA-256 change-detection caching.
@@ -182,7 +183,7 @@ Detailed technical guides and reference documentation are available in the [`doc
 |---|---|
 | 🔄 [**Execution Lifecycle & Routing**](docs/lifecycle-and-routing.md) | Execution pipeline, lifecycle hooks (`BeforeRun`, `PreRun`, `Run`, etc.), abort semantics, `clihelp.Context`, nested subcommands, typo suggestions, and argument validation. |
 | 🏷️ [**Flags & Options Reference**](docs/flags-and-options.md) | Flag spec syntax, constructor reference table (`String`, `Int`, `BoolToggle`, `Enum`, etc.), aliases, custom binders, and help collision safety. |
-| 💻 [**Shell Autocompletion**](docs/completion.md) | Setting up Bash, Zsh, and Fish completion, wiring the `completion` command, dynamic callbacks, and live testing. |
+| 💻 [**Shell Autocompletion & Installation**](docs/completion.md) | Setting up Bash, Zsh, and Fish completion, mounting `CompletionCommand()`, automatic XDG self-installation (`InstallCompletion`), dynamic callbacks, and live testing. |
 | 📄 [**Markdown Doc Generation**](docs/markdown-generation.md) | Generating navigable GitHub Markdown docs with `RenderMarkdown` and SHA-256 change-detection caching. |
 | 🍳 [**Recipes & Patterns**](docs/recipes-and-patterns.md) | Practical patterns for signal cancellation (`ExecuteContext`), unit testing commands, dynamic completion callbacks, command tree view (`RenderTree`), custom themes (`Theme`), and prefix abbreviations (`AbbrevCommands`). |
 | 🤖 [**AI Coding Agent Guidelines**](docs/ai-guidelines.md) | Best practices and prompt rules for LLM coding agents and pair programmers building CLIs with `clihelp`. |

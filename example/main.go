@@ -185,22 +185,7 @@ func main() {
 					return nil
 				},
 			},
-			{
-				Name:        "completion",
-				Description: "Generate shell autocompletion scripts for bash or zsh. Enables fast tab-completion for all podctl commands, subcommands, flags, and option values.",
-				UsageLine:   "podctl completion <bash|zsh>",
-				Args:        clihelp.ExactArgs(1),
-				Run: func(ctx *clihelp.Context) error {
-					switch ctx.Args[0] {
-					case "bash":
-						return clihelp.GenBashCompletion(ctx.App, ctx.Stdout)
-					case "zsh":
-						return clihelp.GenZshCompletion(ctx.App, ctx.Stdout)
-					default:
-						return fmt.Errorf("unsupported shell: %s (choose bash or zsh)", ctx.Args[0])
-					}
-				},
-			},
+			clihelp.CompletionCommand(),
 			deepCmd,
 		},
 	}

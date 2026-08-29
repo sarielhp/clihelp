@@ -2,6 +2,14 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.1] - 2026-08-29
+
+### Added
+- **Fish Shell Autocompletion** - Added `clihelp.GenFishCompletion(app, writer)` generator with native tab-separated description formatting.
+- **Auto-Installation Support** - Added `clihelp.InstallCompletion(app, shell)` for installing Bash, Zsh, and Fish completions directly to standard XDG user directories without root permissions.
+- **Pre-Built `CompletionCommand`** - Added `clihelp.CompletionCommand()` factory function returning ready-to-mount subcommands for `bash`, `zsh`, `fish`, and `install`.
+- **Zsh Autocompletion Robustness** - Handled dynamic `compdef` registration, colon escaping in descriptions for `_describe`, and cursor-aware word slicing.
+
 ## [0.3.0] - 2026-08-28
 
 ### Added

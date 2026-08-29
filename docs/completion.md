@@ -1,14 +1,15 @@
 # Shell Autocompletion
 
-`clihelp` provides built-in shell autocompletion for **Bash**, **Zsh**, and **Fish** through its native `__complete` protocol.
+`clihelp` provides built-in shell autocompletion for **Bash**, **Zsh**, and **Fish** through its native `__complete` protocol, ready-to-mount [`CompletionCommand`](#zero-boilerplate-completioncommand), and XDG-compliant [`InstallCompletion`](#automatic-self-installation-installcompletion).
 
 ---
 
 ## Table of Contents
 
 - [Overview & Architecture](#overview--architecture)
-- [Adding a `completion` Command](#adding-a-completion-command)
-- [Shell-Specific Script Generators](#shell-specific-script-generators)
+- [Zero-Boilerplate `CompletionCommand`](#zero-boilerplate-completioncommand)
+- [Automatic Self-Installation (`InstallCompletion`)](#automatic-self-installation-installcompletion)
+- [Manual Shell Script Generation](#manual-shell-script-generation)
 - [Dynamic Completion Callbacks](#dynamic-completion-callbacks)
 - [Testing Shell Completions](#testing-shell-completions)
 
@@ -29,36 +30,64 @@ $ podctl __complete build --
 
 ---
 
-## Adding a `completion` Command
+## Zero-Boilerplate `CompletionCommand`
 
-To allow users to generate completion scripts for their shell, register a `completion` subcommand on your application:
+The fastest way to expose completion in your CLI is using `clihelp.CompletionCommand()`. It creates a standard `Command` with `bash`, `zsh`, `fish`, and `install` subcommands:
 
 ```go
-Commands: []clihelp.Command{
-    {
-        Name:        "completion",
-        Description: "Generate shell autocompletion script",
-        UsageLine:   "podctl completion <bash|zsh|fish>",
-        Args:        clihelp.ExactArgs(1),
-        Run: func(ctx *clihelp.Context) error {
-            switch ctx.Args[0] {
-            case "bash":
-                return clihelp.GenBashCompletion(ctx.App, ctx.Stdout)
-            case "zsh":
-                return clihelp.GenZshCompletion(ctx.App, ctx.Stdout)
-            case "fish":
-                return clihelp.GenFishCompletion(ctx.App, ctx.Stdout)
-            default:
-                return fmt.Errorf("unsupported shell %q (use bash, zsh, or fish)", ctx.Args[0])
-            }
-        },
+app := &clihelp.App{
+    Name:        "podctl",
+    Description: "Podcast distribution & audio processing tool",
+    Commands: []clihelp.Command{
+        // Application commands...
+        clihelp.CompletionCommand(),
     },
 }
 ```
 
+This immediately equips your CLI with:
+- `podctl completion bash` — outputs Bash completion script to stdout
+- `podctl completion zsh` — outputs Zsh completion script to stdout
+- `podctl completion fish` — outputs Fish completion script to stdout
+- `podctl completion install [<shell>]` — installs completion directly to standard user directories
+
 ---
 
-## Shell-Specific Script Generators
+## Automatic Self-Installation (`InstallCompletion`)
+
+`clihelp.InstallCompletion(app, shell)` installs completion scripts into standard non-root XDG user directories:
+
+| Shell | Target User Directory | Target Filename |
+| :--- | :--- | :--- |
+| **Bash** | `${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions` | `<app-name>` |
+| **Zsh** | `${XDG_DATA_HOME:-$HOME/.local/share}/zsh/site-functions` | `_<app-name>` |
+| **Fish** | `${XDG_CONFIG_HOME:-$HOME/.config}/fish/completions` | `<app-name>.fish` |
+
+### CLI Usage:
+
+```bash
+# 1. Automatic detection (detects active shell from $SHELL):
+podctl completion install
+
+# 2. Explicit shell target:
+podctl completion install bash
+podctl completion install zsh
+podctl completion install fish
+```
+
+### Go API:
+
+```go
+// Install for active shell (detected via $SHELL)
+installedPath, err := clihelp.InstallCompletion(app, "")
+
+// Install for specific shell
+installedPath, err := clihelp.InstallCompletion(app, "zsh")
+```
+
+---
+
+## Manual Shell Script Generation
 
 ### Bash (`clihelp.GenBashCompletion`)
 

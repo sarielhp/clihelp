@@ -33,7 +33,7 @@ When implementing or modifying applications using `clihelp`, AI assistants, codi
    Use `clihelp.PrintError(err)` at application entry points to render consistent bold-red error messages to `os.Stderr`.
 
 7. **Shell Completion Integration**:
-   When implementing a `completion` command, use `clihelp.GenBashCompletion`, `clihelp.GenZshCompletion`, and `clihelp.GenFishCompletion`.
+   When implementing completion, prefer mounting `clihelp.CompletionCommand()` for zero-boilerplate setup across `bash`, `zsh`, `fish`, and user-level self-installation (`InstallCompletion`). For manual pipelines, use `clihelp.GenBashCompletion`, `clihelp.GenZshCompletion`, `clihelp.GenFishCompletion`, and `clihelp.InstallCompletion`.
 
 ---
 

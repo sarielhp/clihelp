@@ -120,6 +120,7 @@ make run
 - **GNU-Standard Column Formatting**: Two-column command/option listings cap the description column at `DefaultMaxColIndent = 24`. Long command or flag signatures automatically place description text on the next line indented at column 24.
 - **Command Tree View**: Added `App.RenderTree()` method to render the full command hierarchy as a tree with box-drawing characters.
 - **Prefix Command Matching**: Added `App.AbbrevCommands` field to enable abbreviated command names (e.g. `podctl b` instead of `podctl build`).
+- **Self-Installing Shell Autocompletion**: Added `CompletionCommand()` and `InstallCompletion()` supporting Bash, Zsh, and Fish with one-command user XDG self-installation.
 
 ## File Organization
 
@@ -132,7 +133,7 @@ make run
 | `options.go` | Option builder functions (`Bool`, `String`, `Int`, `Duration`, `Enum`, `StringSlice`) and flag binding |
 | `inline.go` | Inline markdown parsing and ANSI/OSC8 terminal formatting (bold, italic, code, hyperlinks) |
 | `pager.go` | Pager detection/execution (`$PAGER`, `less`, `moar`), terminal height check, and paged output |
-| `completion.go` | Shell autocompletion script generation (Bash and Zsh) |
+| `completion.go` | Shell autocompletion script generation (Bash, Zsh, Fish), dynamic completion, and XDG auto-installation |
 | `md.go` | GitHub-friendly markdown documentation generator (`RenderMarkdown`, `MarkdownOptions`) |
 | `clihelp_test.go` | Unit tests for help formatting, wrapping, ANSI stripping, usage output, and tree rendering |
 | `example/main.go` | Demonstration CLI app using `clihelp` |

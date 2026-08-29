@@ -90,9 +90,11 @@ Abort Semantics:
 - `clihelp.MaximumNArgs(n)`: Enforces at most `n` positional arguments.
 - `clihelp.RangeArgs(min, max)`: Enforces between `min` and `max` positional arguments.
 
-## Shell Autocompletion
+## Shell Autocompletion & Installation
 
-- Generators: `clihelp.GenBashCompletion(app, w)`, `clihelp.GenZshCompletion(app, w)`.
+- Pre-Built Command: `clihelp.CompletionCommand()` (returns a standard Command providing `bash`, `zsh`, `fish`, and `install`).
+- XDG Auto-Install: `clihelp.InstallCompletion(app, shell)` (installs for `"bash"`, `"zsh"`, `"fish"`, or detects active shell if empty).
+- Generators: `clihelp.GenBashCompletion(app, w)`, `clihelp.GenZshCompletion(app, w)`, `clihelp.GenFishCompletion(app, w)`.
 - Dynamic Option Completion: attach `Complete: func(toComplete string) []string` to any `Option`.
 
 ## Critical AI Agent Rules & Pitfalls

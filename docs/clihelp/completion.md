@@ -1,16 +1,26 @@
 ---
 title: 'podctl completion'
+has_children: true
 ---
 
 # podctl completion
 
-Generate shell autocompletion scripts for bash or zsh. Enables fast tab-completion for all podctl commands, subcommands, flags, and option values.
+Generate or install shell tab-completion scripts
 
 ## Usage
 
 ```
-podctl completion <bash|zsh>
+<command> completion <bash|zsh|fish|install> [options]
 ```
+
+## Subcommands
+
+| Command | Description |
+|---------|-------------|
+| [bash](completion-bash.md) | Generate Bash tab-completion script |
+| [zsh](completion-zsh.md) | Generate Zsh tab-completion script |
+| [fish](completion-fish.md) | Generate Fish tab-completion script |
+| install \[\<shell>\] | Install tab-completion script to standard user directory |
 
 ## Flags
 

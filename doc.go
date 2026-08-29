@@ -104,9 +104,12 @@
 //
 // # Shell Autocompletion
 //
-// clihelp includes generators for Bash and Zsh autocompletion:
+// clihelp includes generators for Bash, Zsh, and Fish autocompletion:
 //   - [GenBashCompletion]
 //   - [GenZshCompletion]
+//   - [GenFishCompletion]
+//   - [InstallCompletion]
+//   - [CompletionCommand]
 //
 // Dynamic completion is supported by setting the Option.Complete callback.
 //
@@ -115,4 +118,10 @@
 // Call [RenderMarkdown] to generate a GitHub-friendly markdown help site from the
 // command hierarchy. The generator uses SHA-256 content hashing to avoid unnecessary
 // disk writes.
+//
+// # AI & LLM Context
+//
+// A token-optimized specification file (llms.txt) is provided at the repository root
+// for AI coding agents and LLMs to ingest complete API signatures, lifecycle rules,
+// and canonical examples in a single context window.
 package clihelp
