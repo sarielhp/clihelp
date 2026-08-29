@@ -18,4 +18,7 @@ git tag -a "$tag" -m "Release $tag" > /dev/null 2>&1
 git push > /dev/null 2>&1
 git push origin "$tag" > /dev/null 2>&1
 
-echo "Success $new (commit+tag+push)"
+# Prime account-wide Go module cache (~/.go/pkg/mod)
+GOPROXY=direct go install github.com/sarielhp/clihelp/example@"$tag" > /dev/null 2>&1 || true
+
+echo "Success $new (commit+tag+push+cached)"
