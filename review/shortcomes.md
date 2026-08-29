@@ -1,44 +1,57 @@
-# Comparative Analysis: clihelp Limitations & Missing Features
+# Architectural Review: Proposed Features & Core Roadmaps
 
-This document outlines the features currently missing from `clihelp` as of version `v0.2.x` when compared to modern CLI tools (such as Git, Docker, and Cargo/Rust CLI) and cloud-native CLI libraries (like `spf13/cobra`).
+To keep `clihelp` lightweight, coherent, and idiomatic to Go, we must strictly filter out feature bloat. A good library does one thing well: command routing, POSIX flag binding, and beautiful help rendering. 
 
----
-
-## 1. Command-Line Parsing & Validation
-
-### 🚫 Declarative Positional Argument Binding
-* **Modern Standard:** Frameworks like Rust's `clap` or Python's `argparse` allow you to define positional parameters (e.g. `source_file`, `destination`) as structured fields. This enables automatic validation of optional vs. required arguments, type casting (e.g., automatically parsing integers, file paths, URLs), and name-based field bindings.
-* **`clihelp` Limitation:** Only validates the count of positional arguments (using `ArgsValidator` functions like `ExactArgs(1)`). Developers must manually parse, type-cast, and extract values by slice index directly from `ctx.Args[0]`.
-
-### 🚫 Complex Flag Inter-dependencies (Conflicts & Requirements)
-* **Modern Standard:** Declarative configuration of mutually exclusive flags (e.g., `--json` conflicts with `--yaml`) or required co-requisites (e.g., `--cert-file` requires `--key-file`).
-* **`clihelp` Limitation:** All flag dependency validation logic must be custom-coded by developers inside the command's `PreRun` or `Run` hooks.
-
-### 🚫 Cascading Configuration Sources
-* **Modern Standard:** Auto-binding environment variables (e.g., checking `$MY_TOKEN` if `--token` is omitted) and merging file-based configurations (`.yaml`, `.json`, `.toml`) in a predefined priority hierarchy:
-  $$\text{Flags} > \text{Environment Variables} > \text{Configuration Files} > \text{Defaults}$$
-* **`clihelp` Limitation:** While a `ConfigPath` is displayable in the help output, there is no built-in mechanism to parse configuration files or automatically map environment variables to options.
-
-### 🚫 Context-Aware Positional Autocompletion
-* **Modern Standard:** Shell tab-completion that dynamically resolves arguments based on context (e.g., completing active Git branches via `git checkout <tab>` or running Docker container names via `docker stop <tab>`).
-* **`clihelp` Limitation:** Completion callbacks are only wired on individual flags/options (`Option.Complete`). There is no command-level hook to dynamically suggest and autocomplete positional arguments.
+Below is a highly critical division of all discussed features into **Should Be Done** (improving core functionality without adding API complexity) and **Should Not Be Done** (preventing API bloat, redundant paradigms, or out-of-scope features).
 
 ---
 
-## 2. Help & Usage Display Messages
+## 1. 🟢 Should Be Done (High Value, Low Complexity)
 
-### 🚫 Flag & Option Deprecation Highlights
-* **Modern Standard:** Automatic warnings displayed in the console when using deprecated commands/flags, accompanied by automated styling (such as strikethrough or dim colors) on the help screen.
-* **`clihelp` Limitation:** Although `Option` defines a `Deprecated string` field, the help renderer does not format it, nor does the runtime execution pipeline warn the user when using a deprecated option.
+These features fix existing gaps, improve testability, or enhance end-user UX without complicating the programmer's coding interface.
 
-### 🚫 Grid/Compact Layout for Subcommands
-* **Modern Standard:** Large CLI suites with dozens of subcommands (like `git` or `docker`) display commands in a compact multi-column grid layout to conserve terminal height.
-* **`clihelp` Limitation:** Commands and subcommands are always formatted as a vertical, single-column list. Although the built-in `$PAGER` integration mitigates this, it can still result in long scrolls on standard outputs.
+### A. Implement `Option.Deprecated` warning logic
+* **Critique:** The `Deprecated` field already exists in the `Option` struct but is non-functional. Implementing it is a bug fix rather than a new feature.
+* **Why it's clean:** Fulfills the existing API contract. It automatically prints warnings to `Stderr` at execution time and applies visual striking/coloring in the help rendering, requiring zero code changes from the programmer.
 
-### 🚫 Interactive Mode & Component Wizards
-* **Modern Standard:** Built-in interactive prompts or confirmation screens (e.g., `aws configure` or `git add -i`) when requested via a flag or when run interactively without parameters.
-* **`clihelp` Limitation:** Focuses exclusively on static argument-driven execution; it lacks a native interactive wizard or prompting engine.
+### B. Built-in Testing Harness (`clihelp.TestExecute`)
+* **Critique:** Writing unit tests for Go CLI commands usually requires complex boilerplate (mocking stdin/stdout, capturing exit codes, and managing global state).
+* **Why it's clean:** Since `clihelp.App` already encapsulates `Stdout` and `Stderr` writers, adding a lightweight execution wrapper like `clihelp.TestExecute(app, args)` takes very little library code and eliminates massive amounts of unit-testing boilerplate for the developer.
 
-### 🚫 Localization & i18n
-* **Modern Standard:** Automatic translation of standard help sections ("Usage", "Flags", "Global Flags") and system errors to match the terminal's active language environment variable (`$LANG`).
-* **`clihelp` Limitation:** Help presentation headers and system-level error messages are hardcoded in English.
+### C. Interactive Fallback & Command Constructor Mode
+* **Critique:** Instead of importing a heavy prompt library, this can be integrated using a simple config toggle: `App.InteractiveFallback bool`.
+* **Why it's clean:** If a required parameter is missing, the command prompts the user, runs, and prints the exact direct CLI equivalent to `Stderr` (e.g. `💡 Shortcut: mytool build -o out.mp3 in.wav`). It requires **zero extra code** from the programmer, teaches the end-user how to use the CLI, and serves as an interactive script builder.
+
+---
+
+## 2. 🔴 Should Not Be Done (Rejected due to API Bloat / Complexity)
+
+To maintain simplicity and package coherence, the following features are rejected because they introduce redundant paradigms, duplicate existing patterns, or violate the single-responsibility principle.
+
+### A. Hybrid Struct-Tag Parser (`clihelp.FromStruct`) — REJECTED
+* **Critique:** While struct-tag parsing (like Rust's `clap`) looks clean, Go lacks compile-time macros. Doing this in Go requires runtime reflection.
+* **Why it fails simplicity:** It introduces a second, completely separate way of defining flags (Struct Tags vs. Functional Bindings), hurting package coherence. Typos inside struct tags are not caught by the compiler, leading to silent runtime bugs. The current functional bindings (`clihelp.String(...)`) are compile-time checked, safe, and require no reflection.
+
+### B. Declarative Positional Argument Binding & Validation — REJECTED
+* **Critique:** Abstracting positional arguments into custom structs/validators (e.g. `clihelp.IntArg(...)`) creates a heavy type system.
+* **Why it fails simplicity:** In Go, accessing slice elements directly (`ctx.Args[0]`) is standard, readable, and idiomatic. Adding a complex positional argument binding engine introduces massive API surface area to solve a problem that is easily handled with Go's built-in control structures.
+
+### C. Declarative Flag Inter-dependencies (Conflicts & Requirements) — REJECTED
+* **Critique:** Adding declarative constraints (e.g., `RequiredIf`, `MutuallyExclusive`) requires building a custom validation syntax parser inside `clihelp`.
+* **Why it fails simplicity:** Writing a standard `if` statement inside the command's `PreRun` or `Run` hook is clear, standard Go, and requires no additional API learning curve.
+
+### D. Cascading Configuration & Environment Variable Binding — REJECTED
+* **Critique:** Merging flags, environment variables, and config files is the domain of config managers (such as `Viper` or `Figment`).
+* **Why it fails simplicity:** Trying to cram configuration management into `clihelp` violates the single-responsibility principle. Keeping `clihelp` focused strictly on CLI routing and formatting prevents code bloat.
+
+### E. Positional Argument Autocompletion — REJECTED
+* **Critique:** Autocompleting flags is straightforward, but autocompleting positional arguments (e.g. looking up database rows or dynamic branch lists) requires custom dynamic completion hooks per shell.
+* **Why it fails simplicity:** Extremely high implementation and maintenance complexity for a niche feature that is rarely needed by most CLI applications.
+
+### F. Modular Command Registration (`Register` method) — REJECTED
+* **Critique:** Adding a method like `app.Register(Cmd)` to register subcommands.
+* **Why it fails simplicity:** It is completely redundant. The `App.Commands` field is a slice of commands. Go programmers can already define commands in separate files and append them to the slice in `main.go`. Adding `Register` introduces a redundant way to mutate the struct.
+
+### G. Context Logger Integration (`ctx.Logger`) — REJECTED
+* **Critique:** Adding logging utilities directly into the execution context.
+* **Why it fails simplicity:** Every project has its own logging preferences (`slog`, `zap`, etc.). Forcing a custom logger onto `clihelp.Context` introduces unnecessary dependencies and design opinions. Let the developer pass their logger through the standard `context.Context` payload.
