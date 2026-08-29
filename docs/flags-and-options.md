@@ -113,6 +113,55 @@ opt.Complete = func(toComplete string) []string { // Dynamic tab completion call
 
 ---
 
+## Option Constraints & Relational Validation
+
+`clihelp` supports marking individual options as required, prompting users interactively for missing flags in terminal sessions, and declaring relational constraints across multiple options.
+
+### Required Options
+
+To mark any option as required, wrap its constructor in `clihelp.Required()`:
+
+```go
+var format string
+clihelp.Required(clihelp.String(&format, "--format <fmt>", "", "Target output format"))
+```
+
+Required flags render with a `(required)` suffix in help messages. If missing during execution, a `required flag(s) "format" not set` error is returned.
+
+### Interactive Fallbacks
+
+If `App.InteractiveFallback = true` is configured and execution occurs within a standard terminal (TTY), `clihelp` will prompt the user to input values for missing required options rather than failing. Once input is obtained, it prints a helpful shortcut tip showing how to bypass the prompt next time:
+
+`💡 Tip: Next time, you can run this directly with: mytool --format json`
+
+### Relational Validators (`OptionsValidator`)
+
+For cross-flag constraints (such as mutual exclusion or joint dependencies), attach an `OptionsValidator` callback to the `Command` structure using built-in rule helpers:
+
+```go
+clihelp.Command{
+    Name: "export",
+    Options: []clihelp.Option{
+        clihelp.Bool(&json, "--json", false, "Output JSON"),
+        clihelp.Bool(&yaml, "--yaml", false, "Output YAML"),
+        clihelp.String(&cert, "--cert <file>", "", "SSL Certificate"),
+        clihelp.String(&key, "--key <file>", "", "SSL Private Key"),
+        clihelp.String(&upload, "--upload <file>", "", "File to upload"),
+        clihelp.String(&bucket, "--bucket <name>", "", "Cloud bucket"),
+    },
+    OptionsValidator: clihelp.ValidateOptions(
+        // 1. Cannot specify both --json and --yaml
+        clihelp.MutuallyExclusive("--json", "--yaml"),
+        // 2. If --cert is set, --key must also be set
+        clihelp.RequiredTogether("--cert", "--key"),
+        // 3. If --upload is set, --bucket must be provided
+        clihelp.RequiredWith("--upload", "--bucket"),
+    ),
+}
+```
+
+---
+
 ## Automatic Help Flag Collision Trap
 
 > [!CAUTION]

@@ -70,59 +70,76 @@ Inside any `Run`, `PreRun`, or `PostRun` handler, access `c.Context` to listen f
 
 ---
 
-## Unit Testing Commands & Output
+## Unit Testing Commands & Tree Auditing
 
-Because `clihelp.App` accepts customizable I/O streams and pure argument slices, testing CLI commands in Go tests is straightforward without spawning sub-processes:
+`clihelp` provides built-in testing utilities to run commands against captured I/O streams and statically audit the command tree configuration.
+
+### Testing Commands (`clihelp.TestExecute`)
+
+Instead of manually redirecting I/O streams or spawning sub-processes, use `clihelp.TestExecute` to simulate execution. It captures outputs and exposes clean assertion helpers:
 
 ```go
 package main_test
 
 import (
-	"bytes"
-	"strings"
+	"fmt"
 	"testing"
 
 	"github.com/sarielhp/clihelp"
 )
 
 func TestBuildCommand(t *testing.T) {
-	var stdout, stderr bytes.Buffer
 	var output string
-	var verbose bool
-
 	app := &clihelp.App{
-		Name:   "podctl",
-		Pager:  true,
-		Stdout: &stdout,
-		Stderr: &stderr,
+		Name: "podctl",
 		Commands: []clihelp.Command{
 			{
-				Name: "build",
-				Args: clihelp.ExactArgs(1),
+				Name:        "build",
+				Description: "Build something",
 				Options: []clihelp.Option{
 					clihelp.String(&output, "-o, --output PATH", "dist", "Output file"),
-					clihelp.Bool(&verbose, "-v, --verbose", false, "Verbose logging"),
 				},
 				Run: func(ctx *clihelp.Context) error {
-					ctx.Stdout.Write([]byte("building " + ctx.Args[0] + " to " + output + "\n"))
+					fmt.Fprintln(ctx.Stdout, "Built to "+output)
 					return nil
 				},
 			},
 		},
 	}
 
-	// Execute with mock command line arguments
-	err := app.Execute([]string{"build", "-o", "bin/out", "input.wav"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	// Simulate execution and assert outcomes
+	res := clihelp.TestExecute(app, []string{"build", "-o", "bin/out"})
+	res.AssertNoError(t)
+	res.AssertStdoutContains(t, "Built to bin/out")
+}
+```
 
-	got := stdout.String()
-	want := "building input.wav to bin/out\n"
-	if got != want {
-		t.Errorf("got %q, want %q", got, want)
+If testing interactive fallback prompts, use `clihelp.TestExecuteWithStdin(app, args, stdinReader)` to supply mock responses.
+
+### Sanity Tree Auditing (`clihelp.Audit`)
+
+To guarantee your CLI stays documented, consistent, and free of name/flag collisions during updates, add a single test case that audits your entire command tree structure:
+
+```go
+func TestAppSanity(t *testing.T) {
+	app := buildApp()
+	
+	// Audit verifies no blank descriptions, duplicate options, or subcommand name collisions
+	if err := clihelp.Audit(app); err != nil {
+		t.Fatalf("CLI design audit failed:\n%v", err)
 	}
 }
+```
+
+#### Path Permutations Validation
+The audit helper enforces consistent command structures by checking for word-set path duplicates (e.g. flagging a bad design where `mytool scan spam` and `mytool spam scan` are different paths). To allow valid structural overlaps, provide whitelisted path groupings:
+
+```go
+err := clihelp.AuditWithOptions(app, clihelp.AuditOptions{
+	AllowPathPermutations: [][]string{
+		{"job", "run"}, // allows both "run job" and "job run" paths
+	},
+})
 ```
 
 ---
