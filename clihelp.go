@@ -17,8 +17,15 @@ type Option struct {
 	DefaultText string                           // Custom display override for default value
 	Hidden      bool                             // Hidden from help and completion output
 	Deprecated  string                           // Deprecation notice
+	Required    bool                             // Required flag constraint
 	Complete    func(toComplete string) []string // Dynamic shell tab-completion callback
 	Binder      func(fs *pflag.FlagSet) error    // Registers the flag on fs; returns an error on duplicate/help-flag conflicts
+}
+
+// Required marks an Option as required.
+func Required(opt Option) Option {
+	opt.Required = true
+	return opt
 }
 
 // Example represents a usage line demonstration in command help text.
@@ -44,6 +51,9 @@ type Note struct {
 // ArgsValidator validates positional arguments after flag parsing.
 type ArgsValidator func(args []string) error
 
+// OptionsValidator validates command-line flags after parsing.
+type OptionsValidator func(fs *pflag.FlagSet) error
+
 // Command represents an executable command or category node.
 type Command struct {
 	Name              string
@@ -57,6 +67,7 @@ type Command struct {
 	Subcommands       []Command
 	Examples          []Example
 	Args              ArgsValidator
+	OptionsValidator  OptionsValidator
 	PreRun            func(ctx *Context) error
 	Run               func(ctx *Context) error
 	PostRun           func(ctx *Context) error
@@ -89,6 +100,8 @@ type App struct {
 	// the terminal height. When true, help output is buffered and piped through
 	// the pager only when it doesn't fit on one screen.
 	Pager bool
+	// InteractiveFallback enables prompting for missing inputs/flags interactively.
+	InteractiveFallback bool
 
 	// Presentation overrides
 	Theme       *Theme
@@ -97,8 +110,16 @@ type App struct {
 	ConfigPath  string
 
 	// I/O overrides for testing and custom redirection
+	Stdin  io.Reader
 	Stdout io.Writer
 	Stderr io.Writer
+}
+
+func (a *App) stdin() io.Reader {
+	if a.Stdin != nil {
+		return a.Stdin
+	}
+	return os.Stdin
 }
 
 // Context encapsulates execution state passed to command handlers and lifecycle hooks.

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/fatih/color"
@@ -79,55 +81,88 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 	_ = fs.MarkHidden("help")
 
 	// Bind App PersistentOptions
-	for _, opt := range a.PersistentOptions {
-		if opt.Binder != nil {
-			if err := opt.Binder(fs); err != nil {
-				return err
-			}
-		}
+	if err := bindAndMark(fs, a.PersistentOptions); err != nil {
+		return err
 	}
 
 	// Bind App GlobalFlags
-	for _, opt := range a.GlobalFlags {
-		if opt.Binder != nil {
-			if err := opt.Binder(fs); err != nil {
-				return err
-			}
-		}
+	if err := bindAndMark(fs, a.GlobalFlags); err != nil {
+		return err
 	}
 
 	// Bind Ancestors' PersistentOptions
 	for _, anc := range ancestors {
-		for _, opt := range anc.PersistentOptions {
-			if opt.Binder != nil {
-				if err := opt.Binder(fs); err != nil {
-					return err
-				}
-			}
+		if err := bindAndMark(fs, anc.PersistentOptions); err != nil {
+			return err
 		}
 	}
 
 	// Bind Target Command PersistentOptions & Options
 	if targetCmd != nil {
-		for _, opt := range targetCmd.PersistentOptions {
-			if opt.Binder != nil {
-				if err := opt.Binder(fs); err != nil {
-					return err
-				}
-			}
+		if err := bindAndMark(fs, targetCmd.PersistentOptions); err != nil {
+			return err
 		}
-		for _, opt := range targetCmd.Options {
-			if opt.Binder != nil {
-				if err := opt.Binder(fs); err != nil {
-					return err
-				}
-			}
+		if err := bindAndMark(fs, targetCmd.Options); err != nil {
+			return err
 		}
 	}
 
 	// Parse flags
-	if err := fs.Parse(remaining); err != nil {
-		return err
+	parseErr := fs.Parse(remaining)
+
+	// Gather all options for validation, warnings, and fallbacks
+	var allOptions []Option
+	allOptions = append(allOptions, a.PersistentOptions...)
+	allOptions = append(allOptions, a.GlobalFlags...)
+	for _, anc := range ancestors {
+		allOptions = append(allOptions, anc.PersistentOptions...)
+	}
+	if targetCmd != nil {
+		allOptions = append(allOptions, targetCmd.PersistentOptions...)
+		allOptions = append(allOptions, targetCmd.Options...)
+	}
+
+	if parseErr != nil {
+		return parseErr
+	}
+
+	// Check if any required options are missing
+	missing := getMissingRequiredFlags(fs, allOptions)
+	prompted := false
+	if len(missing) > 0 {
+		isTTY := false
+		if f, ok := a.stdout().(*os.File); ok && (int(f.Fd()) == 1 || int(f.Fd()) == 2) {
+			isTTY = true
+		}
+		if a.Stdout != nil || a.Stderr != nil {
+			isTTY = true
+		}
+
+		if a.InteractiveFallback && isTTY {
+			if err := promptForMissing(fs, missing, a.stdin(), a.stderr()); err != nil {
+				return err
+			}
+			prompted = true
+		} else {
+			var names []string
+			for _, m := range missing {
+				names = append(names, `"`+strings.TrimPrefix(m.Name, "flag-")+`"`)
+			}
+			return fmt.Errorf("required flag(s) %s not set", strings.Join(names, ", "))
+		}
+	}
+
+	checkDeprecatedFlags(fs, allOptions, a.stderr())
+
+	if targetCmd != nil && targetCmd.OptionsValidator != nil {
+		if err := targetCmd.OptionsValidator(fs); err != nil {
+			return err
+		}
+	}
+
+	if prompted {
+		cmdStr := constructCommand(a, path, fs, fs.Args())
+		fmt.Fprintf(a.stderr(), "\n💡 Tip: Next time, you can run this directly with:\n   %s\n\n", cmdStr)
 	}
 
 	// Render help if -h / --help was passed
@@ -483,4 +518,48 @@ func min3(a, b, c int) int {
 		return b
 	}
 	return c
+}
+
+func bindAndMark(fs *pflag.FlagSet, opts []Option) error {
+	for _, opt := range opts {
+		if opt.Binder != nil {
+			if err := opt.Binder(fs); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func checkDeprecatedFlags(fs *pflag.FlagSet, opts []Option, stderr io.Writer) {
+	fs.Visit(func(f *pflag.Flag) {
+		for _, opt := range opts {
+			if opt.Deprecated == "" {
+				continue
+			}
+			spec := parseFlagSpec(opt.Flags)
+			matched := false
+			for _, l := range spec.longNames {
+				if l == f.Name {
+					matched = true
+					break
+				}
+			}
+			if !matched && len(spec.longNames) == 0 && len(spec.shortNames) > 0 {
+				if f.Name == "flag-"+spec.shortNames[0] {
+					matched = true
+				}
+			}
+			for i := 1; i < len(spec.shortNames); i++ {
+				aliasLong := fmt.Sprintf("%s-alias-%s", spec.longNames[0], spec.shortNames[i])
+				if f.Name == aliasLong {
+					matched = true
+					break
+				}
+			}
+			if matched {
+				fmt.Fprintf(stderr, "Warning: flag --%s is deprecated: %s\n", f.Name, opt.Deprecated)
+			}
+		}
+	})
 }

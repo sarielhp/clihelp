@@ -296,6 +296,12 @@ func (a *App) RenderGlobal(o Options) {
 				if f.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
 					desc = desc + " (default: " + f.DefaultText + ")"
 				}
+				if f.Required {
+					desc = desc + " (required)"
+				}
+				if f.Deprecated != "" {
+					desc = desc + " (deprecated: " + f.Deprecated + ")"
+				}
 				params = append(params, Param{Name: f.Flags, Description: desc})
 			}
 			indent := colIndent(params)
@@ -398,6 +404,12 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 				if o0.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
 					desc = desc + " (default: " + o0.DefaultText + ")"
 				}
+				if o0.Required {
+					desc = desc + " (required)"
+				}
+				if o0.Deprecated != "" {
+					desc = desc + " (deprecated: " + o0.Deprecated + ")"
+				}
 				optParams = append(optParams, Param{Name: o0.Flags, Description: desc})
 			}
 			indent := colIndent(optParams)
@@ -413,6 +425,12 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 				desc := o0.Description
 				if o0.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
 					desc = desc + " (default: " + o0.DefaultText + ")"
+				}
+				if o0.Required {
+					desc = desc + " (required)"
+				}
+				if o0.Deprecated != "" {
+					desc = desc + " (deprecated: " + o0.Deprecated + ")"
 				}
 				optParams = append(optParams, Param{Name: o0.Flags, Description: desc})
 			}

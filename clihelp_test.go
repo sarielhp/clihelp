@@ -9,6 +9,7 @@ import (
 
 	"github.com/acarl005/stripansi"
 	"github.com/fatih/color"
+	"github.com/spf13/pflag"
 )
 
 func captureOptions(width int) (Options, *bytes.Buffer) {
@@ -1070,5 +1071,229 @@ func TestExecuteGlobalFlagsBound(t *testing.T) {
 	err := app.ExecuteContext(context.Background(), []string{"build", "--verbose"})
 	if err != nil {
 		t.Errorf("ExecuteContext with global flag should succeed, got error: %v", err)
+	}
+}
+
+func TestOptionDeprecation(t *testing.T) {
+	var file string
+	app := &App{
+		Name: "testapp",
+		Commands: []Command{
+			{
+				Name:        "build",
+				Description: "Build something",
+				Options: []Option{
+					{
+						Flags:       "-f, --file PATH",
+						Description: "Input file path",
+						Deprecated:  "Use --input instead",
+						Binder: func(fs *pflag.FlagSet) error {
+							fs.StringVarP(&file, "file", "f", "", "Input file path")
+							return nil
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// 1. Verify description rendering includes deprecation text
+	o, buf := captureOptions(80)
+	app.RenderCommand(o, "build")
+	helpText := buf.String()
+	if !strings.Contains(helpText, "(deprecated: Use --input instead)") {
+		t.Errorf("expect deprecation text in help message, got:\n%q", helpText)
+	}
+
+	// 2. Verify warning prints to stderr during run
+	res := TestExecute(app, []string{"build", "-f", "test.txt"})
+	res.AssertNoError(t)
+	res.AssertStderrContains(t, "Warning: flag --file is deprecated: Use --input instead")
+}
+
+func TestRequiredFlagConstraints(t *testing.T) {
+	var format string
+	var force bool
+	app := &App{
+		Name: "testapp",
+		Commands: []Command{
+			{
+				Name:        "export",
+				Description: "Export data",
+				Options: []Option{
+					Required(String(&format, "--format <fmt>", "", "Output format")),
+					Required(Bool(&force, "--force", false, "Force export")),
+				},
+				Run: func(ctx *Context) error {
+					return nil
+				},
+			},
+		},
+	}
+
+	// 1. Verify description rendering includes (required)
+	o, buf := captureOptions(80)
+	app.RenderCommand(o, "export")
+	helpText := buf.String()
+	if !strings.Contains(helpText, "Output format (required)") {
+		t.Errorf("expect Output format (required) text in help, got:\n%s", helpText)
+	}
+	if !strings.Contains(helpText, "Force export (required)") {
+		t.Errorf("expect Force export (required) text in help, got:\n%s", helpText)
+	}
+
+	// 2. Verify missing required flags fail validation without TTY fallback
+	resNoTTY := TestExecute(app, []string{"export"})
+	resNoTTY.AssertErrorContains(t, "required flag(s)")
+
+	// 3. Verify interactive fallback prompts on stderr and constructs tip
+	app.InteractiveFallback = true
+	// Input 1 for format (text input: "json"), Input 2 for force (select choice 1: "true")
+	stdinBuf := bytes.NewBufferString("json\n1\n")
+	resTTY := TestExecuteWithStdin(app, []string{"export"}, stdinBuf)
+	resTTY.AssertNoError(t)
+	resTTY.AssertStderrContains(t, "Enter value for required flag --format")
+	resTTY.AssertStderrContains(t, "select a value for required flag --force")
+	resTTY.AssertStderrContains(t, "💡 Tip: Next time, you can run this directly with:")
+	resTTY.AssertStderrContains(t, "testapp export --force --format json")
+
+	if format != "json" {
+		t.Errorf("expected format to be 'json', got %q", format)
+	}
+	if !force {
+		t.Errorf("expected force to be true, got %v", force)
+	}
+}
+
+func TestOptionsRelationValidators(t *testing.T) {
+	var json, yaml, cert, key, upload, bucket, token, authMethod string
+	var commands = []Command{
+		{
+			Name:        "output",
+			Description: "Validate mutually exclusive and required together",
+			Options: []Option{
+				String(&json, "--json <file>", "", "JSON output"),
+				String(&yaml, "--yaml <file>", "", "YAML output"),
+				String(&cert, "--cert <file>", "", "Cert path"),
+				String(&key, "--key <file>", "", "Key path"),
+			},
+			OptionsValidator: ValidateOptions(
+				MutuallyExclusive("--json", "--yaml"),
+				RequiredTogether("--cert", "--key"),
+			),
+		},
+		{
+			Name:        "storage",
+			Description: "Validate dependent requirements",
+			Options: []Option{
+				String(&upload, "--upload <file>", "", "Upload file"),
+				String(&bucket, "--bucket <name>", "", "Target bucket"),
+				String(&token, "--token <val>", "", "Auth token"),
+				String(&authMethod, "--auth-method <mode>", "", "Authentication method"),
+			},
+			OptionsValidator: ValidateOptions(
+				RequiredWith("--upload", "--bucket"),
+				RequiredIf("--token", "--auth-method=token"),
+			),
+		},
+	}
+
+	app := &App{Name: "testapp", Commands: commands}
+
+	// 1. Test mutually exclusive flags fail
+	res := TestExecute(app, []string{"output", "--json", "j.json", "--yaml", "y.yaml"})
+	res.AssertErrorContains(t, "mutually exclusive")
+
+	// 2. Test required together fails when one is missing
+	res = TestExecute(app, []string{"output", "--cert", "c.pem"})
+	res.AssertErrorContains(t, "must be used together")
+
+	// 3. Test required together succeeds when both are present
+	res = TestExecute(app, []string{"output", "--cert", "c.pem", "--key", "k.pem"})
+	res.AssertNoError(t)
+
+	// 4. Test RequiredWith fails when dependent flag is missing
+	res = TestExecute(app, []string{"storage", "--upload", "file.txt"})
+	res.AssertErrorContains(t, "flag --bucket is required when using --upload")
+
+	// 5. Test RequiredIf fails when condition matches but flag is missing
+	res = TestExecute(app, []string{"storage", "--auth-method", "token"})
+	res.AssertErrorContains(t, "flag --token is required when auth-method is set to \"token\"")
+
+	// 6. Test RequiredIf succeeds when condition matches and flag is present
+	res = TestExecute(app, []string{"storage", "--auth-method", "token", "--token", "secret"})
+	res.AssertNoError(t)
+}
+
+func TestAuditHelper(t *testing.T) {
+	// 1. Missing Description should fail audit
+	badApp1 := &App{
+		Commands: []Command{
+			{Name: "build"}, // missing description
+		},
+	}
+	if err := Audit(badApp1); err == nil || !strings.Contains(err.Error(), "missing a Description") {
+		t.Errorf("expected audit error for missing description, got: %v", err)
+	}
+
+	// 2. Duplicate subcommand name should fail audit
+	badApp2 := &App{
+		Commands: []Command{
+			{Name: "build", Description: "Build"},
+			{Name: "build", Description: "Duplicate"},
+		},
+	}
+	if err := Audit(badApp2); err == nil || !strings.Contains(err.Error(), "duplicate subcommand name") {
+		t.Errorf("expected audit error for duplicate subcommand, got: %v", err)
+	}
+
+	// 3. Duplicate flag/option name should fail audit
+	badApp3 := &App{
+		Commands: []Command{
+			{
+				Name:        "build",
+				Description: "Build",
+				Options: []Option{
+					{Flags: "-v, --verbose", Description: "v1", Binder: func(fs *pflag.FlagSet) error { return nil }},
+					{Flags: "--verbose", Description: "v2", Binder: func(fs *pflag.FlagSet) error { return nil }},
+				},
+			},
+		},
+	}
+	if err := Audit(badApp3); err == nil || !strings.Contains(err.Error(), "duplicate option") {
+		t.Errorf("expected audit error for duplicate option, got: %v", err)
+	}
+
+	// 4. Inconsistent path permutations (scan spam vs spam scan) should fail audit
+	badApp4 := &App{
+		Commands: []Command{
+			{
+				Name:        "scan",
+				Description: "Scan category",
+				Subcommands: []Command{
+					{Name: "spam", Description: "Scan spam"},
+				},
+			},
+			{
+				Name:        "spam",
+				Description: "Spam category",
+				Subcommands: []Command{
+					{Name: "scan", Description: "Spam scan"},
+				},
+			},
+		},
+	}
+	if err := Audit(badApp4); err == nil || !strings.Contains(err.Error(), "inconsistent path permutation detected") {
+		t.Errorf("expected audit error for path permutations, got: %v", err)
+	}
+
+	// 5. Whitelisted path permutation should succeed audit
+	err := AuditWithOptions(badApp4, AuditOptions{
+		AllowPathPermutations: [][]string{
+			{"scan", "spam"},
+		},
+	})
+	if err != nil {
+		t.Errorf("expected whitelisted permutation to pass audit, got error: %v", err)
 	}
 }
