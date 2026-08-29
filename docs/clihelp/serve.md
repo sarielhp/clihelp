@@ -1,10 +1,10 @@
 ---
-title: podctl serve
+title: 'podctl serve'
 ---
 
 # podctl serve
 
-Start local development RSS feed server
+Start a local HTTP development server for RSS feeds and audio files. Includes live-reload support, CORS headers for cross-origin testing, and a built-in web dashboard for previewing feed metadata before deploying to production.
 
 ## Usage
 
@@ -16,9 +16,11 @@ podctl serve [options]
 
 | Flag | Description |
 |------|-------------|
-| `-p, --port N` | Listen HTTP port number |
-| `-H, --host HOST` | Bind IP host address |
-| `--[no-]live-reload` | Automatically reload RSS feed |
+| `-v, --verbose` | Enable verbose output logs |
+| `-s, --silent` | Suppress non-error output |
+| `-p, --port N` | Listen HTTP port number (default: 8080) |
+| `-H, --host HOST` | Bind IP host address (default: 127.0.0.1) |
+| `--[no-]live-reload` | Automatically reload RSS feed (default: true) |
 
 ## Examples
 

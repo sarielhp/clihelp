@@ -1,10 +1,10 @@
 ---
-title: podctl build
+title: 'podctl build'
 ---
 
 # podctl build
 
-Compile & package audio episodes with **metadata** and *ID3 tags*
+Compile, encode, and package raw audio into MP3 podcast episodes. Supports configurable bitrate, loudness normalization, and embedded ID3 tags for distribution across Apple Podcasts, Spotify, and Google Podcasts.
 
 ## Usage
 
@@ -16,9 +16,11 @@ podctl build [options] <source-file>
 
 | Flag | Description |
 |------|-------------|
+| `-v, --verbose` | Enable verbose output logs |
+| `-s, --silent` | Suppress non-error output |
 | `-o, --output PATH` | Write compiled MP3 output to specified PATH |
-| `-b, --bitrate KBPS` | Set target audio encoding bitrate in kbps |
-| `--[no-]normalize` | Apply LUFS loudness normalization |
+| `-b, --bitrate KBPS` | Set target audio encoding bitrate in kbps (default: 192) |
+| `--[no-]normalize` | Apply LUFS loudness normalization (default: true) |
 | `--tags TAGS` | Embed ID3 metadata tags (e.g. title, artist) |
 
 ## Examples

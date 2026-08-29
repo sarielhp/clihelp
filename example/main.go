@@ -30,6 +30,7 @@ func main() {
 		serveHost       string
 		serveLiveReload bool
 
+		deployBucket   string
 		deployStage    string
 		deployDryRun   bool
 		deployPurgeCDN bool
@@ -45,12 +46,13 @@ func main() {
 	deepCmd := buildDeepTree()
 
 	app := &clihelp.App{
-		Name:           "podctl",
-		Description:    "[podctl](https://podctl.example.com) — A podcast distribution & audio processing tool.",
-		Version:        "0.2.21",
-		GlobalNote:     "Documentation & source: [https://github.com/sarielhp/clihelp](https://github.com/sarielhp/clihelp)",
-		AbbrevCommands: true,
-		Pager:          true,
+		Name:                "podctl",
+		Description:         "[podctl](https://podctl.example.com) — A podcast distribution & audio processing tool.",
+		Version:             "0.2.21",
+		GlobalNote:          "Documentation & source: [https://github.com/sarielhp/clihelp](https://github.com/sarielhp/clihelp)",
+		AbbrevCommands:      true,
+		Pager:               true,
+		InteractiveFallback: true,
 		PersistentOptions: []clihelp.Option{
 			clihelp.Bool(&globals.Verbose, "-v, --verbose", false, "Enable verbose output logs"),
 			clihelp.Bool(&globals.Silent, "-s, --silent", false, "Suppress non-error output"),
@@ -145,11 +147,15 @@ func main() {
 				Description: "Publish compiled podcast RSS feeds and MP3 files to cloud storage. Supports Amazon S3, Google Cloud Storage, CDN cache invalidation, dry-run simulation, and multi-stage deployments.",
 				UsageLine:   "podctl deploy [options]",
 				Options: []clihelp.Option{
+					clihelp.Required(clihelp.String(&deployBucket, "-b, --bucket NAME", "", "Target cloud storage bucket name")),
 					clihelp.Enum(&deployStage, "-S, --stage STAGE", []string{"staging", "production"}, "staging", "Target deployment environment"),
 					clihelp.Bool(&deployDryRun, "--dry-run", false, "Simulate publishing without uploading files"),
 					clihelp.Bool(&deployPurgeCDN, "--purge-cdn", false, "Invalidate CDN cache for feed and updated audio files"),
 					clihelp.Duration(&deployTimeout, "--timeout SEC", 300*time.Second, "Maximum upload timeout"),
 				},
+				OptionsValidator: clihelp.ValidateOptions(
+					clihelp.MutuallyExclusive("--dry-run", "--purge-cdn"),
+				),
 				Notes: []clihelp.Note{
 					{
 						Heading: "Safety Precaution",
@@ -157,8 +163,8 @@ func main() {
 					},
 				},
 				Run: func(ctx *clihelp.Context) error {
-					fmt.Fprintf(ctx.Stdout, "Deploying podcast feed to environment '%s' (dry-run: %v, timeout: %v)...\nSuccess.\n",
-						deployStage, deployDryRun, deployTimeout)
+					fmt.Fprintf(ctx.Stdout, "Deploying podcast feed to bucket '%s' environment '%s' (dry-run: %v, timeout: %v)...\nSuccess.\n",
+						deployBucket, deployStage, deployDryRun, deployTimeout)
 					return nil
 				},
 			},

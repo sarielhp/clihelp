@@ -1,10 +1,10 @@
 ---
-title: podctl status
+title: 'podctl status'
 ---
 
 # podctl status
 
-Check RSS feed health, CDN metrics, and download stats
+Check and display comprehensive health and validation metrics. Monitors RSS feed status, CDN edge cache, episode download statistics, and origin server connectivity across environments.
 
 ## Usage
 
@@ -16,7 +16,9 @@ podctl status [options]
 
 | Flag | Description |
 |------|-------------|
-| `-S, --stage STAGE` | Environment to inspect |
+| `-v, --verbose` | Enable verbose output logs |
+| `-s, --silent` | Suppress non-error output |
+| `-S, --stage STAGE` | Environment to inspect (default: production) |
 | `--json` | Output metrics and status in JSON format |
 
 ---

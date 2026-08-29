@@ -38,7 +38,51 @@ go get github.com/sarielhp/clihelp
 
 ---
 
+## Minimal Example
+
+Here is a truly compact, self-contained example demonstrating how `clihelp` handles required flags and interactive prompts out-of-the-box:
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/sarielhp/clihelp"
+)
+
+func main() {
+	var name string
+
+	app := &clihelp.App{
+		Name:        "greet",
+		Description: "A minimal greeting utility",
+		Commands: []clihelp.Command{
+			{
+				Name:        "hello",
+				Description: "Say hello to a user",
+				Options: []clihelp.Option{
+					clihelp.Required(clihelp.String(&name, "-n, --name VAL", "", "Target name")),
+				},
+				Run: func(ctx *clihelp.Context) error {
+					fmt.Fprintf(ctx.Stdout, "Hello, %s!\n", name)
+					return nil
+				},
+			},
+		},
+		InteractiveFallback: true, // Auto-prompts for --name if missing in a TTY
+	}
+
+	_ = app.Execute(os.Args[1:])
+}
+```
+
+---
+
 ## Quick Start
+
+For a larger, more realistic application featuring validation constraints and multi-command routing:
 
 ```go
 package main
@@ -97,6 +141,25 @@ func main() {
 	}
 }
 ```
+
+---
+
+## Options Validation & Interactive Fallback
+
+`clihelp` provides native, declarative options validation and interactive fallback hooks:
+
+*   **Required Options:** Wrap any option constructor in `clihelp.Required()` to enforce that it must be supplied. It will render with a `(required)` label in the help screen.
+*   **Interactive Fallback:** Setting `App.InteractiveFallback = true` tells `clihelp` that if a required flag is missing in a TTY environment, it should prompt the user interactively (e.g. text input or numbered list prompts) instead of failing.
+*   **Command Constructor Tip:** When a user is prompted interactively, `clihelp` prints an educational command constructor suggestion on completion to teach them the equivalent non-interactive invocation:
+    `💡 Tip: Next time, you can run this directly with: greet hello --name Alice`
+*   **Option Validators:** Add declarative relation constraints to `Command.OptionsValidator` to check combinations of flags:
+    ```go
+    OptionsValidator: clihelp.ValidateOptions(
+        clihelp.MutuallyExclusive("--json", "--yaml"),
+        clihelp.RequiredTogether("--cert", "--key"),
+        clihelp.RequiredWith("--upload", "--bucket"),
+    )
+    ```
 
 ---
 
