@@ -24,6 +24,17 @@ These features fix existing gaps, improve testability, or enhance validation cla
   ),
   ```
 
+#### Relational Validation Commands Provided:
+1. `clihelp.MutuallyExclusive(flags ...string)`: At most one of the specified flags can be set.
+   * *Error:* `Error: flags --json and --yaml are mutually exclusive`
+2. `clihelp.RequiredTogether(flags ...string)`: If any of the flags are set, all of them must be set.
+   * *Error:* `Error: flags --cert and --key must be used together`
+3. `clihelp.RequiredWith(target string, required ...string)`: If `target` is set, all of the accompanying `required` flags must be set.
+   * *Error:* `Error: flag --bucket is required when using --upload`
+4. `clihelp.RequiredIf(flag string, condition string)`: The `flag` is required only if another flag is set to a specific value.
+   * *Example:* `clihelp.RequiredIf("--token", "--auth-method=token")`
+   * *Error:* `Error: flag --token is required when --auth-method is set to "token"`
+
 ### C. Built-in Testing Harness (`clihelp.TestExecute`)
 * **Critique:** Writing unit tests for Go CLI commands usually requires complex boilerplate (mocking stdin/stdout, capturing exit codes, and managing global state).
 * **Why it's clean:** Since `clihelp.App` already encapsulates `Stdout` and `Stderr` writers, adding a lightweight execution wrapper like `clihelp.TestExecute(app, args)` takes very little library code and eliminates massive amounts of unit-testing boilerplate for the developer.
