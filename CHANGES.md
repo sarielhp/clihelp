@@ -2,6 +2,18 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.0] - 2026-08-28
+
+### Added
+- **Declarative Options Validation** - Added support for attaching an `OptionsValidator` callback to `Command` using built-in rule helpers (`MutuallyExclusive`, `RequiredTogether`, `RequiredWith`, and `RequiredIf`).
+- **Required Option Constraints** - Added support for marking individual flags as required using `clihelp.Required()` which automatically appends `(required)` to help descriptions and returns a validation error if omitted.
+- **Interactive Fallback** - When `App.InteractiveFallback` is true and execution runs in a terminal (TTY), `clihelp` automatically prompts the user interactively to collect missing required options.
+- **CLI Constructor Tip** - After collecting missing required flags interactively, `clihelp` prints an educational shortcut tip showing how to bypass prompts in future executions.
+- **Option Deprecations** - Added option deprecation message formatting in help pages, and warning prints during CLI execution if a deprecated flag is supplied.
+- **Unit Testing Harness** - Added `clihelp.TestExecute` and `clihelp.TestExecuteWithStdin` to run mock executions and assert output/error content cleanly.
+- **Command Tree Audit** - Added `clihelp.Audit` and `clihelp.AuditWithOptions` to statically verify command trees (valid descriptions, no collisions, and consistent subcommand path ordering).
+- **Custom Flag Coloring** - Added a configurable `Flag` color field to `Theme` (defaults to Cyan).
+
 ## [0.2.19] - 2026-08-25
 
 ### Added
