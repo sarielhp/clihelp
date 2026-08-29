@@ -160,6 +160,17 @@ func main() {
         clihelp.RequiredWith("--upload", "--bucket"),
     )
     ```
+*   **Static Sanity Auditing:** Run `clihelp.Audit(app)` inside a unit test to statically verify command consistency in CI/CD:
+    ```go
+    func TestAppSanity(t *testing.T) {
+        if err := clihelp.Audit(app); err != nil {
+            t.Fatalf("CLI design audit failed: %v", err)
+        }
+    }
+    ```
+
+> [!TIP]
+> **Always use `clihelp.Audit` in your test suite.** Running the audit helper as a standard Go unit test guarantees that developers on your team cannot merge changes with missing descriptions, duplicate shorthand flags, subcommand name collisions, or confusing path permutations (like `job run` vs `run job` in different subcommands).
 
 ---
 
