@@ -40,6 +40,7 @@ These features fix existing gaps, improve testability, or enhance validation cla
 * **Why it's clean:** 
   1. `clihelp.TestExecute(app, args)` runs the application against captured internal buffers, simplifying unit testing.
   2. `clihelp.Audit(app)` statically scans the entire command tree during unit tests, ensuring no commands have empty descriptions, duplicate flags, subcommand name collisions, or malformed flag specifications.
+  3. **Path Permutation Audit:** Checks for word-set path collisions (detecting design smells like `scan spam` vs `spam scan` in different parts of the tree) to enforce consistent verb/noun order. To prevent false positives in valid edge cases (e.g. `run job` vs `job run`), it will support an optional whitelist bypass `clihelp.AuditWithOptions(app, opts)`.
 
 ### D. Interactive Fallback & Command Constructor Mode
 * **Critique:** Instead of importing a heavy prompt library, this can be integrated using a simple config toggle: `App.InteractiveFallback bool`.
