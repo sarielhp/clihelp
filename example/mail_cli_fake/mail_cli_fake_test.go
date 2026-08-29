@@ -19,6 +19,7 @@ var (
 	oBody   = color.New(color.FgWhite)
 	oAccent = color.New(color.FgCyan, color.Bold)
 	oSub    = color.New(color.FgGreen)
+	oFlag   = color.New(color.FgCyan)
 )
 
 // oracleWidth pins the layout width to the same 70 columns the tests inject
@@ -271,7 +272,7 @@ func oracleDetailedUsage(out io.Writer, a *clihelp.App, path []string, cmd *clih
 		}
 		indent := oracleColIndent(params)
 		for _, p := range params {
-			oracleReflow(out, oBody, nil, indent, p.Name, p.Description)
+			oracleReflow(out, oBody, oFlag, indent, p.Name, p.Description)
 		}
 	}
 
@@ -283,7 +284,7 @@ func oracleDetailedUsage(out io.Writer, a *clihelp.App, path []string, cmd *clih
 		}
 		indent := oracleColIndent(params)
 		for _, p := range params {
-			oracleReflow(out, oBody, nil, indent, p.Name, p.Description)
+			oracleReflow(out, oBody, oFlag, indent, p.Name, p.Description)
 		}
 	}
 	if len(cmd.Examples) > 0 {
@@ -365,7 +366,7 @@ func oracleGlobalUsage(out io.Writer, a *clihelp.App) {
 		}
 		indent := oracleColIndent(params)
 		for _, p := range params {
-			oracleReflow(out, oBody, nil, indent, p.Name, p.Description)
+			oracleReflow(out, oBody, oFlag, indent, p.Name, p.Description)
 		}
 		io.WriteString(out, "\n")
 	}

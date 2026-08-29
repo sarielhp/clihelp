@@ -22,6 +22,8 @@ type Theme struct {
 	Accent *color.Color
 	// Subcommand colors subcommand names.
 	Subcommand *color.Color
+	// Flag colors flag/option names (e.g. "--verbose, -v").
+	Flag *color.Color
 	// Separator toggles the horizontal rule drawn around the header block.
 	Separator bool
 	// TitlePrefix is prepended to the command help header line
@@ -35,6 +37,7 @@ func defaultTheme() Theme {
 		Body:        color.New(color.FgWhite),
 		Accent:      color.New(color.FgCyan, color.Bold),
 		Subcommand:  color.New(color.FgGreen),
+		Flag:        color.New(color.FgCyan),
 		Separator:   false,
 		TitlePrefix: "",
 	}
@@ -95,6 +98,9 @@ func (o Options) theme(a *App) Theme {
 	}
 	if src.Subcommand != nil {
 		th.Subcommand = src.Subcommand
+	}
+	if src.Flag != nil {
+		th.Flag = src.Flag
 	}
 	if src.TitlePrefix != "" {
 		th.TitlePrefix = src.TitlePrefix
@@ -294,7 +300,7 @@ func (a *App) RenderGlobal(o Options) {
 			}
 			indent := colIndent(params)
 			for _, p := range params {
-				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description))
+				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Flag)
 			}
 			fmt.Fprintln(w)
 		}
@@ -396,7 +402,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 			}
 			indent := colIndent(optParams)
 			for _, p := range optParams {
-				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description))
+				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Flag)
 			}
 		}
 
@@ -412,7 +418,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 			}
 			indent := colIndent(optParams)
 			for _, p := range optParams {
-				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description))
+				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Flag)
 			}
 		}
 

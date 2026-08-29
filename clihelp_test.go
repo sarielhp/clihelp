@@ -890,6 +890,39 @@ func TestRenderCustomThemeColors(t *testing.T) {
 	}
 }
 
+func TestRenderFlagColoring(t *testing.T) {
+	had := color.NoColor
+	color.NoColor = false
+	defer func() { color.NoColor = had }()
+
+	// Test default flag coloring (Cyan)
+	{
+		o, buf := captureOptions(80)
+		testApp().RenderCommand(o, "build")
+		raw := buf.String()
+		cyanVal := color.New(color.FgCyan).Sprint("X")
+		cyanSeq := cyanVal[:strings.Index(cyanVal, "X")]
+		if !strings.Contains(raw, cyanSeq+"  -o, --output PATH") {
+			t.Errorf("expect default cyan flags styling, got:\n%q", raw)
+		}
+	}
+
+	// Test custom flag coloring (Red)
+	{
+		o, buf := captureOptions(80)
+		o.Theme = &Theme{
+			Flag: color.New(color.FgRed),
+		}
+		testApp().RenderCommand(o, "build")
+		raw := buf.String()
+		redVal := color.New(color.FgRed).Sprint("X")
+		redSeq := redVal[:strings.Index(redVal, "X")]
+		if !strings.Contains(raw, redSeq+"  -o, --output PATH") {
+			t.Errorf("expect custom red flags styling, got:\n%q", raw)
+		}
+	}
+}
+
 func TestStripANSI(t *testing.T) {
 	tests := []struct {
 		name string
