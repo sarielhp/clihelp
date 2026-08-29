@@ -48,7 +48,7 @@ func main() {
 	app := &clihelp.App{
 		Name:                "podctl",
 		Description:         "[podctl](https://podctl.example.com) — A podcast distribution & audio processing tool.",
-		Version:             "0.2.21",
+		Version:             "0.3.0",
 		GlobalNote:          "Documentation & source: [https://github.com/sarielhp/clihelp](https://github.com/sarielhp/clihelp)",
 		AbbrevCommands:      true,
 		Pager:               true,
