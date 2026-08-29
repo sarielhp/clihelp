@@ -170,7 +170,7 @@ func main() {
     ```
 
 > [!TIP]
-> **Always use `clihelp.Audit` in your test suite.** Running the audit helper as a standard Go unit test guarantees that developers on your team cannot merge changes with missing descriptions, duplicate shorthand flags, subcommand name collisions, or confusing path permutations (like `job run` vs `run job` in different subcommands).
+> **Recommended:** Running the audit helper as a standard Go unit test makes it easy to avoid introducing missing descriptions, duplicate shorthand flags, subcommand name collisions, or confusing path permutations (like `job run` vs `run job`) as your CLI expands.
 
 ---
 
