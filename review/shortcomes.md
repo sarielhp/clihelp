@@ -35,9 +35,11 @@ These features fix existing gaps, improve testability, or enhance validation cla
    * *Example:* `clihelp.RequiredIf("--token", "--auth-method=token")`
    * *Error:* `Error: flag --token is required when --auth-method is set to "token"`
 
-### C. Built-in Testing Harness (`clihelp.TestExecute`)
-* **Critique:** Writing unit tests for Go CLI commands usually requires complex boilerplate (mocking stdin/stdout, capturing exit codes, and managing global state).
-* **Why it's clean:** Since `clihelp.App` already encapsulates `Stdout` and `Stderr` writers, adding a lightweight execution wrapper like `clihelp.TestExecute(app, args)` takes very little library code and eliminates massive amounts of unit-testing boilerplate for the developer.
+### C. Built-in Testing Harness & Audit Check (`clihelp.TestExecute` & `clihelp.Audit`)
+* **Critique:** Writing unit tests for Go CLI commands usually requires complex boilerplate (mocking stdin/stdout, capturing exit codes, and managing global state). Developers also frequently forget to add help descriptions or duplicate flag characters.
+* **Why it's clean:** 
+  1. `clihelp.TestExecute(app, args)` runs the application against captured internal buffers, simplifying unit testing.
+  2. `clihelp.Audit(app)` statically scans the entire command tree during unit tests, ensuring no commands have empty descriptions, duplicate flags, subcommand name collisions, or malformed flag specifications.
 
 ### D. Interactive Fallback & Command Constructor Mode
 * **Critique:** Instead of importing a heavy prompt library, this can be integrated using a simple config toggle: `App.InteractiveFallback bool`.
