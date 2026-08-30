@@ -347,6 +347,15 @@ func (a *App) resolveCommandPath(args []string, currentCommands []Command) (*Com
 			if len(helpPath) == 1 {
 				topic := helpPath[0]
 				switch {
+				case topic == "flags" || topic == "options" || topic == "opts" || topic == "flag" || (a.AbbrevCommands && (strings.HasPrefix("flags", topic) || strings.HasPrefix("options", topic))):
+					a.RenderFlags(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+					return nil, nil, nil, nil, true, nil
+				case topic == "man" || topic == "all" || topic == "full" || topic == "manual" || (a.AbbrevCommands && (strings.HasPrefix("man", topic) || strings.HasPrefix("manual", topic))):
+					a.RenderMan(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+					return nil, nil, nil, nil, true, nil
+				case topic == "topics" || topic == "help" || (a.AbbrevCommands && strings.HasPrefix("topics", topic)):
+					a.RenderHelpTopics(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+					return nil, nil, nil, nil, true, nil
 				case topic == "t" || topic == "-t" || topic == "tree" || topic == "--tree" || (a.AbbrevCommands && strings.HasPrefix("tree", topic)):
 					a.RenderTree(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
 					return nil, nil, nil, nil, true, nil

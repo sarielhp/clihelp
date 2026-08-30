@@ -14,6 +14,7 @@ import (
 type Option struct {
 	Flags       string                           // e.g. "-p, --podcast <name>"
 	Description string                           // e.g. "Podcast title, index, or ID"
+	Group       string                           // Category heading (e.g. "Authentication", "Logging")
 	DefaultText string                           // Custom display override for default value
 	Hidden      bool                             // Hidden from help and completion output
 	Deprecated  string                           // Deprecation notice
@@ -100,6 +101,9 @@ type App struct {
 	// the terminal height. When true, help output is buffered and piped through
 	// the pager only when it doesn't fit on one screen.
 	Pager bool
+	// OmitGlobalFlagsInCommands when true replaces the full list of persistent/global
+	// flags in subcommand help with a one-line reference pointing to 'help flags'.
+	OmitGlobalFlagsInCommands bool
 	// InteractiveFallback enables prompting for missing inputs/flags interactively.
 	InteractiveFallback bool
 

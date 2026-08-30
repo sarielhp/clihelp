@@ -312,7 +312,7 @@ func (a *App) RenderGlobal(o Options) {
 		}
 
 		if len(visibleCommands) > 0 || len(a.Shortcuts) > 0 {
-			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", fmt.Sprintf("Run '%s <command> --help' for more information on a command.", appName(a)))
+			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", fmt.Sprintf("Run '%s <command> -h' for command help, or '%s help [flags|man]'.", appName(a), appName(a)))
 		}
 
 		if a.ConfigPath != "" {
@@ -420,23 +420,27 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 
 		if len(globalOptions) > 0 {
 			th.Hdr.Fprintln(w, "\nGlobal Flags:")
-			optParams := make([]Param, 0, len(globalOptions))
-			for _, o0 := range globalOptions {
-				desc := o0.Description
-				if o0.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
-					desc = desc + " (default: " + o0.DefaultText + ")"
+			if a.OmitGlobalFlagsInCommands {
+				reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", fmt.Sprintf("Run '%s help flags' for flags available to all commands.", appName(a)))
+			} else {
+				optParams := make([]Param, 0, len(globalOptions))
+				for _, o0 := range globalOptions {
+					desc := o0.Description
+					if o0.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
+						desc = desc + " (default: " + o0.DefaultText + ")"
+					}
+					if o0.Required {
+						desc = desc + " (required)"
+					}
+					if o0.Deprecated != "" {
+						desc = desc + " (deprecated: " + o0.Deprecated + ")"
+					}
+					optParams = append(optParams, Param{Name: o0.Flags, Description: desc})
 				}
-				if o0.Required {
-					desc = desc + " (required)"
+				indent := colIndent(optParams)
+				for _, p := range optParams {
+					reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Flag)
 				}
-				if o0.Deprecated != "" {
-					desc = desc + " (deprecated: " + o0.Deprecated + ")"
-				}
-				optParams = append(optParams, Param{Name: o0.Flags, Description: desc})
-			}
-			indent := colIndent(optParams)
-			for _, p := range optParams {
-				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Flag)
 			}
 		}
 

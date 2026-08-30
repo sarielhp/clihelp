@@ -370,7 +370,7 @@ func oracleGlobalUsage(out io.Writer, a *clihelp.App) {
 		}
 		io.WriteString(out, "\n")
 	}
-	oracleReflow(out, oBody, nil, 0, "", fmt.Sprintf("Run '%s <command> --help' for more information on a command.", a.Name))
+	oracleReflow(out, oBody, nil, 0, "", fmt.Sprintf("Run '%s <command> -h' for command help, or '%s help [flags|man]'.", a.Name, a.Name))
 	if a.ConfigPath != "" {
 		io.WriteString(out, "\n")
 		oHdr.Fprint(out, "Config: ")
