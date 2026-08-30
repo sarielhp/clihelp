@@ -12,8 +12,13 @@ import (
 )
 
 type GlobalOptions struct {
-	Verbose bool
-	Silent  bool
+	Verbose  bool
+	Silent   bool
+	NoColor  bool
+	Config   string
+	Endpoint string
+	Token    string
+	APIKey   string
 }
 
 func main() {
@@ -46,16 +51,24 @@ func main() {
 	deepCmd := buildDeepTree()
 
 	app := &clihelp.App{
-		Name:                "podctl",
-		Description:         "[podctl](https://podctl.example.com) — A podcast distribution & audio processing tool.",
-		Version:             "0.3.1",
-		GlobalNote:          "Documentation & source: [https://github.com/sarielhp/clihelp](https://github.com/sarielhp/clihelp)",
-		AbbrevCommands:      true,
-		Pager:               true,
-		InteractiveFallback: true,
+		Name:                      "podctl",
+		Description:               "[podctl](https://podctl.example.com) — A podcast distribution & audio processing tool.",
+		Version:                   "0.3.1",
+		GlobalNote:                "Documentation & source: [https://github.com/sarielhp/clihelp](https://github.com/sarielhp/clihelp)",
+		AbbrevCommands:            true,
+		Pager:                     true,
+		OmitGlobalFlagsInCommands: true,
+		InteractiveFallback:       true,
 		PersistentOptions: []clihelp.Option{
-			clihelp.Bool(&globals.Verbose, "-v, --verbose", false, "Enable verbose output logs"),
-			clihelp.Bool(&globals.Silent, "-s, --silent", false, "Suppress non-error output"),
+			clihelp.Group("Authentication", clihelp.String(&globals.Token, "--token TOKEN", "", "Bearer token for cluster authentication")),
+			clihelp.Group("Authentication", clihelp.String(&globals.APIKey, "--api-key KEY", "", "API key for cloud provider access")),
+
+			clihelp.Group("Connection & Environment", clihelp.String(&globals.Config, "-c, --config PATH", "~/.config/podctl.yaml", "Path to configuration file")),
+			clihelp.Group("Connection & Environment", clihelp.String(&globals.Endpoint, "--endpoint URL", "https://api.podctl.example.com", "API service endpoint URL")),
+
+			clihelp.Group("Output & Logging", clihelp.Bool(&globals.Verbose, "-v, --verbose", false, "Enable verbose output logs")),
+			clihelp.Group("Output & Logging", clihelp.Bool(&globals.Silent, "-s, --silent", false, "Suppress non-error output")),
+			clihelp.Group("Output & Logging", clihelp.Bool(&globals.NoColor, "--no-color", false, "Disable ANSI color output")),
 		},
 		Commands: []clihelp.Command{
 			{

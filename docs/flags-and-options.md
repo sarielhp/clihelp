@@ -103,6 +103,7 @@ The returned `clihelp.Option` struct exposes configuration hooks:
 
 ```go
 opt := clihelp.String(&host, "-H, --host <host>", "127.0.0.1", "Bind IP host address")
+opt.Group = "Network & Connection"               // Category heading in help outputs
 opt.DefaultText = "localhost"                     // Custom display string for default value in help
 opt.Hidden = true                                 // Hide from terminal help output and completions
 opt.Deprecated = "Use --listen-addr instead"       // Render deprecation notice
@@ -110,6 +111,41 @@ opt.Complete = func(toComplete string) []string { // Dynamic tab completion call
     return []string{"127.0.0.1", "0.0.0.0"}
 }
 ```
+
+---
+
+## Flag Grouping & De-Cluttering
+
+When an application defines numerous persistent/global flags, displaying them all in every subcommand help screen creates clutter. `clihelp` provides two complementary solutions:
+
+### 1. Categorized Flag Groups (`Option.Group` / `clihelp.Group`)
+
+Group options by domain (e.g. `Authentication`, `Network`, `Output & Logging`). When rendered via `app help flags` or help screens, grouped flags are formatted under distinct section headings:
+
+```go
+app := &clihelp.App{
+    PersistentOptions: []clihelp.Option{
+        clihelp.Group("Authentication", clihelp.String(&token, "--token <str>", "", "Auth token")),
+        clihelp.Group("Output & Logging", clihelp.Bool(&verbose, "-v, --verbose", false, "Verbose output")),
+    },
+}
+```
+
+### 2. Subcommand Global Flag Suppression (`OmitGlobalFlagsInCommands`)
+
+Set `App.OmitGlobalFlagsInCommands = true` to omit the exhaustive table of global flags from subcommand `--help` screens, replacing it with a clean single-line hint:
+
+```text
+Global Flags:
+  Run 'podctl help flags' for flags available to all commands.
+```
+
+### 3. Built-In Help Topics
+
+*   `app help flags` (or `app help options`): Displays the categorized directory of all persistent and global options.
+*   `app help man` (or `app help all`): Displays the exhaustive Unix-style manual paged through `$PAGER`.
+*   `app help tree`: Renders the full hierarchical command tree with box-drawing characters.
+*   `app help topics`: Displays an index of available help topics.
 
 ---
 

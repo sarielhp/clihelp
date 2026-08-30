@@ -5,6 +5,10 @@ All notable changes to `clihelp` will be documented in this file.
 ## [0.3.1] - 2026-08-29
 
 ### Added
+- **Global Flag De-Cluttering & Topic Routing** - Added `Option.Group` and `clihelp.Group()` to categorize options under section headings, and `App.OmitGlobalFlagsInCommands` to suppress verbose global flags in subcommand help.
+- **Dedicated Flags Directory (`help flags`)** - Added `App.RenderFlags()` (accessible via `help flags` or `help options`) to display an exhaustive, categorized reference for all global and persistent options.
+- **Comprehensive Paged Manual (`help man`)** - Added `App.RenderMan()` (accessible via `help man` or `help all`) to render a full Unix manual with all commands, subcommands, arguments, flags, and examples through `$PAGER`.
+- **Help Topic Index (`help topics`)** - Added `App.RenderHelpTopics()` (accessible via `help topics` or `help help`) to list available help topics.
 - **Fish Shell Autocompletion** - Added `clihelp.GenFishCompletion(app, writer)` generator with native tab-separated description formatting.
 - **Auto-Installation Support** - Added `clihelp.InstallCompletion(app, shell)` for installing Bash, Zsh, and Fish completions directly to standard XDG user directories without root permissions.
 - **Pre-Built `CompletionCommand`** - Added `clihelp.CompletionCommand()` factory function returning ready-to-mount subcommands for `bash`, `zsh`, `fish`, and `install`.

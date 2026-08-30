@@ -116,6 +116,8 @@ make run
 
 ## New Features
 
+- **Global Flag De-Cluttering & Topic Routing**: Added `Option.Group` and `Group()` helper to organize options by category, `App.OmitGlobalFlagsInCommands` to suppress verbose global flags in subcommands, and dedicated help topic routing (`help flags`, `help man`, `help tree`, `help topics`).
+- **Comprehensive Paged Manual (`help man`)**: Built-in `RenderMan()` renders an exhaustive Unix man page with all commands, subcommands, arguments, flags, and notes paged through `$PAGER`.
 - **Pager Support**: When `App.Pager` or `Options.Pager` is true, help output is automatically paged through `$PAGER` when it exceeds terminal height. Automatically injects `-no-linenumbers` when `moar` is detected as the pager.
 - **GNU-Standard Column Formatting**: Two-column command/option listings cap the description column at `DefaultMaxColIndent = 24`. Long command or flag signatures automatically place description text on the next line indented at column 24.
 - **Command Tree View**: Added `App.RenderTree()` method to render the full command hierarchy as a tree with box-drawing characters.
@@ -127,6 +129,7 @@ make run
 | File | Purpose |
 |------|---------|
 | `clihelp.go` | Core data types (`App`, `Command`, `Option`, `Param`, `Example`, `Note`, `Context`) |
+| `topics.go` | Specialized help topic renderers (`RenderFlags`, `RenderMan`, `RenderHelpTopics`, grouped option reflow) |
 | `render.go` | Terminal help rendering for global app, individual commands, command tree, and grouped commands |
 | `format.go` | Text layout, word-wrapping, string reflow, ANSI stripping, and column indentation utilities |
 | `execute.go` | Command lookup, flag parsing, command execution dispatch, alias handling, and error formatting |

@@ -29,6 +29,12 @@ func Required(opt Option) Option {
 	return opt
 }
 
+// Group assigns a category heading to an Option.
+func Group(group string, opt Option) Option {
+	opt.Group = group
+	return opt
+}
+
 // Example represents a usage line demonstration in command help text.
 type Example struct {
 	Line        string

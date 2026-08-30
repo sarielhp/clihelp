@@ -23,8 +23,10 @@ It provides clean, structured usage messages with support for ANSI colors and cl
 - **Rich Terminal Styling** — Theme-driven ANSI colors, auto-detected terminal width with 70-column fallback, and ANSI-aware word wrapping.
 - **Inline Markdown & OSC 8 Hyperlinks** — Rich text formatting in descriptions: bold, italic, code, strikethrough, and clickable terminal hyperlinks.
 - **Markdown Documentation Generator** — Automatically generates navigable, GitHub-friendly Markdown doc trees with SHA-256 change-detection caching.
+- **Global Flag De-Cluttering & Topic Routing** — Categorize global options by group (`Option.Group` and `clihelp.Group`), suppress noisy global flags in subcommands (`App.OmitGlobalFlagsInCommands`), and route dedicated help topics (`help flags`, `help man`, `help tree`, `help topics`).
+- **Comprehensive Paged Manual (`help man`)** — Built-in `help man` renders an exhaustive Unix man page with all commands, subcommands, arguments, flags, and notes paged through `$PAGER`.
 - **Automatic Paging** — When enabled, help output is automatically paged through `$PAGER` when it exceeds terminal height.
-- **Command Tree View** — Render the full command hierarchy as a tree with box-drawing characters.
+- **Command Tree View** — Render the full command hierarchy as a tree with box-drawing characters (`help tree`).
 - **AI & LLM-Optimized** — Token-efficient single-file [`llms.txt`](llms.txt) specification and declarative syntax eliminating common LLM hallucinations.
 
 ---
@@ -97,18 +99,20 @@ import (
 
 func main() {
 	var verbose bool
+	var config string
 	var output string
 	var bitrate int
 	var normalize bool
 
 	app := &clihelp.App{
-		Name:        "podctl",
-		Description: "Podcast distribution & audio processing tool",
-		Version:     "1.0.0",
-		GlobalNote:  "Run 'podctl <command> --help' for command-specific options.",
-		Pager:       true,
+		Name:                      "podctl",
+		Description:               "Podcast distribution & audio processing tool",
+		Version:                   "1.0.0",
+		Pager:                     true,
+		OmitGlobalFlagsInCommands: true,
 		PersistentOptions: []clihelp.Option{
-			clihelp.Bool(&verbose, "-v, --verbose", false, "Enable verbose logging"),
+			clihelp.Group("Output & Logging", clihelp.Bool(&verbose, "-v, --verbose", false, "Enable verbose logging")),
+			clihelp.Group("Configuration", clihelp.String(&config, "-c, --config PATH", "~/.config/podctl.yaml", "Configuration file path")),
 		},
 		Commands: []clihelp.Command{
 			{
@@ -127,8 +131,8 @@ func main() {
 				},
 				Run: func(ctx *clihelp.Context) error {
 					source := ctx.Args[0]
-					fmt.Fprintf(ctx.Stdout, "Building %s -> %s (bitrate: %d kbps, normalize: %v, verbose: %v)\n",
-						source, output, bitrate, normalize, verbose)
+					fmt.Fprintf(ctx.Stdout, "Building %s -> %s (bitrate: %d kbps, normalize: %v, verbose: %v, config: %s)\n",
+						source, output, bitrate, normalize, verbose, config)
 					return nil
 				},
 			},

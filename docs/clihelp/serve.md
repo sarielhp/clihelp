@@ -16,8 +16,13 @@ podctl serve [options]
 
 | Flag | Description |
 |------|-------------|
+| `--token TOKEN` | Bearer token for cluster authentication |
+| `--api-key KEY` | API key for cloud provider access |
+| `-c, --config PATH` | Path to configuration file (default: ~/.config/podctl.yaml) |
+| `--endpoint URL` | API service endpoint URL (default: https://api.podctl.example.com) |
 | `-v, --verbose` | Enable verbose output logs |
 | `-s, --silent` | Suppress non-error output |
+| `--no-color` | Disable ANSI color output |
 | `-p, --port N` | Listen HTTP port number (default: 8080) |
 | `-H, --host HOST` | Bind IP host address (default: 127.0.0.1) |
 | `--[no-]live-reload` | Automatically reload RSS feed (default: true) |

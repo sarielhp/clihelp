@@ -113,6 +113,16 @@
 //
 // Dynamic completion is supported by setting the Option.Complete callback.
 //
+// # Help Topics & Paged Manual
+//
+// In addition to subcommand help (<command> -h), clihelp automatically routes specialized help topics:
+//   - [App.RenderFlags] (app help flags): Displays categorized global options.
+//   - [App.RenderMan] (app help man): Displays an exhaustive reference manual paged through $PAGER.
+//   - [App.RenderTree] (app help tree): Renders the hierarchical command tree with box-drawing characters.
+//   - [App.RenderHelpTopics] (app help topics): Lists available help topics.
+//
+// Set [App.OmitGlobalFlagsInCommands] to true to omit verbose global flag tables from individual subcommand screens.
+//
 // # Markdown Help Generation
 //
 // Call [RenderMarkdown] to generate a GitHub-friendly markdown help site from the

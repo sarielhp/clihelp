@@ -17,16 +17,17 @@ type App struct {
     Description       string
     Version           string
     GlobalNote        string
-    AbbrevCommands    bool       // Enable prefix command abbreviation matching (e.g. "b" -> "build")
-    Pager             bool       // Enable automatic paging via $PAGER when output exceeds terminal height
-    Theme             Theme      // ANSI styling configuration
-    PersistentOptions []Option
-    Commands          []Command
-    BeforeRun         func(ctx *Context) error
-    AfterRun          func(ctx *Context) error
-    Run               func(ctx *Context) error
-    Stdout            io.Writer
-    Stderr            io.Writer
+    AbbrevCommands            bool       // Enable prefix command abbreviation matching (e.g. "b" -> "build")
+    Pager                     bool       // Enable automatic paging via $PAGER when output exceeds terminal height
+    OmitGlobalFlagsInCommands bool       // Suppress global flags table in subcommands, showing 1-line reference
+    Theme                     Theme      // ANSI styling configuration
+    PersistentOptions         []Option
+    Commands                  []Command
+    BeforeRun                 func(ctx *Context) error
+    AfterRun                  func(ctx *Context) error
+    Run                       func(ctx *Context) error
+    Stdout                    io.Writer
+    Stderr                    io.Writer
 }
 
 type Command struct {
