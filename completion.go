@@ -387,7 +387,10 @@ func CompletionCommand() Command {
 	return Command{
 		Name:        "completion",
 		Description: "Generate or install shell tab-completion scripts",
-		UsageLine:   "<command> completion <bash|zsh|fish|install> [options]",
+		Examples: []Example{
+			{Line: "completion zsh", Description: "Generate Zsh tab-completion script"},
+			{Line: "completion install", Description: "Install tab-completions for the active shell"},
+		},
 		Subcommands: []Command{
 			{
 				Name:        "bash",
@@ -416,7 +419,9 @@ func CompletionCommand() Command {
 			{
 				Name:        "install",
 				Description: "Install tab-completion script to standard user directory",
-				UsageLine:   "<command> completion install [<shell>]",
+				Examples: []Example{
+					{Line: "completion install zsh", Description: "Install completions to ~/.local/share/zsh/site-functions"},
+				},
 				Parameters: []Param{
 					{Name: "[<shell>]", Description: "Shell type ('bash', 'zsh', or 'fish'; defaults to current shell)"},
 				},
