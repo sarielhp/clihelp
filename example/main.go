@@ -59,6 +59,7 @@ func main() {
 		Pager:                     true,
 		OmitGlobalFlagsInCommands: true,
 		InteractiveFallback:       true,
+		AutoInstallCompletion:     true,
 		PersistentOptions: []clihelp.Option{
 			clihelp.Group("Authentication", clihelp.String(&globals.Token, "--token TOKEN", "", "Bearer token for cluster authentication")),
 			clihelp.Group("Authentication", clihelp.String(&globals.APIKey, "--api-key KEY", "", "API key for cloud provider access")),

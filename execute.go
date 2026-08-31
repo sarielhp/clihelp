@@ -34,7 +34,10 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 		return a.handleComplete(ctx, args[1:])
 	}
 
-	// 2. Check for top-level version flag
+	// 2. Silently auto-install shell completion if enabled and missing
+	a.maybeAutoInstallCompletion(args)
+
+	// 3. Check for top-level version flag
 	if len(args) == 1 && (args[0] == "--version" || args[0] == "version") {
 		if !a.hasCommandNamed("version") {
 			if a.Version == "" {

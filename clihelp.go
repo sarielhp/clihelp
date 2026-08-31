@@ -113,6 +113,9 @@ type App struct {
 	OmitGlobalFlagsInCommands bool
 	// InteractiveFallback enables prompting for missing inputs/flags interactively.
 	InteractiveFallback bool
+	// AutoInstallCompletion when true silently ensures that the shell completion script
+	// is installed into the user's standard XDG directory on execution.
+	AutoInstallCompletion bool
 
 	// Presentation overrides
 	Theme       *Theme

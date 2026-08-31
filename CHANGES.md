@@ -14,6 +14,7 @@ All notable changes to `clihelp` will be documented in this file.
 - **Comprehensive Paged Manual (`help man`)** - Added `App.RenderMan()` (accessible via `help man` or `help all`) to render a full Unix manual with all commands, subcommands, arguments, flags, and examples through `$PAGER`.
 - **Help Topic Index (`help topics`)** - Added `App.RenderHelpTopics()` (accessible via `help topics` or `help help`) to list available help topics.
 - **Fish Shell Autocompletion** - Added `clihelp.GenFishCompletion(app, writer)` generator with native tab-separated description formatting.
+- **Zero-Touch Auto-Installation** - Added `App.AutoInstallCompletion` field, `clihelp.CompletionPath()`, and `clihelp.IsCompletionInstalled()` to silently drop shell autocompletion scripts into standard user XDG directories on the first interactive execution.
 - **Auto-Installation Support** - Added `clihelp.InstallCompletion(app, shell)` for installing Bash, Zsh, and Fish completions directly to standard XDG user directories without root permissions.
 - **Pre-Built `CompletionCommand`** - Added `clihelp.CompletionCommand()` factory function returning ready-to-mount subcommands for `bash`, `zsh`, `fish`, and `install`.
 - **Zsh Autocompletion Robustness** - Handled dynamic `compdef` registration, colon escaping in descriptions for `_describe`, and cursor-aware word slicing.

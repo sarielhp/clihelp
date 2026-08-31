@@ -302,19 +302,14 @@ complete -c %[1]s -f -a '(__fish_%[2]s_complete)'
 	return err
 }
 
-// InstallCompletion installs the shell completion script for the given app and shell.
-// If shell is empty, it detects the active shell via the SHELL environment variable.
-// Returns the absolute file path where the completion script was written.
-func InstallCompletion(app *App, shell string) (string, error) {
+// CompletionPath returns the target installation path for the completion script.
+func CompletionPath(app *App, shell string) (string, error) {
 	if shell == "" {
 		shell = detectShell()
 	}
 	shell = strings.ToLower(strings.TrimSpace(shell))
 
-	appName := app.Name
-	if appName == "" {
-		appName = "app"
-	}
+	appName := appName(app)
 
 	var targetDir, fileName string
 	home, err := os.UserHomeDir()
@@ -346,11 +341,59 @@ func InstallCompletion(app *App, shell string) (string, error) {
 		return "", fmt.Errorf("unsupported shell %q (supported: %s)", shell, strings.Join(SupportedShells, ", "))
 	}
 
+	return filepath.Join(targetDir, fileName), nil
+}
+
+// IsCompletionInstalled checks if the shell completion script is already installed
+// in the user's standard XDG directory for the given shell (or detected active shell).
+func IsCompletionInstalled(app *App, shell string) bool {
+	if app == nil {
+		return false
+	}
+	path, err := CompletionPath(app, shell)
+	if err != nil {
+		return false
+	}
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir() && info.Size() > 0
+}
+
+// maybeAutoInstallCompletion checks and installs completions silently if enabled.
+func (a *App) maybeAutoInstallCompletion(args []string) {
+	if a == nil || !a.AutoInstallCompletion {
+		return
+	}
+	// Never run during internal completion calls, or in CI/non-interactive test runs
+	if len(args) > 0 && args[0] == "__complete" {
+		return
+	}
+	if os.Getenv("CI") != "" || os.Getenv("GITHUB_ACTIONS") != "" || os.Getenv("TERM") == "dumb" {
+		return
+	}
+	sh := detectShell()
+	if !IsCompletionInstalled(a, sh) {
+		_, _ = InstallCompletion(a, sh)
+	}
+}
+
+// InstallCompletion installs the shell completion script for the given app and shell.
+// If shell is empty, it detects the active shell via the SHELL environment variable.
+// Returns the absolute file path where the completion script was written.
+func InstallCompletion(app *App, shell string) (string, error) {
+	targetPath, err := CompletionPath(app, shell)
+	if err != nil {
+		return "", err
+	}
+	if shell == "" {
+		shell = detectShell()
+	}
+	shell = strings.ToLower(strings.TrimSpace(shell))
+
+	targetDir := filepath.Dir(targetPath)
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create directory %q: %w", targetDir, err)
 	}
 
-	targetPath := filepath.Join(targetDir, fileName)
 	f, err := os.Create(targetPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to create completion file %q: %w", targetPath, err)

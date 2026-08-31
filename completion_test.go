@@ -1447,3 +1447,96 @@ complete -C "dyncli play -p h"
 		}
 	}
 }
+
+func TestCompletionPathAndIsInstalled(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", filepath.Join(tmpDir, "share"))
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, "config"))
+
+	app := &App{Name: "mytool"}
+
+	zshPath, err := CompletionPath(app, "zsh")
+	if err != nil {
+		t.Fatalf("CompletionPath(zsh) error: %v", err)
+	}
+	expectedZsh := filepath.Join(tmpDir, "share", "zsh", "site-functions", "_mytool")
+	if zshPath != expectedZsh {
+		t.Errorf("got %q, want %q", zshPath, expectedZsh)
+	}
+
+	fishPath, err := CompletionPath(app, "fish")
+	if err != nil {
+		t.Fatalf("CompletionPath(fish) error: %v", err)
+	}
+	expectedFish := filepath.Join(tmpDir, "config", "fish", "completions", "mytool.fish")
+	if fishPath != expectedFish {
+		t.Errorf("got %q, want %q", fishPath, expectedFish)
+	}
+
+	bashPath, err := CompletionPath(app, "bash")
+	if err != nil {
+		t.Fatalf("CompletionPath(bash) error: %v", err)
+	}
+	expectedBash := filepath.Join(tmpDir, "share", "bash-completion", "completions", "mytool")
+	if bashPath != expectedBash {
+		t.Errorf("got %q, want %q", bashPath, expectedBash)
+	}
+
+	if IsCompletionInstalled(app, "zsh") {
+		t.Errorf("expected IsCompletionInstalled to be false before install")
+	}
+
+	installedPath, err := InstallCompletion(app, "zsh")
+	if err != nil {
+		t.Fatalf("InstallCompletion error: %v", err)
+	}
+	if installedPath != expectedZsh {
+		t.Errorf("InstallCompletion path = %q, want %q", installedPath, expectedZsh)
+	}
+
+	if !IsCompletionInstalled(app, "zsh") {
+		t.Errorf("expected IsCompletionInstalled to be true after install")
+	}
+}
+
+func TestAutoInstallCompletionOnExecute(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", filepath.Join(tmpDir, "share"))
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, "config"))
+	t.Setenv("SHELL", "/bin/zsh")
+	t.Setenv("CI", "")
+	t.Setenv("GITHUB_ACTIONS", "")
+	t.Setenv("TERM", "xterm-256color")
+
+	ran := false
+	app := &App{
+		Name:                  "autocli",
+		AutoInstallCompletion: true,
+		Run: func(ctx *Context) error {
+			ran = true
+			return nil
+		},
+	}
+
+	expectedPath := filepath.Join(tmpDir, "share", "zsh", "site-functions", "_autocli")
+	if _, err := os.Stat(expectedPath); !os.IsNotExist(err) {
+		t.Fatalf("completion file should not exist yet")
+	}
+
+	if err := app.ExecuteContext(context.Background(), []string{}); err != nil {
+		t.Fatalf("app.ExecuteContext failed: %v", err)
+	}
+
+	if !ran {
+		t.Fatalf("expected app Run handler to execute")
+	}
+
+	info, err := os.Stat(expectedPath)
+	if err != nil || info.Size() == 0 {
+		t.Fatalf("expected completion file to be auto-installed at %q, err: %v", expectedPath, err)
+	}
+
+	if !IsCompletionInstalled(app, "zsh") {
+		t.Errorf("expected IsCompletionInstalled to be true")
+	}
+}
