@@ -249,12 +249,16 @@ func (a *App) collectGlobalOptions(path []string, cmd *Command) []Option {
 	return opts
 }
 
-// collectOptions returns the ordered option set for a command path: app
+// CollectOptions returns the ordered option set for a command path: app
 // PersistentOptions and GlobalFlags, each ancestor's PersistentOptions, then
 // the target's PersistentOptions and Options. Hidden options are skipped.
-func (a *App) collectOptions(path []string, cmd *Command) []Option {
+func (a *App) CollectOptions(path []string, cmd *Command) []Option {
 	var opts []Option
 	opts = append(opts, a.collectGlobalOptions(path, cmd)...)
 	opts = append(opts, a.collectLocalOptions(cmd)...)
 	return opts
+}
+
+func (a *App) collectOptions(path []string, cmd *Command) []Option {
+	return a.CollectOptions(path, cmd)
 }

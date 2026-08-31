@@ -223,37 +223,3 @@ func ExampleApp_ExecuteContext() {
 	// Output:
 	// job completed successfully
 }
-
-func ExampleApp_RenderTree() {
-	var buf strings.Builder
-
-	app := &clihelp.App{
-		Name:  "gitcli",
-		Pager: true,
-		Commands: []clihelp.Command{
-			{
-				Name:        "remote",
-				Description: "Manage set of tracked repositories",
-				Subcommands: []clihelp.Command{
-					{Name: "add", Description: "Add a remote"},
-					{Name: "remove", Description: "Remove a remote"},
-				},
-			},
-			{
-				Name:        "status",
-				Description: "Show working tree status",
-			},
-		},
-	}
-
-	app.RenderTree(clihelp.Options{Writer: &buf, Width: 80})
-
-	fmt.Println(strings.Contains(buf.String(), "remote"))
-	fmt.Println(strings.Contains(buf.String(), "add"))
-	fmt.Println(strings.Contains(buf.String(), "status"))
-
-	// Output:
-	// true
-	// true
-	// true
-}

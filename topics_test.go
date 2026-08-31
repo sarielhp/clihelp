@@ -106,7 +106,6 @@ func TestRenderMan(t *testing.T) {
 		"Requires root privileges",
 		"HELP TOPICS",
 		"flags",
-		"tree",
 		"man",
 	} {
 		if !strings.Contains(out, want) {
@@ -125,7 +124,6 @@ func TestRenderHelpTopics(t *testing.T) {
 		"Help Topics:",
 		"help <command>",
 		"help flags",
-		"help tree",
 		"help man",
 	} {
 		if !strings.Contains(out, want) {
@@ -159,11 +157,6 @@ func TestExecuteHelpTopics(t *testing.T) {
 			name:       "help all alias",
 			args:       []string{"help", "all"},
 			wantSubstr: "NAME",
-		},
-		{
-			name:       "help tree",
-			args:       []string{"help", "tree"},
-			wantSubstr: "podctl",
 		},
 		{
 			name:       "help topics",

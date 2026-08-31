@@ -214,7 +214,6 @@ func (a *App) RenderMan(o Options) {
 		fmt.Fprintln(w)
 		topics := []Param{
 			{Name: "flags", Description: "Show all global flags and persistent options"},
-			{Name: "tree", Description: "Display the full command hierarchy tree"},
 			{Name: "man", Description: "Display this complete reference manual (paged)"},
 		}
 		indent := colIndent(topics) + 4
@@ -305,7 +304,6 @@ func (a *App) RenderHelpTopics(o Options) {
 		topics := []Param{
 			{Name: "help <command>", Description: fmt.Sprintf("Show help for a specific command (or '%s <command> -h')", appName(a))},
 			{Name: "help flags", Description: "Show all global flags and persistent options"},
-			{Name: "help tree", Description: "Display the full command hierarchy tree"},
 			{Name: "help man", Description: "Display the complete reference manual (paged)"},
 		}
 		indent := colIndent(topics)

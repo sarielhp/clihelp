@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/sarielhp/clihelp"
+	"github.com/sarielhp/clihelp/doc"
 )
 
 type GlobalOptions struct {
@@ -222,7 +223,7 @@ func main() {
 
 	// Developer bootstrap: CLIHELP_GEN=1 generates documentation markdown
 	if os.Getenv("CLIHELP_GEN") != "" {
-		changed, gerr := clihelp.RenderMarkdown(app, clihelp.MarkdownOptions{Dir: "docs/clihelp"})
+		changed, gerr := doc.RenderMarkdown(app, doc.MarkdownOptions{Dir: "docs/clihelp"})
 		if gerr != nil {
 			fmt.Fprintf(os.Stderr, "generate docs: %v\n", gerr)
 			os.Exit(1)

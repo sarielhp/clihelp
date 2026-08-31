@@ -437,47 +437,6 @@ func TestExecuteVersionWithVerboseFlag(t *testing.T) {
 	}
 }
 
-func TestExecuteHelpTree(t *testing.T) {
-	var outBuf bytes.Buffer
-	app := &App{
-		Name:   "treeapp",
-		Stdout: &outBuf,
-		Commands: []Command{
-			{
-				Name:        "config",
-				Description: "Config command",
-				Subcommands: []Command{
-					{
-						Name:        "set",
-						Description: "Set value",
-						Run:         func(ctx *Context) error { return nil },
-					},
-				},
-			},
-			{
-				Name:        "build",
-				Description: "Build command",
-				Run:         func(ctx *Context) error { return nil },
-			},
-		},
-	}
-
-	err := app.ExecuteContext(context.Background(), []string{"help", "tree"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	output := stripansi.Strip(outBuf.String())
-	if !strings.Contains(output, "treeapp") {
-		t.Errorf("tree output missing root app name:\n%s", output)
-	}
-	if !strings.Contains(output, "config") || !strings.Contains(output, "set") || !strings.Contains(output, "build") {
-		t.Errorf("tree output missing commands:\n%s", output)
-	}
-	if !strings.Contains(output, "├──") && !strings.Contains(output, "└──") {
-		t.Errorf("tree output missing box drawing characters:\n%s", output)
-	}
-}
-
 func TestExecuteHelpVersionAndDocs(t *testing.T) {
 	var outBuf bytes.Buffer
 	app := &App{

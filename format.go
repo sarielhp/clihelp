@@ -254,11 +254,6 @@ func DisplayName(c Command) string {
 	return c.Name + " (" + strings.Join(c.Aliases, ", ") + ")"
 }
 
-// displayName is an internal alias for DisplayName.
-func displayName(c Command) string {
-	return DisplayName(c)
-}
-
 // DisplayNameWithArgs renders a command name with aliases and positional argument signature.
 func DisplayNameWithArgs(c Command) string {
 	name := DisplayName(c)
@@ -343,46 +338,4 @@ func inline(s string) string {
 	var buf strings.Builder
 	renderInline(&buf, s)
 	return buf.String()
-}
-
-// reflowTree word-wraps text across lines where the first line starts with firstPrefixFormatted
-// and all continuation lines preserve vertical connectors in contPrefixFormatted.
-func reflowTree(w io.Writer, bodyColor *color.Color, indent, width int, firstPrefixFormatted, contPrefixFormatted, text string) {
-	words := strings.Fields(text)
-	if len(words) == 0 {
-		fmt.Fprintln(w, strings.TrimRight(firstPrefixFormatted, " "))
-		return
-	}
-
-	var cur strings.Builder
-	cur.WriteString(firstPrefixFormatted)
-	curLen := indent
-	lineHasWords := false
-
-	for _, word := range words {
-		wlen := visualLen(word)
-		space := 0
-		if lineHasWords {
-			space = 1
-		}
-		if lineHasWords && curLen+space+wlen > width {
-			fmt.Fprintln(w, cur.String())
-			cur.Reset()
-			cur.WriteString(contPrefixFormatted)
-			cur.WriteString(word)
-			curLen = indent + wlen
-			lineHasWords = true
-		} else {
-			if space > 0 {
-				cur.WriteString(" ")
-				curLen++
-			}
-			cur.WriteString(word)
-			curLen += wlen
-			lineHasWords = true
-		}
-	}
-	if lineHasWords {
-		fmt.Fprintln(w, cur.String())
-	}
 }

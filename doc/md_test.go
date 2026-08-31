@@ -1,10 +1,12 @@
-package clihelp
+package doc
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sarielhp/clihelp"
 )
 
 func TestRenderMarkdownRoundTrip(t *testing.T) {
@@ -89,7 +91,7 @@ func TestRenderMarkdownWithoutEnv(t *testing.T) {
 
 func TestRenderMarkdownCollectIncludesShortcuts(t *testing.T) {
 	app := testApp()
-	app.Shortcuts = []Command{
+	app.Shortcuts = []clihelp.Command{
 		{Name: "ls", Description: "List running tasks"},
 	}
 	nodes := collectNodes(app)
@@ -239,7 +241,7 @@ func TestRenderCommandPageNestedUsesTables(t *testing.T) {
 
 func TestRenderMarkdownSkipsHiddenCommands(t *testing.T) {
 	app := testApp()
-	app.Commands = append(app.Commands, Command{Name: "secret", Hidden: true})
+	app.Commands = append(app.Commands, clihelp.Command{Name: "secret", Hidden: true})
 	pages, err := renderMarkdownPages(app)
 	if err != nil {
 		t.Fatal(err)
@@ -258,9 +260,9 @@ func TestRenderMarkdownSkipsHiddenCommands(t *testing.T) {
 }
 
 func TestRenderMarkdownSlugCollisionErrors(t *testing.T) {
-	app := &App{
+	app := &clihelp.App{
 		Name: "collide",
-		Commands: []Command{
+		Commands: []clihelp.Command{
 			{Name: "set-up"},
 			{Name: "set up"},
 		},
@@ -276,6 +278,212 @@ func TestPageHeaderQuotesFrontMatter(t *testing.T) {
 	for _, want := range []string{"title: 'weird: \"title\" with ''quote'''", "parent: 'p: ''q'''"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("pageHeader missing quoted field %q, got:\n%s", want, got)
+		}
+	}
+}
+
+func testApp() *clihelp.App {
+	return &clihelp.App{
+		Name:    "podctl",
+		Version: "1.0.0",
+		Commands: []clihelp.Command{
+			{
+				Name:        "build",
+				Description: "Compile audio episodes",
+				UsageLine:   "podctl build [options] <file>",
+				Options: []clihelp.Option{
+					{Flags: "-o, --output PATH", Description: "Write output to PATH"},
+					{Flags: "--verbose", Description: "Enable verbose logging"},
+				},
+				Examples: []clihelp.Example{{Line: "podctl build ep.wav"}},
+			},
+			{
+				Name:        "config",
+				Description: "Manage configuration",
+				UsageLine:   "podctl config <subcommand>",
+				Subcommands: []clihelp.Command{
+					{
+						Name:        "set",
+						Title:       "config set <key> <value>",
+						Description: "Set a configuration value",
+						UsageLine:   "podctl config set <key> <value>",
+						Parameters: []clihelp.Param{
+							{Name: "<key>", Description: "The key to set"},
+							{Name: "<value>", Description: "The value to assign"},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func TestMarkdownSlug(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{"build", "build"},
+		{"config", "config"},
+		{"config set", "config-set"},
+		{"  spaces  ", "spaces"},
+		{"UPPERCASE", "uppercase"},
+		{"mixedCase", "mixedcase"},
+		{"special!@#chars", "special-chars"},
+		{"a__b__c", "a-b-c"},
+		{"---d---", "d"},
+		{"", ""},
+	}
+	for _, tc := range tests {
+		got := markdownSlug(tc.in)
+		if got != tc.want {
+			t.Errorf("markdownSlug(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestMarkdownRelFile(t *testing.T) {
+	tests := []struct {
+		path []string
+		want string
+	}{
+		{[]string{"build"}, "build.md"},
+		{[]string{"config", "set"}, "config-set.md"},
+		{[]string{"config", "set", "time"}, "config-set-time.md"},
+		{[]string{"my cmd"}, "my-cmd.md"},
+		{nil, "index.md"},
+		{[]string{}, "index.md"},
+	}
+	for _, tc := range tests {
+		got := markdownRelFile(tc.path)
+		if got != tc.want {
+			t.Errorf("markdownRelFile(%v) = %q, want %q", tc.path, got, tc.want)
+		}
+	}
+}
+
+func TestMdInline(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{"plain text", "plain text"},
+		{"*italic*", `\*italic\*`},
+		{"_underscore_", `\_underscore\_`},
+		{"`backtick`", "\\`backtick\\`"},
+		{"[bracket]", `\[bracket\]`},
+		{"<tag>", `\<tag>`},
+		{"back\\slash", `back\\slash`},
+		{"mixed * _ ` [ ] < >", "mixed \\* \\_ \\` \\[ \\] \\< >"},
+	}
+	for _, tc := range tests {
+		got := mdInline(tc.in)
+		if got != tc.want {
+			t.Errorf("mdInline(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestMdCode(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{"foo", "`foo`"},
+		{"-o, --output", "`-o, --output`"},
+		{"a`b", "`a\\`b`"},
+	}
+	for _, tc := range tests {
+		got := mdCode(tc.in)
+		if got != tc.want {
+			t.Errorf("mdCode(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestRenderIndex(t *testing.T) {
+	app := testApp()
+	app.Description = "A podcast distribution toolkit."
+	app.GlobalNote = "See docs."
+	app.GlobalFlags = []clihelp.Option{{Flags: "--verbose", Description: "Verbose output"}}
+	app.ConfigPath = "/etc/podctl.yaml"
+	out := renderIndex(app)
+
+	for _, want := range []string{
+		"# podctl",
+		"A podcast distribution toolkit.",
+		"## Commands",
+		"| clihelp.Command | Description |",
+		"| [build](build.md) |",
+		"| [config](config.md) |",
+		"## Global Flags",
+		"| Flag | Description |",
+		"`--verbose`",
+		"## Version",
+		"1.0.0",
+		"## Config file location",
+		"`/etc/podctl.yaml`",
+		"## About",
+		"See docs.",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("renderIndex missing %q\n%s", want, out)
+		}
+	}
+}
+
+func TestRenderCommandPage(t *testing.T) {
+	app := testApp()
+	nodes := collectNodes(app)
+	if len(nodes) == 0 {
+		t.Fatal("collectNodes returned empty")
+	}
+	out := renderCommandPage(app, nodes[0])
+	for _, want := range []string{
+		"# podctl build",
+		"Compile audio episodes",
+		"## Usage",
+		"```",
+		"podctl build [options] <file>",
+		"## Flags",
+		"`-o, --output PATH`",
+		"`--verbose`",
+		"## Examples",
+		"`podctl build ep.wav`",
+		"[↑ podctl](index.md)",
+		"[nav](nav.md)",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("renderCommandPage(build) missing %q\n%s", want, out)
+		}
+	}
+}
+
+func TestRenderCommandPageNested(t *testing.T) {
+	app := testApp()
+	nodes := collectNodes(app)
+	var setNode cmdNode
+	for _, n := range nodes {
+		if len(n.path) == 2 && n.path[1] == "set" {
+			setNode = n
+			break
+		}
+	}
+	if setNode.cmd.Name == "" {
+		t.Fatal("did not find config/set node")
+	}
+	out := renderCommandPage(app, setNode)
+
+	if !strings.Contains(out, "# podctl config set") {
+		t.Errorf("expected full-path title, got:\n%s", out)
+	}
+	for _, want := range []string{
+		"## Parameters",
+		"`<key>`",
+		"`<value>`",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("renderCommandPage(config/set) missing %q", want)
 		}
 	}
 }

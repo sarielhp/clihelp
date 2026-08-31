@@ -1,4 +1,6 @@
-package clihelp
+package doc
+
+import "github.com/sarielhp/clihelp"
 
 import (
 	"bytes"
@@ -52,7 +54,7 @@ type MarkdownOptions struct {
 // Additive helper: the markdown materialized in Dir is not tracked by git (the
 // per-app dotfile is gitignored), so committing and pushing the generated pages
 // to the repository is a separate, ordinary `git add`/`commit`/`push` step.
-func RenderMarkdown(a *App, o MarkdownOptions) (changed bool, err error) {
+func RenderMarkdown(a *clihelp.App, o MarkdownOptions) (changed bool, err error) {
 	dir := o.Dir
 	if dir == "" {
 		dir = defaultMarkdownDir
@@ -96,12 +98,12 @@ func RenderMarkdown(a *App, o MarkdownOptions) (changed bool, err error) {
 // cmdNode carries a command together with the full path leading to it.
 type cmdNode struct {
 	path []string
-	cmd  Command
+	cmd  clihelp.Command
 }
 
 // collectNodes gathers every command (including nested subcommands) into a flat
 // list, walking both the top-level command tree and the shortcut commands.
-func collectNodes(a *App) []cmdNode {
+func collectNodes(a *clihelp.App) []cmdNode {
 	var out []cmdNode
 	for _, c := range a.Commands {
 		collect(c, nil, &out)
@@ -112,7 +114,7 @@ func collectNodes(a *App) []cmdNode {
 	return out
 }
 
-func collect(c Command, prefix []string, out *[]cmdNode) {
+func collect(c clihelp.Command, prefix []string, out *[]cmdNode) {
 	if c.Hidden {
 		return
 	}
@@ -125,7 +127,7 @@ func collect(c Command, prefix []string, out *[]cmdNode) {
 
 // renderMarkdownPages materializes every page in memory, keyed by its
 // directory-relative filename (e.g. "index.md", "config-set-time.md").
-func renderMarkdownPages(a *App) (map[string]string, error) {
+func renderMarkdownPages(a *clihelp.App) (map[string]string, error) {
 	pages := map[string]string{
 		"index.md": renderIndex(a),
 		"nav.md":   renderNav(a),
@@ -238,7 +240,7 @@ func pageHeader(m pageMeta) string {
 }
 
 // renderNav renders the page showing the full command tree as a nested list.
-func renderNav(a *App) string {
+func renderNav(a *clihelp.App) string {
 	var b strings.Builder
 	b.WriteString(pageHeader(pageMeta{title: a.Name + " — Navigation"}))
 	fmt.Fprintf(&b, "# %s — Navigation\n\n", mdInline(a.Name))
@@ -265,7 +267,7 @@ func renderNav(a *App) string {
 	return strings.TrimRight(b.String(), "\n") + "\n"
 }
 
-func renderNavNode(b *strings.Builder, c Command, path []string, depth int) {
+func renderNavNode(b *strings.Builder, c clihelp.Command, path []string, depth int) {
 	indent := strings.Repeat("  ", depth)
 	file := markdownRelFile(path)
 	fmt.Fprintf(b, "%s- [%s](%s)", indent, mdInline(displayName(c)), file)
@@ -283,7 +285,7 @@ func renderNavNode(b *strings.Builder, c Command, path []string, depth int) {
 }
 
 // renderIndex renders the top-level application overview page.
-func renderIndex(a *App) string {
+func renderIndex(a *clihelp.App) string {
 	var b strings.Builder
 	b.WriteString(pageHeader(pageMeta{title: a.Name, hasChildren: true}))
 	fmt.Fprintf(&b, "# %s\n\n", mdInline(a.Name))
@@ -292,7 +294,7 @@ func renderIndex(a *App) string {
 	}
 
 	if len(a.Commands) > 0 {
-		b.WriteString("## Commands\n\n| Command | Description |\n|---------|-------------|\n")
+		b.WriteString("## Commands\n\n| clihelp.Command | Description |\n|---------|-------------|\n")
 		for _, c := range a.Commands {
 			if c.Hidden {
 				continue
@@ -307,7 +309,7 @@ func renderIndex(a *App) string {
 	}
 
 	if len(a.Shortcuts) > 0 {
-		b.WriteString("## Shortcut Commands\n\n| Command | Description |\n|---------|-------------|\n")
+		b.WriteString("## Shortcut Commands\n\n| clihelp.Command | Description |\n|---------|-------------|\n")
 		for _, s := range a.Shortcuts {
 			if s.Hidden {
 				continue
@@ -321,7 +323,7 @@ func renderIndex(a *App) string {
 		b.WriteString("\n")
 	}
 
-	var globalFlags []Option
+	var globalFlags []clihelp.Option
 	for _, f := range a.PersistentOptions {
 		if !f.Hidden {
 			globalFlags = append(globalFlags, f)
@@ -371,7 +373,7 @@ func renderIndex(a *App) string {
 }
 
 // renderCommandPage renders the detailed page for a single command.
-func renderCommandPage(a *App, n cmdNode) string {
+func renderCommandPage(a *clihelp.App, n cmdNode) string {
 	cmd := n.cmd
 	fullTitle := a.Name + " " + strings.Join(n.path, " ")
 
@@ -397,7 +399,7 @@ func renderCommandPage(a *App, n cmdNode) string {
 	}
 
 	if subs := subcommandEntries(&cmd); len(subs) > 0 {
-		b.WriteString("## Subcommands\n\n| Command | Description |\n|---------|-------------|\n")
+		b.WriteString("## Subcommands\n\n| clihelp.Command | Description |\n|---------|-------------|\n")
 		for _, s := range subs {
 			file := ""
 			for i := range cmd.Subcommands {
@@ -438,7 +440,7 @@ func renderCommandPage(a *App, n cmdNode) string {
 		b.WriteString("\n")
 	}
 
-	allOptions := a.collectOptions(n.path, &cmd)
+	allOptions := a.CollectOptions(n.path, &cmd)
 
 	if len(allOptions) > 0 {
 		b.WriteString("## Flags\n\n| Flag | Description |\n|------|-------------|\n")
@@ -532,4 +534,26 @@ func ensureHashIgnored(dir, hashPath string) {
 	}
 	defer f.Close()
 	fmt.Fprintf(f, "\n%s\n", filepath.Base(hashPath))
+}
+
+func displayName(c clihelp.Command) string {
+	return c.Name
+}
+
+func subcommandEntries(cmd *clihelp.Command) []clihelp.Param {
+	if len(cmd.Subcommands) == 0 {
+		return nil
+	}
+	var out []clihelp.Param
+	for _, sub := range cmd.Subcommands {
+		if sub.Hidden {
+			continue
+		}
+		name := displayName(sub)
+		if len(sub.Aliases) > 0 {
+			name += " (" + strings.Join(sub.Aliases, ", ") + ")"
+		}
+		out = append(out, clihelp.Param{Name: name, Description: sub.Description})
+	}
+	return out
 }

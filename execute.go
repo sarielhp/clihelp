@@ -359,9 +359,6 @@ func (a *App) resolveCommandPath(args []string, currentCommands []Command) (*Com
 				case topic == "topics" || topic == "help" || (a.AbbrevCommands && strings.HasPrefix("topics", topic)):
 					a.RenderHelpTopics(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
 					return nil, nil, nil, nil, true, nil
-				case topic == "t" || topic == "-t" || topic == "tree" || topic == "--tree" || (a.AbbrevCommands && strings.HasPrefix("tree", topic)):
-					a.RenderTree(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
-					return nil, nil, nil, nil, true, nil
 				case topic == "v" || topic == "-v" || topic == "version" || topic == "--version" || (a.AbbrevCommands && strings.HasPrefix("version", topic)):
 					if a.Version == "" {
 						return nil, nil, nil, nil, false, fmt.Errorf("%s: no version is set for this application", appName(a))

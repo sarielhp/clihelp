@@ -9,13 +9,14 @@ import (
 	"os"
 
 	"github.com/sarielhp/clihelp"
+	"github.com/sarielhp/clihelp/doc"
 )
 
 func main() {
 	app := buildApp()
 
 	if os.Getenv("CLIHELP_GEN") != "" {
-		changed, err := clihelp.RenderMarkdown(app, clihelp.MarkdownOptions{Dir: "docs/mail_cli_fake"})
+		changed, err := doc.RenderMarkdown(app, doc.MarkdownOptions{Dir: "docs/mail_cli_fake"})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "generate docs: %v\n", err)
 			os.Exit(1)
