@@ -1540,3 +1540,31 @@ func TestAutoInstallCompletionOnExecute(t *testing.T) {
 		t.Errorf("expected IsCompletionInstalled to be true")
 	}
 }
+
+func TestAutoInstallCompletionKillSwitch(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", filepath.Join(tmpDir, "share"))
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, "config"))
+	t.Setenv("SHELL", "/bin/zsh")
+	t.Setenv("CI", "")
+	t.Setenv("GITHUB_ACTIONS", "")
+	t.Setenv("TERM", "xterm-256color")
+	t.Setenv("NO_AUTO_COMPLETION", "1")
+
+	app := &App{
+		Name:                  "autocli",
+		AutoInstallCompletion: true,
+		Run: func(ctx *Context) error {
+			return nil
+		},
+	}
+
+	expectedPath := filepath.Join(tmpDir, "share", "zsh", "site-functions", "_autocli")
+	if err := app.ExecuteContext(context.Background(), []string{}); err != nil {
+		t.Fatalf("app.ExecuteContext failed: %v", err)
+	}
+
+	if _, err := os.Stat(expectedPath); !os.IsNotExist(err) {
+		t.Errorf("expected completion file NOT to be installed when NO_AUTO_COMPLETION=1 is set")
+	}
+}

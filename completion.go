@@ -367,7 +367,7 @@ func (a *App) maybeAutoInstallCompletion(args []string) {
 	if len(args) > 0 && args[0] == "__complete" {
 		return
 	}
-	if os.Getenv("CI") != "" || os.Getenv("GITHUB_ACTIONS") != "" || os.Getenv("TERM") == "dumb" {
+	if os.Getenv("CI") != "" || os.Getenv("GITHUB_ACTIONS") != "" || os.Getenv("TERM") == "dumb" || os.Getenv("NO_AUTO_COMPLETION") != "" || os.Getenv("CLIHELP_NO_AUTO_COMPLETION") != "" {
 		return
 	}
 	sh := detectShell()
