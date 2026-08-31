@@ -391,6 +391,12 @@ func CompletionCommand() Command {
 			{Line: "completion zsh", Description: "Generate Zsh tab-completion script"},
 			{Line: "completion install", Description: "Install tab-completions for the active shell"},
 		},
+		Notes: []Note{
+			{
+				Heading: "Shell Tip",
+				Text:    "Use `<Tab>` to complete, `Shift-<Tab>` to reverse, `Ctrl-D` to list choices, and `Alt-H` for instant command help.",
+			},
+		},
 		Subcommands: []Command{
 			{
 				Name:        "bash",
@@ -440,6 +446,7 @@ func CompletionCommand() Command {
 						fmt.Fprintln(ctx.Stdout, "Note: If not already configured, ensure the directory is in your Zsh $fpath in ~/.zshrc:")
 						fmt.Fprintln(ctx.Stdout, "    fpath=(~/.local/share/zsh/site-functions $fpath)")
 					}
+					fmt.Fprintln(ctx.Stdout, "Tip: Use <Tab> (next), Shift-<Tab> (prev), Ctrl-D (list choices), and Alt-H (instant help).")
 					fmt.Fprintln(ctx.Stdout, "Restart your shell or open a new terminal session to activate.")
 					return nil
 				},
