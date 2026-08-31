@@ -1,5 +1,5 @@
 ---
-title: mail_cli scan
+title: 'mail_cli scan'
 ---
 
 # mail\_cli scan
@@ -22,6 +22,9 @@ mail_cli scan <lbl_prefix> [flags]
 
 | Flag | Description |
 |------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 | `-m, --move <From>` | Move identified spam emails to Spam folder. Optional: specify From address to move a single unique message. |
 | `--inbox-move <From>` | Move identified emails from a specific From address back to the Inbox folder. |
 | `-p, --pattern <pattern>` | Only process messages whose subject contains this pattern. |

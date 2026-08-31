@@ -1,5 +1,5 @@
 ---
-title: mail_cli show
+title: 'mail_cli show'
 ---
 
 # mail\_cli show
@@ -23,6 +23,9 @@ mail_cli show <lbl_prefix> [message_id] [flags]
 
 | Flag | Description |
 |------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 | `-w, --web` | Open the HTML body of the email in your configured browser. |
 
 ## Examples

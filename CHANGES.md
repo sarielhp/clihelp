@@ -5,6 +5,10 @@ All notable changes to `clihelp` will be documented in this file.
 ## [0.3.1] - 2026-08-29
 
 ### Added
+- **Example Syntax Colorization & Theming** - Examples in command help, global overview, and manual pages are now rendered with ANSI syntax highlighting for commands, flags, arguments, values, comments, and prompts (`Theme.ExampleCmd`, `Theme.ExampleFlag`, `Theme.ExampleArg`, `Theme.ExampleComment`, `Theme.ExampleDesc`).
+- **Static Example Validation & CLI Parsing** - Added `clihelp.ValidateExample`, `(*App).ValidateExamples()`, `(*App).ValidateAllExamples()`, and POSIX shell tokenizer `SplitExampleCommandLine` to statically parse and verify example strings against real flag specs, option validators, and positional argument constraints.
+- **Example Tree Auditing** - `clihelp.Audit(app)` and `clihelp.AuditWithOptions` now automatically validate all examples declared on the application and across the entire command hierarchy.
+- **Top-Level Application Examples** - Added `App.Examples` field rendered under an `Examples:` section in `RenderGlobal`, `RenderMan`, and `RenderMarkdown`.
 - **Global Flag De-Cluttering & Topic Routing** - Added `Option.Group` and `clihelp.Group()` to categorize options under section headings, and `App.OmitGlobalFlagsInCommands` to suppress verbose global flags in subcommand help.
 - **Dedicated Flags Directory (`help flags`)** - Added `App.RenderFlags()` (accessible via `help flags` or `help options`) to display an exhaustive, categorized reference for all global and persistent options.
 - **Comprehensive Paged Manual (`help man`)** - Added `App.RenderMan()` (accessible via `help man` or `help all`) to render a full Unix manual with all commands, subcommands, arguments, flags, and examples through `$PAGER`.

@@ -1,5 +1,5 @@
 ---
-title: mail_cli learn-ham
+title: 'mail_cli learn-ham'
 ---
 
 # mail\_cli learn-ham
@@ -22,6 +22,9 @@ mail_cli learn-ham <label> [flags]
 
 | Flag | Description |
 |------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 | `--force` | Bypass trained message database and re-train all emails. |
 
 ## Examples

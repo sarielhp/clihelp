@@ -29,8 +29,8 @@ podctl serve [options]
 
 ## Examples
 
-- `podctl serve`
-- `podctl serve --port 9090 --no-live-reload`
+- `podctl serve` — Start the local preview server on default port 8080.
+- `podctl serve --port 9090 --no-live-reload` — Bind custom port and disable automatic live reload.
 
 ---
 

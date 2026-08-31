@@ -1,5 +1,5 @@
 ---
-title: mail_cli download
+title: 'mail_cli download'
 ---
 
 # mail\_cli download
@@ -18,6 +18,14 @@ mail_cli download <label> <file_name>
 |-----------|-------------|
 | `<label>` | The name or prefix of the label containing messages to download (must match a unique label). |
 | `<file_name>` | Path to the destination local mbox file (e.g. archive.mbox). |
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 
 ## Examples
 

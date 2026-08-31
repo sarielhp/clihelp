@@ -1,5 +1,5 @@
 ---
-title: mail_cli filter
+title: 'mail_cli filter'
 ---
 
 # mail\_cli filter
@@ -17,6 +17,14 @@ mail_cli filter <subcommand> [args...]
 | Command | Description |
 |---------|-------------|
 | list | List all remote filters on Gmail with detailed action descriptions. |
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 
 ## Examples
 

@@ -1,5 +1,5 @@
 ---
-title: mail_cli cache
+title: 'mail_cli cache'
 has_children: true
 ---
 
@@ -24,6 +24,9 @@ mail_cli cache <subcommand> [args...]
 
 | Flag | Description |
 |------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 | `--wipe` | Wipe the entire cache (equivalent to prune with 0 days). |
 
 ## Examples

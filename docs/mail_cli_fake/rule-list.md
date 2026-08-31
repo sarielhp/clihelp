@@ -1,6 +1,6 @@
 ---
-title: mail_cli rule list
-parent: mail_cli rule
+title: 'mail_cli rule list'
+parent: 'mail_cli rule'
 ---
 
 # mail\_cli rule list
@@ -17,6 +17,9 @@ mail_cli rule list [-a, --all]
 
 | Flag | Description |
 |------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 | `-a, --all` | List all custom routing rules, including those already exported to server filters. |
 
 ## Examples

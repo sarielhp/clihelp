@@ -1,6 +1,6 @@
 ---
-title: mail_cli rule add_by_title
-parent: mail_cli rule
+title: 'mail_cli rule add_by_title'
+parent: 'mail_cli rule'
 ---
 
 # mail\_cli rule add\_by\_title
@@ -19,6 +19,14 @@ mail_cli rule add_by_title <title> <lbl>
 |-----------|-------------|
 | `<title>` | The subject prefix to match (e.g. "[Alert]"). |
 | `<lbl>` | The target label hierarchy (e.g. "Sort/Alerts"). |
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 
 ## Examples
 

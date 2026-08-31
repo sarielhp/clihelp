@@ -1,5 +1,5 @@
 ---
-title: mail_cli upload
+title: 'mail_cli upload'
 ---
 
 # mail\_cli upload
@@ -18,6 +18,14 @@ mail_cli upload <label> <file_name>
 |-----------|-------------|
 | `<label>` | The name or prefix of the target label/folder to upload emails to (must match a unique label). |
 | `<file_name>` | Path to the local mbox file containing emails to upload. |
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 
 ## Examples
 

@@ -1,5 +1,5 @@
 ---
-title: mail_cli labels
+title: 'mail_cli labels'
 has_children: true
 ---
 
@@ -25,6 +25,14 @@ mail_cli labels <subcommand> [args...]
 | del \<lbl> | Delete a label. |
 | search \<str> | Search labels by substring (matches full path). |
 | [cache](labels-cache.md) | Manage the labels cache. |
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 
 ## Examples
 

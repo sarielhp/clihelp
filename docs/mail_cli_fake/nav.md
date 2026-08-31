@@ -1,5 +1,5 @@
 ---
-title: mail_cli — Navigation
+title: 'mail_cli — Navigation'
 ---
 
 # mail\_cli — Navigation

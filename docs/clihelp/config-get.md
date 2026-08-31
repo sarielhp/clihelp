@@ -25,6 +25,10 @@ podctl config get <attribute>
 | `-s, --silent` | Suppress non-error output |
 | `--no-color` | Disable ANSI color output |
 
+## Examples
+
+- `podctl config get space` — Inspect current storage space limit.
+
 ---
 
 [↑ podctl](index.md) — [nav](nav.md)

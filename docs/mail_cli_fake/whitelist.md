@@ -1,5 +1,5 @@
 ---
-title: mail_cli whitelist
+title: 'mail_cli whitelist'
 has_children: true
 ---
 
@@ -20,6 +20,14 @@ mail_cli whitelist <subcommand> [args...]
 | add \<email> | Add an email address to the whitelist. |
 | del \<email> | Remove an email address from the whitelist. |
 | list | List all whitelisted email addresses. |
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 
 ## Examples
 

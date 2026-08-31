@@ -1,5 +1,5 @@
 ---
-title: mail_cli caladd
+title: 'mail_cli caladd'
 ---
 
 # mail\_cli caladd
@@ -11,6 +11,14 @@ Scan the inbox for messages containing .ics attachments, and add them to the cal
 ```
 mail_cli caladd
 ```
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 
 ## Examples
 

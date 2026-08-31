@@ -1,5 +1,5 @@
 ---
-title: mail_cli spam
+title: 'mail_cli spam'
 ---
 
 # mail\_cli spam
@@ -22,6 +22,14 @@ mail_cli spam <message_id...>           Mark one or more messages as spam by ID.
 | pol unsub | Scan the Spam folder for political messages, execute unsubscription opt-outs, and delete matching emails. NOTE: Unsubscribing from political mail is safe because PACs/campaigns are registered entities that respect opt-out requests. For regular spam, unsubscribing is unsafe as it confirms your email is active to malicious actors. |
 | bye | Execute a complete sweep: unsubscribe political spam, train the spam classifier on the remaining spam folder, and then permanently purge the spam folder. |
 | learn \[force\] | Spam Learning Mode: Connect to Spam folder and train local Bogofilter. If 'force' is specified, bypasses trained message database. |
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 
 ## Examples
 

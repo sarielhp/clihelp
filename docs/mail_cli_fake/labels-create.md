@@ -1,6 +1,6 @@
 ---
-title: mail_cli labels create
-parent: mail_cli labels
+title: 'mail_cli labels create'
+parent: 'mail_cli labels'
 ---
 
 # mail\_cli labels create
@@ -18,6 +18,14 @@ mail_cli labels create <lbl_name>
 | Parameter | Description |
 |-----------|-------------|
 | `<lbl_name>` | The fully specified name of the new label to create (e.g. "Work/ProjectA"). |
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 
 ## Examples
 

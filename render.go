@@ -29,17 +29,33 @@ type Theme struct {
 	// TitlePrefix is prepended to the command help header line
 	// (e.g. "Detailed Usage: ").
 	TitlePrefix string
+
+	// ExampleCmd colors command and subcommand names in examples.
+	ExampleCmd *color.Color
+	// ExampleFlag colors flags and options in examples.
+	ExampleFlag *color.Color
+	// ExampleArg colors arguments, positional values, and paths in examples.
+	ExampleArg *color.Color
+	// ExampleComment colors shell comments (# ...) in examples.
+	ExampleComment *color.Color
+	// ExampleDesc colors example descriptions beneath the command line.
+	ExampleDesc *color.Color
 }
 
 func defaultTheme() Theme {
 	return Theme{
-		Hdr:         color.New(color.FgYellow, color.Bold),
-		Body:        color.New(color.FgWhite),
-		Accent:      color.New(color.FgCyan, color.Bold),
-		Subcommand:  color.New(color.FgGreen),
-		Flag:        color.New(color.FgCyan),
-		Separator:   false,
-		TitlePrefix: "",
+		Hdr:            color.New(color.FgYellow, color.Bold),
+		Body:           color.New(color.FgWhite),
+		Accent:         color.New(color.FgCyan, color.Bold),
+		Subcommand:     color.New(color.FgGreen),
+		Flag:           color.New(color.FgCyan),
+		Separator:      false,
+		TitlePrefix:    "",
+		ExampleCmd:     color.New(color.FgGreen, color.Bold),
+		ExampleFlag:    color.New(color.FgCyan),
+		ExampleArg:     color.New(color.FgWhite),
+		ExampleComment: color.New(color.FgHiBlack),
+		ExampleDesc:    color.New(color.FgHiBlack),
 	}
 }
 
@@ -104,6 +120,21 @@ func (o Options) theme(a *App) Theme {
 	}
 	if src.TitlePrefix != "" {
 		th.TitlePrefix = src.TitlePrefix
+	}
+	if src.ExampleCmd != nil {
+		th.ExampleCmd = src.ExampleCmd
+	}
+	if src.ExampleFlag != nil {
+		th.ExampleFlag = src.ExampleFlag
+	}
+	if src.ExampleArg != nil {
+		th.ExampleArg = src.ExampleArg
+	}
+	if src.ExampleComment != nil {
+		th.ExampleComment = src.ExampleComment
+	}
+	if src.ExampleDesc != nil {
+		th.ExampleDesc = src.ExampleDesc
 	}
 	th.Separator = src.Separator
 	return th
@@ -311,6 +342,12 @@ func (a *App) RenderGlobal(o Options) {
 			fmt.Fprintln(w)
 		}
 
+		if len(a.Examples) > 0 {
+			th.Accent.Fprintln(w, "Examples:")
+			renderExamples(w, th, o, termWidth, a.Examples, 2, 4)
+			fmt.Fprintln(w)
+		}
+
 		if len(visibleCommands) > 0 || len(a.Shortcuts) > 0 {
 			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", fmt.Sprintf("Run '%s <command> -h' for command help, or '%s help [flags|man]'.", appName(a), appName(a)))
 		}
@@ -364,7 +401,6 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 				usage = fmt.Sprintf("%s [args]", fullPath)
 			}
 		}
-
 		th.Hdr.Fprint(w, "Usage:  ")
 		fmt.Fprintln(w, inline(usage))
 
@@ -442,16 +478,31 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 					reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Flag)
 				}
 			}
+		} else if len(cmd.Options) > 0 {
+			// Presentation fallback for legacy command options
+			var optParams []Param
+			for _, opt := range cmd.Options {
+				if opt.Hidden {
+					continue
+				}
+				desc := opt.Description
+				if opt.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
+					desc = desc + " (default: " + opt.DefaultText + ")"
+				}
+				optParams = append(optParams, Param{Name: opt.Flags, Description: desc})
+			}
+			if len(optParams) > 0 {
+				th.Hdr.Fprintln(w, "\nFlags:")
+				indent := colIndent(optParams)
+				for _, p := range optParams {
+					reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Flag)
+				}
+			}
 		}
 
 		if len(cmd.Examples) > 0 {
 			th.Hdr.Fprintln(w, "\nExamples:")
-			for _, ex := range cmd.Examples {
-				reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", inline(ex.Line))
-				if ex.Description != "" {
-					reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", inline(ex.Description))
-				}
-			}
+			renderExamples(w, th, o, termWidth, cmd.Examples, 2, 4)
 		}
 
 		for _, note := range cmd.Notes {

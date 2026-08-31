@@ -138,6 +138,8 @@ make run
 | `pager.go` | Pager detection/execution (`$PAGER`, `less`, `moar`), terminal height check, and paged output |
 | `completion.go` | Shell autocompletion script generation (Bash, Zsh, Fish), dynamic completion, and XDG auto-installation |
 | `md.go` | GitHub-friendly markdown documentation generator (`RenderMarkdown`, `MarkdownOptions`) |
+| `examples.go` | Example command syntax colorizer, shell tokenizer, and static example validator (`ValidateExample`, `ValidateAllExamples`) |
+| `examples_test.go` | Unit tests for example shell splitting, ANSI syntax colorization, and CLI constraint validation |
 | `clihelp_test.go` | Unit tests for help formatting, wrapping, ANSI stripping, usage output, and tree rendering |
 | `example/main.go` | Demonstration CLI app using `clihelp` |
 | `Makefile` | Make targets for standard workflows |

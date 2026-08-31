@@ -1,5 +1,5 @@
 ---
-title: mail_cli splice
+title: 'mail_cli splice'
 ---
 
 # mail\_cli splice
@@ -16,6 +16,9 @@ mail_cli splice <folder> [flags]
 
 | Flag | Description |
 |------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 | `-n, --n <int>` | Number of messages to process (default 10). |
 | `--folder, -f` | Folder name to use for the destination path without suffix. |
 | `--folder-suffix, -F` | Folder name to use for the destination path with year/month suffix attached. |

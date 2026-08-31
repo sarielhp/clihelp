@@ -27,6 +27,10 @@ podctl config set space <megabytes> [options]
 | `--unit SIZE` | Space allocation unit (default: MB) |
 | `--auto-cleanup` | Purge oldest temporary cache files |
 
+## Examples
+
+- `podctl config set space 500 --unit MB --auto-cleanup` — Set cache allocation limit to 500 MB with auto-cleanup.
+
 ---
 
 [↑ podctl](index.md) — [nav](nav.md)

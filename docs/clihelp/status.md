@@ -26,6 +26,10 @@ podctl status [options]
 | `-S, --stage STAGE` | Environment to inspect (default: production) |
 | `--json` | Output metrics and status in JSON format |
 
+## Examples
+
+- `podctl status --stage production --json` — Output production health and metrics in JSON format.
+
 ---
 
 [↑ podctl](index.md) — [nav](nav.md)

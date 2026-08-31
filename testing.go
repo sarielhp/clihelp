@@ -83,6 +83,7 @@ func TestExecuteWithStdin(app *App, args []string, stdin io.Reader) *TestResult 
 // AuditOptions configures the static analysis audit helper.
 type AuditOptions struct {
 	AllowPathPermutations [][]string
+	SkipExampleValidation bool
 }
 
 // Audit traverses the app's command tree to statically verify documentation and consistency.
@@ -92,6 +93,12 @@ func Audit(app *App) error {
 
 // AuditWithOptions traverses the app's command tree using customized options.
 func AuditWithOptions(app *App, opts AuditOptions) error {
+	if !opts.SkipExampleValidation {
+		if err := app.ValidateAllExamples(); err != nil {
+			return err
+		}
+	}
+
 	type commandPathInfo struct {
 		path    []string
 		wordSet string // sorted space-separated words

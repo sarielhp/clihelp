@@ -70,6 +70,10 @@ func main() {
 			clihelp.Group("Output & Logging", clihelp.Bool(&globals.Silent, "-s, --silent", false, "Suppress non-error output")),
 			clihelp.Group("Output & Logging", clihelp.Bool(&globals.NoColor, "--no-color", false, "Disable ANSI color output")),
 		},
+		Examples: []clihelp.Example{
+			{Line: "podctl build episode01.wav", Description: "Compile raw audio into a release-ready podcast episode"},
+			{Line: "podctl serve --port 8080", Description: "Start the local development server for previewing feeds"},
+		},
 		Commands: []clihelp.Command{
 			{
 				Name:        "build",
@@ -83,8 +87,8 @@ func main() {
 					clihelp.String(&buildTags, "--tags TAGS", "", "Embed ID3 metadata tags (e.g. title, artist)"),
 				},
 				Examples: []clihelp.Example{
-					{Line: "podctl build episode01.wav"},
-					{Line: "podctl build -o ep01.mp3 --bitrate 320 --normalize"},
+					{Line: "podctl build episode01.wav", Description: "Compile a single episode from raw WAV audio."},
+					{Line: "podctl build episode01.wav -o ep01.mp3 --bitrate 320 --normalize", Description: "Compile with 320 kbps bitrate and LUFS loudness normalization."},
 				},
 				Notes: []clihelp.Note{
 					{
@@ -108,8 +112,8 @@ func main() {
 					clihelp.BoolToggle(&serveLiveReload, "--[no-]live-reload", true, "Automatically reload RSS feed"),
 				},
 				Examples: []clihelp.Example{
-					{Line: "podctl serve"},
-					{Line: "podctl serve --port 9090 --no-live-reload"},
+					{Line: "podctl serve", Description: "Start the local preview server on default port 8080."},
+					{Line: "podctl serve --port 9090 --no-live-reload", Description: "Bind custom port and disable automatic live reload."},
 				},
 				Run: func(ctx *clihelp.Context) error {
 					fmt.Fprintf(ctx.Stdout, "Starting local RSS development server on http://%s:%d (live reload: %v)...\n",
@@ -136,6 +140,9 @@ func main() {
 									clihelp.Enum(&configSpaceUnit, "--unit SIZE", []string{"MB", "GB"}, "MB", "Space allocation unit"),
 									clihelp.Bool(&configSpaceAuto, "--auto-cleanup", false, "Purge oldest temporary cache files"),
 								},
+								Examples: []clihelp.Example{
+									{Line: "podctl config set space 500 --unit MB --auto-cleanup", Description: "Set cache allocation limit to 500 MB with auto-cleanup."},
+								},
 								Run: func(ctx *clihelp.Context) error {
 									fmt.Fprintf(ctx.Stdout, "Config space set to %s %s (auto-cleanup: %v)\n", ctx.Args[0], configSpaceUnit, configSpaceAuto)
 									return nil
@@ -148,6 +155,9 @@ func main() {
 						Description: "Display, inspect, and print configured attribute values. Reads from the persistent store or falls back to built-in defaults when no explicit user configuration value has been set.",
 						UsageLine:   "podctl config get <attribute>",
 						Args:        clihelp.ExactArgs(1),
+						Examples: []clihelp.Example{
+							{Line: "podctl config get space", Description: "Inspect current storage space limit."},
+						},
 						Run: func(ctx *clihelp.Context) error {
 							fmt.Fprintf(ctx.Stdout, "%s = 5 (default)\n", ctx.Args[0])
 							return nil
@@ -169,6 +179,9 @@ func main() {
 				OptionsValidator: clihelp.ValidateOptions(
 					clihelp.MutuallyExclusive("--dry-run", "--purge-cdn"),
 				),
+				Examples: []clihelp.Example{
+					{Line: "podctl deploy --bucket my-podcast-s3 --stage production --dry-run", Description: "Simulate publishing without uploading files."},
+				},
 				Notes: []clihelp.Note{
 					{
 						Heading: "Safety Precaution",
@@ -188,6 +201,9 @@ func main() {
 				Options: []clihelp.Option{
 					clihelp.Enum(&statusStage, "-S, --stage STAGE", []string{"staging", "production"}, "production", "Environment to inspect"),
 					clihelp.Bool(&statusJSON, "--json", false, "Output metrics and status in JSON format"),
+				},
+				Examples: []clihelp.Example{
+					{Line: "podctl status --stage production --json", Description: "Output production health and metrics in JSON format."},
 				},
 				Run: func(ctx *clihelp.Context) error {
 					if statusJSON {

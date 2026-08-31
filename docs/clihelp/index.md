@@ -31,6 +31,11 @@ has_children: true
 | `-s, --silent` | Suppress non-error output |
 | `--no-color` | Disable ANSI color output |
 
+## Examples
+
+- `podctl build episode01.wav` — Compile raw audio into a release-ready podcast episode
+- `podctl serve --port 8080` — Start the local development server for previewing feeds
+
 ## Version
 
 0.3.1

@@ -1,5 +1,5 @@
 ---
-title: mail_cli
+title: 'mail_cli'
 has_children: true
 ---
 

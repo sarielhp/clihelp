@@ -29,6 +29,10 @@ podctl deploy [options]
 | `--purge-cdn` | Invalidate CDN cache for feed and updated audio files |
 | `--timeout SEC` | Maximum upload timeout (default: 5m0s) |
 
+## Examples
+
+- `podctl deploy --bucket my-podcast-s3 --stage production --dry-run` — Simulate publishing without uploading files.
+
 ## Safety Precaution
 
 Always test with `--dry-run` before ~~overwriting~~ publishing to **production** (see [Deploy Docs](https://podctl.example.com/docs/deploy)).

@@ -1,5 +1,5 @@
 ---
-title: mail_cli test
+title: 'mail_cli test'
 ---
 
 # mail\_cli test
@@ -17,6 +17,14 @@ mail_cli test run
 | Command | Description |
 |---------|-------------|
 | run | Execute connection and integration tests. |
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 
 ## Examples
 

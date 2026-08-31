@@ -95,6 +95,7 @@ type App struct {
 	UsageLine         string
 	PersistentOptions []Option
 	Commands          []Command
+	Examples          []Example
 	BeforeRun         func(ctx *Context) error
 	AfterRun          func(ctx *Context) error
 	Run               func(ctx *Context) error

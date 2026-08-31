@@ -1,5 +1,5 @@
 ---
-title: mail_cli unspam
+title: 'mail_cli unspam'
 ---
 
 # mail\_cli unspam
@@ -24,6 +24,14 @@ mail_cli unspam <message_id...>
 | Parameter | Description |
 |-----------|-------------|
 | `<message_id...>` | One or more message IDs to unspam (short 8-char or full). |
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 
 ## Examples
 

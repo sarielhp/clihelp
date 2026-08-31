@@ -345,6 +345,18 @@ func renderIndex(a *App) string {
 		b.WriteString("\n")
 	}
 
+	if len(a.Examples) > 0 {
+		b.WriteString("## Examples\n\n")
+		for _, ex := range a.Examples {
+			line := fmt.Sprintf("- %s", mdCode(ex.Line))
+			if ex.Description != "" {
+				line += " — " + ex.Description
+			}
+			b.WriteString(line + "\n")
+		}
+		b.WriteString("\n")
+	}
+
 	if a.Version != "" {
 		fmt.Fprintf(&b, "## Version\n\n%s\n\n", mdInline(a.Version))
 	}

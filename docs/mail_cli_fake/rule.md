@@ -1,5 +1,5 @@
 ---
-title: mail_cli rule
+title: 'mail_cli rule'
 has_children: true
 ---
 
@@ -22,7 +22,7 @@ mail_cli rule -import <file>
 | add \<email> \<lbl> | Add an auto-labeling rule by sender. |
 | add\_by\_title \<title> \<lbl> | Add an auto-labeling rule by subject prefix. |
 | add\_domain \<msg\_id> \[lbl\] | Add an auto-labeling rule for all emails from a sender's domain. |
-| del \<email|title> | Remove an auto-labeling rule. |
+| del \<email\|title> | Remove an auto-labeling rule. |
 | list \[-a, --all\] | List custom routing rules. |
 | [update](rule-update.md) | Sync rules from blacklisted senders. |
 | export \[force\] | Export local rules to mail server filters. |
@@ -32,6 +32,9 @@ mail_cli rule -import <file>
 
 | Flag | Description |
 |------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 | `-export <file>` | Export all existing rules to a JSON file. |
 | `-import <file>` | Import rules from a JSON file, ignoring duplicates. |
 

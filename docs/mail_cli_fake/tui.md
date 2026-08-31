@@ -1,5 +1,5 @@
 ---
-title: mail_cli tui
+title: 'mail_cli tui'
 ---
 
 # mail\_cli tui
@@ -17,6 +17,14 @@ mail_cli tui [label_prefix]
 | Parameter | Description |
 |-----------|-------------|
 | `[label_prefix]` | Substring to match against label full paths. If exactly one label matches, the TUI opens on that label. If multiple match, all matches are printed and the program exits. If omitted, the TUI opens on INBOX. |
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 
 ## Examples
 

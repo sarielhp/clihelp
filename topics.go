@@ -194,6 +194,13 @@ func (a *App) RenderMan(o Options) {
 			fmt.Fprintln(w)
 		}
 
+		// 4b. EXAMPLES
+		if len(a.Examples) > 0 {
+			th.Hdr.Fprintln(w, "EXAMPLES")
+			renderExamples(w, th, o, termWidth, a.Examples, 4, 6)
+			fmt.Fprintln(w)
+		}
+
 		// 5. COMMANDS
 		if len(a.Commands) > 0 {
 			th.Hdr.Fprintln(w, "COMMANDS")
@@ -268,12 +275,7 @@ func (a *App) renderManCommands(w io.Writer, th Theme, o Options, termWidth int,
 		if len(c.Examples) > 0 {
 			fmt.Fprintln(w)
 			th.Hdr.Fprintln(w, "      Examples:")
-			for _, ex := range c.Examples {
-				reflow(w, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 8, "", inline(ex.Line))
-				if ex.Description != "" {
-					reflow(w, th.Body, wrapWidth(termWidth, 10, o.maxContent()), 10, "", inline(ex.Description))
-				}
-			}
+			renderExamples(w, th, o, termWidth, c.Examples, 8, 10)
 		}
 
 		if len(c.Notes) > 0 {

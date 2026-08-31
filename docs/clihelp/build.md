@@ -30,8 +30,8 @@ podctl build [options] <source-file>
 
 ## Examples
 
-- `podctl build episode01.wav`
-- `podctl build -o ep01.mp3 --bitrate 320 --normalize`
+- `podctl build episode01.wav` — Compile a single episode from raw WAV audio.
+- `podctl build episode01.wav -o ep01.mp3 --bitrate 320 --normalize` — Compile with 320 kbps bitrate and LUFS loudness normalization.
 
 ## Encoding Guidelines
 

@@ -1,6 +1,6 @@
 ---
-title: mail_cli rule del
-parent: mail_cli rule
+title: 'mail_cli rule del'
+parent: 'mail_cli rule'
 ---
 
 # mail\_cli rule del
@@ -18,6 +18,14 @@ mail_cli rule del <email|title>
 | Parameter | Description |
 |-----------|-------------|
 | `<email|title>` | The sender email address or subject prefix of the rule to remove. |
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 
 ## Examples
 

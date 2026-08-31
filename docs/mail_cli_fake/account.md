@@ -1,5 +1,5 @@
 ---
-title: mail_cli account
+title: 'mail_cli account'
 ---
 
 # mail\_cli account
@@ -17,13 +17,21 @@ mail_cli account <subcommand> [args...]
 | Command | Description |
 |---------|-------------|
 | list | List all configured mail accounts with status. |
-| new \<jmap|gmail|outlook> \[name\] | Add a new JMAP, Gmail, or Outlook account template to config.json. |
+| new \<jmap\|gmail\|outlook> \[name\] | Add a new JMAP, Gmail, or Outlook account template to config.json. |
 | associate \[account\_name\] \<prog> | Associate a program/symlink name with an account. |
 | rename \[old\_name\] \[new\_name\] | Rename an existing account and update cache/tokens. |
 | delete \<account\_name> | Delete an existing account and its credentials. |
 | test \[account\_name\] | Test validation and server connection for an account. |
 | calendar \[account\_name\] | Designate or show the calendar manager account. |
 | login \[account\_name\] | Perform interactive OAuth login for a Gmail or Outlook account. |
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 
 ## Examples
 

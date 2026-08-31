@@ -20,6 +20,19 @@ var (
 	oAccent = color.New(color.FgCyan, color.Bold)
 	oSub    = color.New(color.FgGreen)
 	oFlag   = color.New(color.FgCyan)
+
+	oracleTheme = clihelp.Theme{
+		Hdr:            oHdr,
+		Body:           oBody,
+		Accent:         oAccent,
+		Subcommand:     oSub,
+		Flag:           oFlag,
+		ExampleCmd:     color.New(color.FgGreen, color.Bold),
+		ExampleFlag:    color.New(color.FgCyan),
+		ExampleArg:     color.New(color.FgWhite),
+		ExampleComment: color.New(color.FgHiBlack),
+		ExampleDesc:    color.New(color.FgHiBlack),
+	}
 )
 
 // oracleWidth pins the layout width to the same 70 columns the tests inject
@@ -290,7 +303,7 @@ func oracleDetailedUsage(out io.Writer, a *clihelp.App, path []string, cmd *clih
 	if len(cmd.Examples) > 0 {
 		oHdr.Fprintln(out, "\nExamples:")
 		for _, e := range cmd.Examples {
-			oracleReflow(out, oBody, nil, 2, "", clihelp.Inline(e.Line))
+			oracleReflow(out, oBody, nil, 2, "", clihelp.ColorizeExampleLine(e.Line, oracleTheme))
 		}
 	}
 	for _, n := range cmd.Notes {

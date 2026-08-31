@@ -1,6 +1,6 @@
 ---
-title: mail_cli cache prune
-parent: mail_cli cache
+title: 'mail_cli cache prune'
+parent: 'mail_cli cache'
 ---
 
 # mail\_cli cache prune
@@ -23,6 +23,9 @@ mail_cli cache prune [days] [--wipe]
 
 | Flag | Description |
 |------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 | `--wipe` | Wipe the entire cache immediately. |
 
 ## Examples

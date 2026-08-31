@@ -1,5 +1,5 @@
 ---
-title: mail_cli config
+title: 'mail_cli config'
 ---
 
 # mail\_cli config
@@ -20,6 +20,14 @@ mail_cli config <subcommand> [args...]
 | set \<key> \<value> | Set configuration parameters (spam_learn, unspam_learn, browser). |
 | reset \<key> | Reset configuration parameters to system default (browser). |
 | validate | Validate configurations, account parameters, DNS reachability, and Bogofilter service. |
+
+## Flags
+
+| Flag | Description |
+|------|-------------|
+| `-v, --verbose` | Enable verbose diagnostic log output |
+| `-A, --account` | Specify target account name from config.json |
+| `-1, -2, -3...` | Shorthand flag to select configured accounts |
 
 ## Examples
 
