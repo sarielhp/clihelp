@@ -86,29 +86,14 @@ func TestBuildPagerArgs(t *testing.T) {
 			want:     []string{"/usr/bin/less", "-R"},
 		},
 		{
-			name:     "moar automatically receives -no-linenumbers",
-			pagerEnv: "moar",
-			want:     []string{"moar", "-no-linenumbers"},
-		},
-		{
-			name:     "moar with full path automatically receives -no-linenumbers",
-			pagerEnv: "/home/sariel/.go/bin/moar",
-			want:     []string{"/home/sariel/.go/bin/moar", "-no-linenumbers"},
-		},
-		{
-			name:     "moar with existing -no-linenumbers flag does not duplicate",
-			pagerEnv: "moar -no-linenumbers -wrap",
-			want:     []string{"moar", "-no-linenumbers", "-wrap"},
-		},
-		{
-			name:     "moar with double-dash --no-linenumbers does not duplicate",
-			pagerEnv: "moar --no-linenumbers",
-			want:     []string{"moar", "--no-linenumbers"},
-		},
-		{
 			name:     "custom pager is untouched",
 			pagerEnv: "cat",
 			want:     []string{"cat"},
+		},
+		{
+			name:     "custom pager with args preserved",
+			pagerEnv: "moar -no-linenumbers",
+			want:     []string{"moar", "-no-linenumbers"},
 		},
 	}
 

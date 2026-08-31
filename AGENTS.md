@@ -118,7 +118,7 @@ make run
 
 - **Global Flag De-Cluttering & Topic Routing**: Added `Option.Group` and `Group()` helper to organize options by category, `App.OmitGlobalFlagsInCommands` to suppress verbose global flags in subcommands, and dedicated help topic routing (`help flags`, `help man`, `help tree`, `help topics`).
 - **Comprehensive Paged Manual (`help man`)**: Built-in `RenderMan()` renders an exhaustive Unix man page with all commands, subcommands, arguments, flags, and notes paged through `$PAGER`.
-- **Pager Support**: When `App.Pager` or `Options.Pager` is true, help output is automatically paged through `$PAGER` when it exceeds terminal height. Automatically injects `-no-linenumbers` when `moar` is detected as the pager.
+- **Pager Support**: When `App.Pager` or `Options.Pager` is true, help output is automatically paged through `$PAGER` when it exceeds terminal height.
 - **GNU-Standard Column Formatting**: Two-column command/option listings cap the description column at `DefaultMaxColIndent = 24`. Long command or flag signatures automatically place description text on the next line indented at column 24.
 - **Command Tree View**: Added `App.RenderTree()` method to render the full command hierarchy as a tree with box-drawing characters.
 - **Prefix Command Matching**: Added `App.AbbrevCommands` field to enable abbreviated command names (e.g. `podctl b` instead of `podctl build`).
@@ -135,7 +135,7 @@ make run
 | `execute.go` | Command lookup, flag parsing, command execution dispatch, alias handling, and error formatting |
 | `options.go` | Option builder functions (`Bool`, `String`, `Int`, `Duration`, `Enum`, `StringSlice`) and flag binding |
 | `inline.go` | Inline markdown parsing and ANSI/OSC8 terminal formatting (bold, italic, code, hyperlinks) |
-| `pager.go` | Pager detection/execution (`$PAGER`, `less`, `moar`), terminal height check, and paged output |
+| `pager.go` | Pager detection/execution (`$PAGER`, `less`), terminal height check, and paged output |
 | `completion.go` | Shell autocompletion script generation (Bash, Zsh, Fish), dynamic completion, and XDG auto-installation |
 | `md.go` | GitHub-friendly markdown documentation generator (`RenderMarkdown`, `MarkdownOptions`) |
 | `examples.go` | Example command syntax colorizer, shell tokenizer, and static example validator (`ValidateExample`, `ValidateAllExamples`) |

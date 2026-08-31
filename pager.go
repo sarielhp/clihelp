@@ -78,8 +78,7 @@ func (a *App) pageOutput(o Options, fn func(w io.Writer)) {
 }
 
 // buildPagerArgs parses the PAGER environment string into executable command parts,
-// automatically injecting sensible flags for known pagers (e.g. -R for less to preserve
-// ANSI color formatting, -no-linenumbers for moar to avoid line number column clutter).
+// ensuring -R is present for less to preserve ANSI color formatting.
 func buildPagerArgs(pager string) []string {
 	if pager == "" {
 		pager = "less -R -F -X"
@@ -101,17 +100,6 @@ func buildPagerArgs(pager string) []string {
 		}
 		if !hasR {
 			parts = append(parts, "-R")
-		}
-	} else if binName == "moar" {
-		hasNoLineNumbers := false
-		for _, arg := range parts[1:] {
-			if strings.Contains(arg, "no-linenumbers") {
-				hasNoLineNumbers = true
-				break
-			}
-		}
-		if !hasNoLineNumbers {
-			parts = append(parts, "-no-linenumbers")
 		}
 	}
 
