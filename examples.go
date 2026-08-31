@@ -22,10 +22,12 @@ func sprintColor(c *color.Color, text string) string {
 // ColorizeExampleLine applies ANSI syntax colors to a command-line example string.
 // It recognizes comments, shell prompts, subcommands, flags, values, and operators.
 func ColorizeExampleLine(line string, th Theme) string {
-	return colorizeExampleLine(line, th)
+	return ColorizeExampleLineWithApp(nil, nil, line, th)
 }
 
-func colorizeExampleLine(line string, th Theme) string {
+// ColorizeExampleLineWithApp applies ANSI syntax colors to an example string using the application
+// command tree to accurately identify subcommands, flags, and arguments.
+func ColorizeExampleLineWithApp(app *App, cmd *Command, line string, th Theme) string {
 	if line == "" {
 		return ""
 	}
@@ -45,12 +47,10 @@ func colorizeExampleLine(line string, th Theme) string {
 		trimmed = trimmed[2:]
 	}
 
-	// Tokenize preserving spaces
 	var b strings.Builder
 	b.WriteString(indent)
 	b.WriteString(promptPrefix)
 
-	inCommand := true
 	i := 0
 	for i < len(trimmed) {
 		// Whitespace
@@ -60,7 +60,7 @@ func colorizeExampleLine(line string, th Theme) string {
 			continue
 		}
 
-		// Trailing inline comment (# ...)
+		// Trailing inline comment (# ... or // ...)
 		if trimmed[i] == '#' || (i+1 < len(trimmed) && trimmed[i:i+2] == "//") {
 			comment := trimmed[i:]
 			b.WriteString(sprintColor(th.ExampleComment, comment))
@@ -70,74 +70,164 @@ func colorizeExampleLine(line string, th Theme) string {
 		// Shell operators: |, ||, &&, ;, >, >>, <
 		if trimmed[i] == '|' || trimmed[i] == '&' || trimmed[i] == ';' || trimmed[i] == '>' || trimmed[i] == '<' {
 			j := i + 1
-			for j < len(trimmed) && (trimmed[j] == '|' || trimmed[j] == '&' || trimmed[j] == '>' || trimmed[j] == '<') {
+			for j < len(trimmed) && (trimmed[j] == '|' || trimmed[j] == '&' || trimmed[j] == '>' || trimmed[j] == '<' || trimmed[j] == ';') {
 				j++
 			}
 			op := trimmed[i:j]
 			b.WriteString(sprintColor(th.Accent, op))
 			i = j
-			inCommand = true // reset command state after pipeline/chaining
 			continue
 		}
 
-		// Extract single word/token (handling quotes)
-		start := i
+		// Extract command segment up to next operator or comment
+		segStart := i
 		inQuote := byte(0)
-		for i < len(trimmed) && (!unicode.IsSpace(rune(trimmed[i])) || inQuote != 0) {
-			if (trimmed[i] == '"' || trimmed[i] == '\'') && inQuote == 0 {
-				inQuote = trimmed[i]
-			} else if trimmed[i] == inQuote && inQuote != 0 {
+		for i < len(trimmed) {
+			ch := trimmed[i]
+			if (ch == '"' || ch == '\'') && inQuote == 0 {
+				inQuote = ch
+			} else if ch == inQuote && inQuote != 0 {
 				inQuote = 0
+			} else if inQuote == 0 {
+				if ch == '#' || (i+1 < len(trimmed) && trimmed[i:i+2] == "//") {
+					break
+				}
+				if ch == '|' || ch == '&' || ch == ';' || ch == '>' || ch == '<' {
+					break
+				}
 			}
 			i++
 		}
-		token := trimmed[start:i]
-
-		// Format token
-		if strings.HasPrefix(token, "-") {
-			inCommand = false
-			// Flag (e.g. -o, --bitrate, --output=ep01.mp3)
-			if eqIdx := strings.IndexByte(token, '='); eqIdx != -1 {
-				flagPart := token[:eqIdx+1]
-				valPart := token[eqIdx+1:]
-				b.WriteString(sprintColor(th.ExampleFlag, flagPart))
-				b.WriteString(sprintColor(th.ExampleArg, valPart))
-			} else {
-				b.WriteString(sprintColor(th.ExampleFlag, token))
-			}
-		} else if inCommand {
-			// Check if token is obviously an argument (e.g. filename, quoted string, url, contains dots/slashes/numbers only)
-			if strings.HasPrefix(token, "\"") || strings.HasPrefix(token, "'") ||
-				strings.Contains(token, "/") || strings.Contains(token, ".") ||
-				strings.Contains(token, "@") || strings.Contains(token, ":") ||
-				isAllDigits(token) {
-				inCommand = false
-				b.WriteString(sprintColor(th.ExampleArg, token))
-			} else {
-				b.WriteString(sprintColor(th.ExampleCmd, token))
-			}
-		} else {
-			b.WriteString(sprintColor(th.ExampleArg, token))
-		}
+		segText := trimmed[segStart:i]
+		coloredSeg := colorizeSegment(app, cmd, segText, th)
+		b.WriteString(coloredSeg)
 	}
 
 	return inline(b.String())
 }
 
-func isAllDigits(s string) bool {
-	if s == "" {
-		return false
+type segToken struct {
+	text  string
+	start int
+	end   int
+}
+
+func extractSegmentTokens(seg string) []segToken {
+	var tokens []segToken
+	i := 0
+	for i < len(seg) {
+		if unicode.IsSpace(rune(seg[i])) {
+			i++
+			continue
+		}
+		start := i
+		inQuote := byte(0)
+		for i < len(seg) {
+			ch := seg[i]
+			if (ch == '"' || ch == '\'') && inQuote == 0 {
+				inQuote = ch
+			} else if ch == inQuote && inQuote != 0 {
+				inQuote = 0
+			} else if inQuote == 0 && unicode.IsSpace(rune(ch)) {
+				break
+			}
+			i++
+		}
+		tokens = append(tokens, segToken{
+			text:  seg[start:i],
+			start: start,
+			end:   i,
+		})
 	}
-	for _, r := range s {
-		if !unicode.IsDigit(r) {
-			return false
+	return tokens
+}
+
+func colorizeSegment(app *App, cmd *Command, seg string, th Theme) string {
+	toks := extractSegmentTokens(seg)
+	if len(toks) == 0 {
+		return seg
+	}
+
+	var rawStrings []string
+	for _, t := range toks {
+		rawStrings = append(rawStrings, t.text)
+	}
+
+	isCmd := make([]bool, len(toks))
+	isFlag := make([]bool, len(toks))
+
+	if app != nil {
+		name := appName(app)
+		tokensToResolve := rawStrings
+		offset := 0
+		if len(tokensToResolve) > 0 && (tokensToResolve[0] == name || tokensToResolve[0] == "./"+name || (app.Name != "" && tokensToResolve[0] == app.Name)) {
+			isCmd[0] = true
+			tokensToResolve = tokensToResolve[1:]
+			offset = 1
+		}
+
+		targetCmd, _, path, _, _, resolveErr := app.resolveCommand(tokensToResolve)
+		if resolveErr == nil || targetCmd != nil {
+			for idx := range path {
+				if offset+idx < len(isCmd) {
+					isCmd[offset+idx] = true
+				}
+			}
+		} else if cmd != nil {
+			if len(tokensToResolve) > 0 && tokensToResolve[0] == cmd.Name {
+				isCmd[offset] = true
+			}
+		}
+	} else if cmd != nil {
+		if len(rawStrings) > 0 && rawStrings[0] == cmd.Name {
+			isCmd[0] = true
+		} else if len(rawStrings) > 0 && !strings.HasPrefix(rawStrings[0], "-") {
+			isCmd[0] = true
+		}
+	} else {
+		if len(rawStrings) > 0 && !strings.HasPrefix(rawStrings[0], "-") {
+			isCmd[0] = true
 		}
 	}
-	return true
+
+	for idx, t := range toks {
+		if !isCmd[idx] && strings.HasPrefix(t.text, "-") {
+			isFlag[idx] = true
+		}
+	}
+
+	var b strings.Builder
+	lastPos := 0
+	for idx, t := range toks {
+		if t.start > lastPos {
+			b.WriteString(seg[lastPos:t.start])
+		}
+		lastPos = t.end
+
+		if isCmd[idx] {
+			b.WriteString(sprintColor(th.ExampleCmd, t.text))
+		} else if isFlag[idx] {
+			if eqIdx := strings.IndexByte(t.text, '='); eqIdx != -1 {
+				flagPart := t.text[:eqIdx+1]
+				valPart := t.text[eqIdx+1:]
+				b.WriteString(sprintColor(th.ExampleFlag, flagPart))
+				b.WriteString(sprintColor(th.ExampleArg, valPart))
+			} else {
+				b.WriteString(sprintColor(th.ExampleFlag, t.text))
+			}
+		} else {
+			b.WriteString(sprintColor(th.ExampleArg, t.text))
+		}
+	}
+	if lastPos < len(seg) {
+		b.WriteString(seg[lastPos:])
+	}
+
+	return b.String()
 }
 
 // renderExamples writes formatted and colorized examples to w.
-func renderExamples(w io.Writer, th Theme, o Options, termWidth int, examples []Example, lineIndent, descIndent int) {
+func renderExamples(w io.Writer, app *App, cmd *Command, th Theme, o Options, termWidth int, examples []Example, lineIndent, descIndent int) {
 	if len(examples) == 0 {
 		return
 	}
@@ -151,7 +241,7 @@ func renderExamples(w io.Writer, th Theme, o Options, termWidth int, examples []
 		}
 		lines := splitLines(ex.Line)
 		for _, l := range lines {
-			colored := colorizeExampleLine(l, th)
+			colored := ColorizeExampleLineWithApp(app, cmd, l, th)
 			reflow(w, th.Body, wrapWidth(termWidth, lineIndent, o.maxContent()), lineIndent, "", colored)
 		}
 		if ex.Description != "" {

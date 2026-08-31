@@ -303,7 +303,7 @@ func oracleDetailedUsage(out io.Writer, a *clihelp.App, path []string, cmd *clih
 	if len(cmd.Examples) > 0 {
 		oHdr.Fprintln(out, "\nExamples:")
 		for _, e := range cmd.Examples {
-			oracleReflow(out, oBody, nil, 2, "", clihelp.ColorizeExampleLine(e.Line, oracleTheme))
+			oracleReflow(out, oBody, nil, 2, "", clihelp.ColorizeExampleLineWithApp(a, cmd, e.Line, oracleTheme))
 		}
 	}
 	for _, n := range cmd.Notes {

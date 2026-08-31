@@ -344,7 +344,7 @@ func (a *App) RenderGlobal(o Options) {
 
 		if len(a.Examples) > 0 {
 			th.Accent.Fprintln(w, "Examples:")
-			renderExamples(w, th, o, termWidth, a.Examples, 2, 4)
+			renderExamples(w, a, nil, th, o, termWidth, a.Examples, 2, 4)
 			fmt.Fprintln(w)
 		}
 
@@ -502,7 +502,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 
 		if len(cmd.Examples) > 0 {
 			th.Hdr.Fprintln(w, "\nExamples:")
-			renderExamples(w, th, o, termWidth, cmd.Examples, 2, 4)
+			renderExamples(w, a, cmd, th, o, termWidth, cmd.Examples, 2, 4)
 		}
 
 		for _, note := range cmd.Notes {

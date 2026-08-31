@@ -197,7 +197,7 @@ func (a *App) RenderMan(o Options) {
 		// 4b. EXAMPLES
 		if len(a.Examples) > 0 {
 			th.Hdr.Fprintln(w, "EXAMPLES")
-			renderExamples(w, th, o, termWidth, a.Examples, 4, 6)
+			renderExamples(w, a, nil, th, o, termWidth, a.Examples, 4, 6)
 			fmt.Fprintln(w)
 		}
 
@@ -275,7 +275,7 @@ func (a *App) renderManCommands(w io.Writer, th Theme, o Options, termWidth int,
 		if len(c.Examples) > 0 {
 			fmt.Fprintln(w)
 			th.Hdr.Fprintln(w, "      Examples:")
-			renderExamples(w, th, o, termWidth, c.Examples, 8, 10)
+			renderExamples(w, a, &c, th, o, termWidth, c.Examples, 8, 10)
 		}
 
 		if len(c.Notes) > 0 {

@@ -125,7 +125,7 @@ func TestColorizeExampleLine(t *testing.T) {
 
 	t.Run("full comment line", func(t *testing.T) {
 		line := "# Compile episode with high bitrate"
-		colored := colorizeExampleLine(line, th)
+		colored := ColorizeExampleLine(line, th)
 		if !strings.Contains(colored, "\x1b[") {
 			t.Errorf("expected ANSI colors in comment line, got %q", colored)
 		}
@@ -136,7 +136,19 @@ func TestColorizeExampleLine(t *testing.T) {
 
 	t.Run("command line with flags and args", func(t *testing.T) {
 		line := "podctl build episode01.wav -o ep01.mp3 --bitrate 320"
-		colored := colorizeExampleLine(line, th)
+		colored := ColorizeExampleLine(line, th)
+		if !strings.Contains(colored, "\x1b[") {
+			t.Errorf("expected ANSI colors in command line, got %q", colored)
+		}
+		if stripANSI(colored) != line {
+			t.Errorf("stripANSI(%q) = %q, want %q", colored, stripANSI(colored), line)
+		}
+	})
+
+	t.Run("command line with app context", func(t *testing.T) {
+		app := testExampleApp()
+		line := "podctl build episode01.wav -o ep01.mp3 --bitrate 320"
+		colored := ColorizeExampleLineWithApp(app, nil, line, th)
 		if !strings.Contains(colored, "\x1b[") {
 			t.Errorf("expected ANSI colors in command line, got %q", colored)
 		}
@@ -147,7 +159,7 @@ func TestColorizeExampleLine(t *testing.T) {
 
 	t.Run("prompt prefix and inline comment", func(t *testing.T) {
 		line := "$ podctl serve --port 8080 # start preview server"
-		colored := colorizeExampleLine(line, th)
+		colored := ColorizeExampleLine(line, th)
 		if stripANSI(colored) != line {
 			t.Errorf("stripANSI(%q) = %q, want %q", colored, stripANSI(colored), line)
 		}
@@ -155,7 +167,7 @@ func TestColorizeExampleLine(t *testing.T) {
 
 	t.Run("pipeline command", func(t *testing.T) {
 		line := "podctl status --json | jq .health"
-		colored := colorizeExampleLine(line, th)
+		colored := ColorizeExampleLine(line, th)
 		if stripANSI(colored) != line {
 			t.Errorf("stripANSI(%q) = %q, want %q", colored, stripANSI(colored), line)
 		}
@@ -166,7 +178,7 @@ func TestColorizeExampleLine(t *testing.T) {
 		defer func() { color.NoColor = false }()
 
 		line := "podctl build episode01.wav --bitrate 320"
-		colored := colorizeExampleLine(line, th)
+		colored := ColorizeExampleLine(line, th)
 		if strings.Contains(colored, "\x1b[") {
 			t.Errorf("expected no ANSI codes when NoColor is true, got %q", colored)
 		}
