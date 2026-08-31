@@ -394,7 +394,7 @@ func CompletionCommand() Command {
 		Notes: []Note{
 			{
 				Heading: "Shell Tip",
-				Text:    "Use `<Tab>` to complete, `Shift-<Tab>` to reverse, `Ctrl-D` to list choices, and `Alt-H` for instant command help.",
+				Text:    "Tip: <Tab> to complete, Ctrl-D to list choices, Alt-H for instant command help.",
 			},
 		},
 		Subcommands: []Command{
@@ -446,7 +446,7 @@ func CompletionCommand() Command {
 						fmt.Fprintln(ctx.Stdout, "Note: If not already configured, ensure the directory is in your Zsh $fpath in ~/.zshrc:")
 						fmt.Fprintln(ctx.Stdout, "    fpath=(~/.local/share/zsh/site-functions $fpath)")
 					}
-					fmt.Fprintln(ctx.Stdout, "Tip: Use <Tab> (next), Shift-<Tab> (prev), Ctrl-D (list choices), and Alt-H (instant help).")
+					fmt.Fprintln(ctx.Stdout, "Tip: <Tab> to complete, Ctrl-D to list choices, Alt-H for instant command help.")
 					fmt.Fprintln(ctx.Stdout, "Restart your shell or open a new terminal session to activate.")
 					return nil
 				},
