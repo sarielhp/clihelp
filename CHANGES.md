@@ -2,6 +2,33 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.5] - 2026-09-07
+
+### Added
+- **UV-Style Command Listings** - Two-column command index tables in `RenderGlobal` and `RenderCommand` display clean, bare command names and aliases without argument or flag clutter, guaranteeing single-line scannability.
+- **Command Tree Traversal (`App.Walk`)** - Programmatic depth-first traversal of all commands and nested subcommands with path slice isolation and early error-exit for testing, interface coverage, and static analysis.
+- **Example App Testing Demonstration** - Added `example/main_test.go` demonstrating how consumer applications can test command coverage, leaf usage lines, example validity via `ValidateAllExamples`, and smoke-render all command help pages.
+- **Sizing Audit Automation** - Added `tools/audit_lines.rb` and `make audit` target enforcing the 80-line function hard limit (with declarative builder exceptions and relaxed test limits) and file sizing comfort metrics.
+
+### Changed
+- **Modular Function Decompositions** - In-place decomposition of oversized functions in `execute.go`, `render.go`, `completion.go`, `examples.go`, `testing.go`, `format.go`, and `topics.go` to strictly adhere to the 80-line function limit.
+- **Modularized Test Suites** - Separated monolithic completion tests into shell-specific suites (`completion_bash_test.go`, `completion_zsh_test.go`, `completion_fish_test.go`, `completion_test.go`) and extracted formatting tests to `format_test.go`.
+
+## [0.3.4] - 2026-09-07
+
+### Fixed
+- **Duplicate Flags Section** - Eliminated duplicate `Flags:` header and repeated option listings in `RenderCommand` when a command defined local options but the application defined no global options.
+
+## [0.3.3] - 2026-08-31
+
+### Added
+- **Autocompletion Kill-Switches** - Added `NO_AUTO_COMPLETION` and `CLIHELP_NO_AUTO_COMPLETION` environment variable support to immediately bypass autocompletion handling.
+
+## [0.3.2] - 2026-08-31
+
+### Changed
+- **Modular Subpackages** - Extracted Markdown documentation site generator into `doc` subpackage (`github.com/sarielhp/clihelp/doc`) and command hierarchy visualization into `tree` subpackage (`github.com/sarielhp/clihelp/tree`).
+
 ## [0.3.1] - 2026-08-29
 
 ### Added

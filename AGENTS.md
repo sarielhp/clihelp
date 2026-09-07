@@ -12,6 +12,7 @@
 
 | Script | Purpose |
 |--------|---------|
+| `tools/audit_lines.rb` | Audit Go source files for function length and file sizing |
 | `tools/check.sh` | Full quality gate: format → tidy → vet → staticcheck → test → build example |
 | `tools/format.sh` | Run `gofmt -s -w .` only |
 | `tools/lint.sh` | Static analysis: `go vet` + `staticcheck` |
@@ -30,6 +31,7 @@ A `Makefile` at the project root delegates to all scripts:
 
 | Target | Action |
 |--------|--------|
+| `make audit` | Check function and file line limits |
 | `make check` | Full quality gate |
 | `make lint` | Static analysis (vet + staticcheck) |
 | `make test` | Run tests |
@@ -74,7 +76,7 @@ make run
 
 ## API Stability & Backward Compatibility
 
-- **Stable Interface**: Preserve backward compatibility for all exported types and methods (`App`, `Command`, `Option`, `Example`, `Param`, `Note`, `Theme`, `Options`, `App.Render`, `App.RenderGlobal`, `App.RenderCommand`, `App.LookupCommand`).
+- **Stable Interface**: Preserve backward compatibility for all exported types and methods (`App`, `Command`, `Option`, `Example`, `Param`, `Note`, `Theme`, `Options`, `App.Render`, `App.RenderGlobal`, `App.RenderCommand`, `App.LookupCommand`, `App.Walk`).
 - **Additive Changes**: Adding new fields, structs, or methods is encouraged. Avoid breaking existing function signatures or struct field semantics in future development.
 
 ## Sizing
@@ -131,6 +133,8 @@ Enforce sizing via `tools/audit_lines.rb` (`make audit`).
 
 ## New Features
 
+- **UV-Style Command Listings**: Command and subcommand index tables render strictly bare command names and aliases without argument or flag signatures, guaranteeing clean single-line scannability.
+- **Command Tree Traversal (`App.Walk`)**: Programmatic depth-first traversal of all commands and nested subcommands with path slice isolation and early error-exit for testing and interface coverage.
 - **Global Flag De-Cluttering & Topic Routing**: Added `Option.Group` and `Group()` helper to organize options by category, `App.OmitGlobalFlagsInCommands` to suppress verbose global flags in subcommands, and dedicated help topic routing (`help flags`, `help man`, `help topics`).
 - **Comprehensive Paged Manual (`help man`)**: Built-in `RenderMan()` renders an exhaustive Unix man page with all commands, subcommands, arguments, flags, and notes paged through `$PAGER`.
 - **Pager Support**: When `App.Pager` or `Options.Pager` is true, help output is automatically paged through `$PAGER` when it exceeds terminal height.
@@ -143,25 +147,32 @@ Enforce sizing via `tools/audit_lines.rb` (`make audit`).
 
 | File / Package | Purpose |
 |------|---------|
-| `clihelp.go` | Core data types (`App`, `Command`, `Option`, `Param`, `Example`, `Note`, `Context`) |
+| `clihelp.go` | Core data types (`App`, `Command`, `Option`, `Param`, `Example`, `Note`, `Context`) and `App.Walk` |
 | `topics.go` | Specialized help topic renderers (`RenderFlags`, `RenderMan`, `RenderHelpTopics`, grouped option reflow) |
 | `render.go` | Terminal help rendering for global app, individual commands, and grouped commands |
 | `format.go` | Text layout, word-wrapping, string reflow, ANSI stripping, and column indentation utilities |
+| `format_test.go` | Unit tests for word-wrapping, line reflow, visual string measurement, and column indent |
 | `execute.go` | Command lookup, flag parsing, command execution dispatch, alias handling, and error formatting |
 | `options.go` | Option builder functions (`Bool`, `String`, `Int`, `Duration`, `Enum`, `StringSlice`) and flag binding |
 | `inline.go` | Inline markdown parsing and ANSI/OSC8 terminal formatting (bold, italic, code, hyperlinks) |
 | `pager.go` | Pager detection/execution (`$PAGER`, `less`), terminal height check, and paged output |
 | `completion.go` | Shell autocompletion script generation (Bash, Zsh, Fish), dynamic completion, and XDG auto-installation |
+| `completion_test.go` | Unit tests for shell completion protocol, installation, and shared completion helpers |
+| `completion_bash_test.go` | Live Bash tab-completion integration and dynamic callback tests |
+| `completion_zsh_test.go` | Live Zsh tab-completion integration and dynamic callback tests |
+| `completion_fish_test.go` | Live Fish tab-completion integration and dynamic callback tests |
 | `doc/` | Subpackage for GitHub-friendly markdown documentation site generation (`doc.RenderMarkdown`) |
 | `tree/` | Subpackage for command hierarchy tree visualization (`tree.Render`) |
 | `examples.go` | Example command syntax colorizer, shell tokenizer, and static example validator (`ValidateExample`, `ValidateAllExamples`) |
 | `examples_test.go` | Unit tests for example shell splitting, ANSI syntax colorization, and CLI constraint validation |
-| `clihelp_test.go` | Unit tests for help formatting, wrapping, ANSI stripping, and usage output |
-| `example/main.go` | Demonstration CLI app using `clihelp` |
+| `clihelp_test.go` | Unit tests for help formatting, command dispatch, ANSI stripping, and usage output |
+| `walk_test.go` | Unit tests for `App.Walk` depth-first traversal, path isolation, and error propagation |
+| `example/main.go` | Demonstration CLI app (`podctl`) using `clihelp` |
+| `example/main_test.go` | Testing demonstration verifying command coverage, leaf usage lines, examples, and smoke rendering |
 | `Makefile` | Make targets for standard workflows |
 | `VERSION` | Version source of truth |
 | `CHANGES.md` | Version changelog |
-| `tools/` | Automation shell scripts |
+| `tools/` | Automation shell and ruby scripts |
 
 ## Agent Development Rules
 

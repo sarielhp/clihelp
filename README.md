@@ -13,6 +13,8 @@ It provides clean, structured usage messages with support for ANSI colors and cl
 
 ## Features
 
+- **UV-Style Command Listings** — Two-column command index tables display clean, bare command names and aliases without argument or flag clutter, ensuring strictly single-line scannability.
+- **Command Tree Traversal (`App.Walk`)** — Programmatic depth-first traversal of all commands and nested subcommands with path slice isolation and early error-exit for testing and interface verification.
 - **Declarative CLI Definition** — Define applications, subcommands, persistent options, and flags in clean struct definitions.
 - **Pflag-Backed Option Parsing** — Robust flag parsing supporting aliases, boolean toggle pairs (`--[no-]flag`), typed values, and custom value parsers.
 - **Execution Lifecycle Hooks** — Coordinated `BeforeRun`, `PreRun`, `Run`, `PostRun`, and `AfterRun` lifecycle execution with context propagation.
@@ -193,6 +195,42 @@ Detailed technical guides and reference documentation are available in the [`doc
 | 🤖 [**AI Coding Agent Guidelines**](docs/ai-guidelines.md) | Best practices and prompt rules for LLM coding agents and pair programmers building CLIs with `clihelp`. |
 | 🧠 [**AI Context Specification (`llms.txt`)**](llms.txt) | Compact single-file specification formatted for direct ingestion by LLMs and AI developer tools. |
 | ⚖️ [**Comparison with Cobra**](docs/comparison-with-cobra.md) | In-depth comparison with `spf13/cobra`, architectural differences, code patterns, and tradeoffs. |
+| 🧪 [**Example Test Suite**](example/main_test.go) | Real-world test suite demonstrating command coverage, leaf usage lines, and help smoke-testing. |
+
+---
+
+## Testing & Interface Verification
+
+Use `App.Walk` to traverse the full command tree in your unit tests without manual recursion:
+
+```go
+func TestCLIIntegrity(t *testing.T) {
+    app := buildApp()
+
+    // 1. Coverage: Ensure all commands have descriptions
+    _ = app.Walk(func(path []string, cmd *clihelp.Command) error {
+        if cmd.Description == "" {
+            t.Errorf("command %v is missing Description", path)
+        }
+        return nil
+    })
+
+    // 2. Syntax: Validate all command examples against flag definitions
+    if err := app.ValidateAllExamples(); err != nil {
+        t.Fatalf("example validation failed: %v", err)
+    }
+
+    // 3. Smoke Test: Verify all command help pages render without panics
+    var buf bytes.Buffer
+    _ = app.Walk(func(path []string, cmd *clihelp.Command) error {
+        buf.Reset()
+        if !app.RenderCommand(clihelp.Options{Writer: &buf, Width: 80}, path...) {
+            t.Errorf("failed to render help for %v", path)
+        }
+        return nil
+    })
+}
+```
 
 ---
 
