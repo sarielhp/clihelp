@@ -467,23 +467,15 @@ func (a *App) ValidateExamples() []error {
 	}
 
 	// Walk command tree
-	var walk func(cmds []Command, path []string)
-	walk = func(cmds []Command, path []string) {
-		for i := range cmds {
-			cmd := &cmds[i]
-			cmdPath := append(path, cmd.Name)
-			pathStr := strings.Join(cmdPath, " ")
-			for _, ex := range cmd.Examples {
-				if err := ValidateExample(a, ex, cmd); err != nil {
-					errs = append(errs, fmt.Errorf("command %q: %w", pathStr, err))
-				}
-			}
-			if len(cmd.Subcommands) > 0 {
-				walk(cmd.Subcommands, cmdPath)
+	_ = a.Walk(func(path []string, cmd *Command) error {
+		pathStr := strings.Join(path, " ")
+		for _, ex := range cmd.Examples {
+			if err := ValidateExample(a, ex, cmd); err != nil {
+				errs = append(errs, fmt.Errorf("command %q: %w", pathStr, err))
 			}
 		}
-	}
-	walk(a.Commands, nil)
+		return nil
+	})
 
 	return errs
 }

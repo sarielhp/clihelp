@@ -223,3 +223,40 @@ func ExampleApp_ExecuteContext() {
 	// Output:
 	// job completed successfully
 }
+
+func ExampleApp_Walk() {
+	app := &clihelp.App{
+		Name: "git",
+		Commands: []clihelp.Command{
+			{
+				Name:        "remote",
+				Description: "Manage set of tracked repositories",
+				Subcommands: []clihelp.Command{
+					{
+						Name:        "add",
+						Description: "Add a new remote",
+					},
+					{
+						Name:        "remove",
+						Description: "Remove a remote",
+					},
+				},
+			},
+			{
+				Name:        "status",
+				Description: "Show working tree status",
+			},
+		},
+	}
+
+	_ = app.Walk(func(path []string, cmd *clihelp.Command) error {
+		fmt.Printf("%s: %s\n", strings.Join(path, " "), cmd.Description)
+		return nil
+	})
+
+	// Output:
+	// remote: Manage set of tracked repositories
+	// remote add: Add a new remote
+	// remote remove: Remove a remote
+	// status: Show working tree status
+}

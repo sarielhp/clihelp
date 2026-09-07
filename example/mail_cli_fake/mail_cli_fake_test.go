@@ -326,7 +326,7 @@ func oracleGlobalUsage(out io.Writer, a *clihelp.App) {
 	{
 		params := make([]clihelp.Param, 0, len(a.Commands))
 		for _, c := range a.Commands {
-			params = append(params, clihelp.Param{Name: clihelp.DisplayNameWithArgs(c), Description: clihelp.FirstSentence(c.Description)})
+			params = append(params, clihelp.Param{Name: clihelp.DisplayName(c), Description: clihelp.FirstSentence(c.Description)})
 		}
 		indent := oracleColIndent(params)
 		anyMultiLine := false
@@ -348,7 +348,7 @@ func oracleGlobalUsage(out io.Writer, a *clihelp.App) {
 		oAccent.Fprintln(out, "Shortcut Commands:")
 		params := make([]clihelp.Param, 0, len(a.Shortcuts))
 		for _, s := range a.Shortcuts {
-			params = append(params, clihelp.Param{Name: clihelp.DisplayNameWithArgs(s), Description: clihelp.FirstSentence(s.Description)})
+			params = append(params, clihelp.Param{Name: clihelp.DisplayName(s), Description: clihelp.FirstSentence(s.Description)})
 		}
 		indent := oracleColIndent(params)
 		for _, p := range params {

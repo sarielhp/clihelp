@@ -430,6 +430,7 @@ func CompletionCommand() Command {
 	return Command{
 		Name:        "completion",
 		Description: "Generate or install shell tab-completion scripts",
+		UsageLine:   "completion <subcommand>",
 		Examples: []Example{
 			{Line: "completion zsh", Description: "Generate Zsh tab-completion script"},
 			{Line: "completion install", Description: "Install tab-completions for the active shell"},
@@ -444,6 +445,7 @@ func CompletionCommand() Command {
 			{
 				Name:        "bash",
 				Description: "Generate Bash tab-completion script",
+				UsageLine:   "completion bash",
 				Args:        NoArgs,
 				Run: func(ctx *Context) error {
 					return GenBashCompletion(ctx.App, ctx.Stdout)
@@ -452,6 +454,7 @@ func CompletionCommand() Command {
 			{
 				Name:        "zsh",
 				Description: "Generate Zsh tab-completion script",
+				UsageLine:   "completion zsh",
 				Args:        NoArgs,
 				Run: func(ctx *Context) error {
 					return GenZshCompletion(ctx.App, ctx.Stdout)
@@ -460,6 +463,7 @@ func CompletionCommand() Command {
 			{
 				Name:        "fish",
 				Description: "Generate Fish tab-completion script",
+				UsageLine:   "completion fish",
 				Args:        NoArgs,
 				Run: func(ctx *Context) error {
 					return GenFishCompletion(ctx.App, ctx.Stdout)
@@ -468,6 +472,7 @@ func CompletionCommand() Command {
 			{
 				Name:        "install",
 				Description: "Install tab-completion script to standard user directory",
+				UsageLine:   "completion install [<shell>]",
 				Examples: []Example{
 					{Line: "completion install zsh", Description: "Install completions to ~/.local/share/zsh/site-functions"},
 				},

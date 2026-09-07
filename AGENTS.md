@@ -77,11 +77,22 @@ make run
 - **Stable Interface**: Preserve backward compatibility for all exported types and methods (`App`, `Command`, `Option`, `Example`, `Param`, `Note`, `Theme`, `Options`, `App.Render`, `App.RenderGlobal`, `App.RenderCommand`, `App.LookupCommand`).
 - **Additive Changes**: Adding new fields, structs, or methods is encouraged. Avoid breaking existing function signatures or struct field semantics in future development.
 
-## File Sizing
+## Sizing
 
-- **Target**: 150–300 lines per file (~1.5k–3k tokens)
-- **Trigger**: Split into logical units when exceeding 600 lines
-- **Rationale**: Keeping files under 300 lines maintains focused AI agent context and improves AST editing accuracy.
+Two limits, and they are not equally important:
+
+### Functions — hard limit 80 lines
+
+No function may exceed **80 lines**. This is the limit that protects correctness, so when it conflicts with anything else, it wins.
+Extracting a function is a *semantic* edit: the extracted piece needs a name, parameters and return values, and the compiler checks every call site.
+
+### Files — warn over 800 lines, hard limit 1100
+
+Files should stay comfortably readable, but file length is a *comfort* metric, not a correctness one. Keep functions under 80 lines and files land in the 300–700 range on their own; the 800-line warning exists to catch the cases where they do not.
+
+### Never split a file through a function body
+
+When a file grows past the warning threshold, **decompose its long functions in place** into named helpers rather than cutting the file underneath an oversized function. Never split a file across a function body.
 
 ## Hard Constraints & Code Hygiene
 

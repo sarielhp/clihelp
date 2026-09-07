@@ -133,4 +133,3 @@ func TestRenderCommandNoDuplicateFlags(t *testing.T) {
 		t.Errorf("expected '--output' flag to appear exactly once, got %d:\n%s", count, out)
 	}
 }
-

@@ -262,3 +262,28 @@ func (a *App) CollectOptions(path []string, cmd *Command) []Option {
 func (a *App) collectOptions(path []string, cmd *Command) []Option {
 	return a.CollectOptions(path, cmd)
 }
+
+// Walk performs depth-first traversal of all commands and nested subcommands.
+// If fn returns an error, Walk halts traversal and returns that error.
+func (a *App) Walk(fn func(path []string, cmd *Command) error) error {
+	if a == nil || fn == nil {
+		return nil
+	}
+	var walk func(cmds []Command, path []string) error
+	walk = func(cmds []Command, path []string) error {
+		for i := range cmds {
+			cmd := &cmds[i]
+			cmdPath := append(append([]string(nil), path...), cmd.Name)
+			if err := fn(cmdPath, cmd); err != nil {
+				return err
+			}
+			if len(cmd.Subcommands) > 0 {
+				if err := walk(cmd.Subcommands, cmdPath); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	return walk(a.Commands, nil)
+}

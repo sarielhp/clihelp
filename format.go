@@ -264,11 +264,6 @@ func DisplayNameWithArgs(c Command) string {
 	return name
 }
 
-// displayNameWithArgs is an internal alias for DisplayNameWithArgs.
-func displayNameWithArgs(c Command) string {
-	return DisplayNameWithArgs(c)
-}
-
 // title returns the explicit help title of cmd, falling back to its name.
 func title(c *Command) string {
 	if c.Title != "" {
@@ -287,7 +282,7 @@ func subcommandEntries(c *Command) []Param {
 	for i := range c.Subcommands {
 		if !c.Subcommands[i].Hidden {
 			out = append(out, Param{
-				Name:        displayNameWithArgs(c.Subcommands[i]),
+				Name:        DisplayName(c.Subcommands[i]),
 				Description: c.Subcommands[i].Description,
 			})
 		}
