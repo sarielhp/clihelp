@@ -49,6 +49,70 @@ func renderOptionsGrouped(w io.Writer, th Theme, o Options, termWidth int, opts 
 	}
 }
 
+func (a *App) collectRenderFlags() []Option {
+	var allFlags []Option
+	for _, f := range a.PersistentOptions {
+		if !f.Hidden {
+			allFlags = append(allFlags, f)
+		}
+	}
+	for _, f := range a.GlobalFlags {
+		if !f.Hidden {
+			allFlags = append(allFlags, f)
+		}
+	}
+
+	hasHelp := false
+	hasVersion := false
+	for _, f := range allFlags {
+		if strings.Contains(f.Flags, "--help") || strings.Contains(f.Flags, "-h") {
+			hasHelp = true
+		}
+		if strings.Contains(f.Flags, "--version") || strings.Contains(f.Flags, "-v") {
+			hasVersion = true
+		}
+	}
+
+	helpGroup := "Help & Information"
+	var stdFlags []Option
+	if !hasHelp {
+		stdFlags = append(stdFlags, Option{
+			Flags:       "-h, --help",
+			Description: "Show help for command or application",
+			Group:       helpGroup,
+		})
+	}
+	if a.Version != "" && !hasVersion {
+		stdFlags = append(stdFlags, Option{
+			Flags:       "-v, --version",
+			Description: "Show application version",
+			Group:       helpGroup,
+		})
+	}
+
+	hasAnyGroup := false
+	for _, f := range allFlags {
+		if f.Group != "" {
+			hasAnyGroup = true
+			break
+		}
+	}
+
+	if hasAnyGroup {
+		for i := range allFlags {
+			if allFlags[i].Group == "" {
+				allFlags[i].Group = "General Flags"
+			}
+		}
+	} else if len(allFlags) > 0 {
+		for i := range stdFlags {
+			stdFlags[i].Group = ""
+		}
+	}
+
+	return append(allFlags, stdFlags...)
+}
+
 // RenderFlags writes the dedicated global flags overview: usage template,
 // grouped persistent flags, standard help flags, and guidance.
 func (a *App) RenderFlags(o Options) {
@@ -63,68 +127,7 @@ func (a *App) RenderFlags(o Options) {
 		th.Body.Fprintln(w, "Global flags available to all commands:")
 		fmt.Fprintln(w)
 
-		var allFlags []Option
-		for _, f := range a.PersistentOptions {
-			if !f.Hidden {
-				allFlags = append(allFlags, f)
-			}
-		}
-		for _, f := range a.GlobalFlags {
-			if !f.Hidden {
-				allFlags = append(allFlags, f)
-			}
-		}
-
-		hasHelp := false
-		hasVersion := false
-		for _, f := range allFlags {
-			if strings.Contains(f.Flags, "--help") || strings.Contains(f.Flags, "-h") {
-				hasHelp = true
-			}
-			if strings.Contains(f.Flags, "--version") || strings.Contains(f.Flags, "-v") {
-				hasVersion = true
-			}
-		}
-
-		helpGroup := "Help & Information"
-		var stdFlags []Option
-		if !hasHelp {
-			stdFlags = append(stdFlags, Option{
-				Flags:       "-h, --help",
-				Description: "Show help for command or application",
-				Group:       helpGroup,
-			})
-		}
-		if a.Version != "" && !hasVersion {
-			stdFlags = append(stdFlags, Option{
-				Flags:       "-v, --version",
-				Description: "Show application version",
-				Group:       helpGroup,
-			})
-		}
-
-		hasAnyGroup := false
-		for _, f := range allFlags {
-			if f.Group != "" {
-				hasAnyGroup = true
-				break
-			}
-		}
-
-		if hasAnyGroup {
-			for i := range allFlags {
-				if allFlags[i].Group == "" {
-					allFlags[i].Group = "General Flags"
-				}
-			}
-		} else if len(allFlags) > 0 {
-			for i := range stdFlags {
-				stdFlags[i].Group = ""
-			}
-		}
-
-		allFlags = append(allFlags, stdFlags...)
-
+		allFlags := a.collectRenderFlags()
 		renderOptionsGrouped(w, th, o, termWidth, allFlags)
 
 		if len(a.Commands) > 0 || len(a.Shortcuts) > 0 {

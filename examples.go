@@ -142,17 +142,7 @@ func extractSegmentTokens(seg string) []segToken {
 	return tokens
 }
 
-func colorizeSegment(app *App, cmd *Command, seg string, th Theme) string {
-	toks := extractSegmentTokens(seg)
-	if len(toks) == 0 {
-		return seg
-	}
-
-	var rawStrings []string
-	for _, t := range toks {
-		rawStrings = append(rawStrings, t.text)
-	}
-
+func identifySegmentTokens(app *App, cmd *Command, toks []segToken, rawStrings []string) ([]bool, []bool) {
 	isCmd := make([]bool, len(toks))
 	isFlag := make([]bool, len(toks))
 
@@ -195,7 +185,10 @@ func colorizeSegment(app *App, cmd *Command, seg string, th Theme) string {
 			isFlag[idx] = true
 		}
 	}
+	return isCmd, isFlag
+}
 
+func buildColorizedSegment(seg string, toks []segToken, isCmd, isFlag []bool, th Theme) string {
 	var b strings.Builder
 	lastPos := 0
 	for idx, t := range toks {
@@ -222,8 +215,22 @@ func colorizeSegment(app *App, cmd *Command, seg string, th Theme) string {
 	if lastPos < len(seg) {
 		b.WriteString(seg[lastPos:])
 	}
-
 	return b.String()
+}
+
+func colorizeSegment(app *App, cmd *Command, seg string, th Theme) string {
+	toks := extractSegmentTokens(seg)
+	if len(toks) == 0 {
+		return seg
+	}
+
+	rawStrings := make([]string, len(toks))
+	for i, t := range toks {
+		rawStrings[i] = t.text
+	}
+
+	isCmd, isFlag := identifySegmentTokens(app, cmd, toks, rawStrings)
+	return buildColorizedSegment(seg, toks, isCmd, isFlag, th)
 }
 
 // renderExamples writes formatted and colorized examples to w.
@@ -250,106 +257,172 @@ func renderExamples(w io.Writer, app *App, cmd *Command, th Theme, o Options, te
 	}
 }
 
-// SplitExampleCommandLine parses a shell command string into separate argument tokens,
-// properly handling single quotes, double quotes, escape characters, prompt prefixes,
-// and inline comments. If the command contains pipes or operators, the primary command
-// segment before the pipe is tokenized for CLI validation.
-func SplitExampleCommandLine(line string) ([]string, error) {
+func cleanExampleCommandLine(line string) string {
 	trimmed := strings.TrimSpace(line)
 	if trimmed == "" {
-		return nil, nil
+		return ""
 	}
-
-	// Strip shell prompt if present
 	if strings.HasPrefix(trimmed, "$ ") || strings.HasPrefix(trimmed, "> ") || strings.HasPrefix(trimmed, "% ") {
 		trimmed = strings.TrimSpace(trimmed[2:])
 	}
-
-	// If pipeline or chained command, take the first command for CLI verification
 	for _, sep := range []string{" | ", " || ", " && ", " ; ", "\n"} {
 		if idx := strings.Index(trimmed, sep); idx != -1 {
 			trimmed = strings.TrimSpace(trimmed[:idx])
 		}
 	}
+	return trimmed
+}
 
-	var tokens []string
-	var cur strings.Builder
-	inSingle := false
-	inDouble := false
-	escaped := false
-	tokenStarted := false
+type exampleTokenState struct {
+	tokens       []string
+	cur          strings.Builder
+	inSingle     bool
+	inDouble     bool
+	escaped      bool
+	tokenStarted bool
+}
 
+func (s *exampleTokenState) pushToken() {
+	if s.tokenStarted {
+		s.tokens = append(s.tokens, s.cur.String())
+		s.cur.Reset()
+		s.tokenStarted = false
+	}
+}
+
+func tokenizeCommandLine(trimmed, line string) ([]string, error) {
+	var s exampleTokenState
 	for i := 0; i < len(trimmed); i++ {
 		ch := trimmed[i]
 
-		if escaped {
-			cur.WriteByte(ch)
-			escaped = false
-			tokenStarted = true
+		if s.escaped {
+			s.cur.WriteByte(ch)
+			s.escaped = false
+			s.tokenStarted = true
 			continue
 		}
 
-		if ch == '\\' && !inSingle {
-			escaped = true
-			tokenStarted = true
+		if ch == '\\' && !s.inSingle {
+			s.escaped = true
+			s.tokenStarted = true
 			continue
 		}
 
-		if inSingle {
+		if s.inSingle {
 			if ch == '\'' {
-				inSingle = false
+				s.inSingle = false
 			} else {
-				cur.WriteByte(ch)
+				s.cur.WriteByte(ch)
 			}
-			tokenStarted = true
+			s.tokenStarted = true
 			continue
 		}
 
-		if inDouble {
+		if s.inDouble {
 			if ch == '"' {
-				inDouble = false
+				s.inDouble = false
 			} else {
-				cur.WriteByte(ch)
+				s.cur.WriteByte(ch)
 			}
-			tokenStarted = true
+			s.tokenStarted = true
 			continue
 		}
 
-		// Comment outside quotes
-		if ch == '#' && (!tokenStarted || unicode.IsSpace(rune(trimmed[i-1]))) {
+		if ch == '#' && (!s.tokenStarted || unicode.IsSpace(rune(trimmed[i-1]))) {
 			break
 		}
 
 		switch ch {
 		case '\'':
-			inSingle = true
-			tokenStarted = true
+			s.inSingle = true
+			s.tokenStarted = true
 		case '"':
-			inDouble = true
-			tokenStarted = true
+			s.inDouble = true
+			s.tokenStarted = true
 		case ' ', '\t', '\n', '\r':
-			if tokenStarted {
-				tokens = append(tokens, cur.String())
-				cur.Reset()
-				tokenStarted = false
-			}
+			s.pushToken()
 		default:
-			cur.WriteByte(ch)
-			tokenStarted = true
+			s.cur.WriteByte(ch)
+			s.tokenStarted = true
 		}
 	}
 
-	if inSingle || inDouble {
+	if s.inSingle || s.inDouble {
 		return nil, fmt.Errorf("unclosed quote in example %q", line)
 	}
-	if escaped {
+	if s.escaped {
 		return nil, fmt.Errorf("trailing escape backslash in example %q", line)
 	}
-	if tokenStarted {
-		tokens = append(tokens, cur.String())
+	s.pushToken()
+
+	return s.tokens, nil
+}
+
+// SplitExampleCommandLine parses a shell command string into separate argument tokens,
+// properly handling single quotes, double quotes, escape characters, prompt prefixes,
+// and inline comments. If the command contains pipes or operators, the primary command
+// segment before the pipe is tokenized for CLI validation.
+func SplitExampleCommandLine(line string) ([]string, error) {
+	trimmed := cleanExampleCommandLine(line)
+	if trimmed == "" {
+		return nil, nil
+	}
+	return tokenizeCommandLine(trimmed, line)
+}
+
+func resolveExampleCommand(app *App, cmd *Command, tokens []string, rawLine string) (*Command, []*Command, []string, bool, error) {
+	targetCmd, ancestors, _, remaining, handled, resolveErr := app.resolveCommand(tokens)
+	if resolveErr != nil {
+		if cmd != nil && (len(tokens) == 0 || tokens[0] != cmd.Name) {
+			tokensWithCmd := append([]string{cmd.Name}, tokens...)
+			t2, a2, _, r2, h2, err2 := app.resolveCommand(tokensWithCmd)
+			if err2 == nil {
+				return t2, a2, r2, h2, nil
+			}
+		}
+		return nil, nil, nil, false, fmt.Errorf("invalid command in example %q: %w", rawLine, resolveErr)
+	}
+	return targetCmd, ancestors, remaining, handled, nil
+}
+
+func validateExampleTokens(app *App, targetCmd *Command, ancestors []*Command, remaining []string, rawLine string) error {
+	cmdName := appName(app)
+	if targetCmd != nil {
+		cmdName = targetCmd.Name
+	}
+	fs := pflag.NewFlagSet(cmdName, pflag.ContinueOnError)
+
+	var helpReq bool
+	fs.BoolVarP(&helpReq, "help", "h", false, "help")
+	_ = fs.MarkHidden("help")
+
+	_ = bindAndMark(fs, app.PersistentOptions)
+	_ = bindAndMark(fs, app.GlobalFlags)
+	for _, anc := range ancestors {
+		_ = bindAndMark(fs, anc.PersistentOptions)
+	}
+	if targetCmd != nil {
+		_ = bindAndMark(fs, targetCmd.PersistentOptions)
+		_ = bindAndMark(fs, targetCmd.Options)
 	}
 
-	return tokens, nil
+	if parseErr := fs.Parse(remaining); parseErr != nil {
+		return fmt.Errorf("invalid flag in example %q: %w", rawLine, parseErr)
+	}
+
+	if targetCmd != nil && targetCmd.OptionsValidator != nil {
+		if err := targetCmd.OptionsValidator(fs); err != nil {
+			return fmt.Errorf("option constraint failed in example %q: %w", rawLine, err)
+		}
+	}
+
+	cmdArgs := fs.Args()
+	if targetCmd != nil && targetCmd.Args != nil {
+		if err := targetCmd.Args(cmdArgs); err != nil {
+			return fmt.Errorf("argument validation failed in example %q: %w", rawLine, err)
+		}
+	}
+	return nil
 }
 
 // ValidateExample statically validates that an Example can be parsed and accepted
@@ -375,77 +448,25 @@ func ValidateExample(app *App, ex Example, cmd *Command) error {
 			continue
 		}
 
-		// Strip app name if present as the first token
 		name := appName(app)
 		if tokens[0] == name || tokens[0] == "./"+name || (app.Name != "" && tokens[0] == app.Name) {
 			tokens = tokens[1:]
 		}
-
 		if len(tokens) == 0 {
 			continue
 		}
 
-		// Resolve command path
-		targetCmd, ancestors, path, remaining, handled, resolveErr := app.resolveCommand(tokens)
-		if resolveErr != nil {
-			// If resolving from root failed and cmd context is provided, try resolving with cmd name
-			if cmd != nil && (len(tokens) == 0 || tokens[0] != cmd.Name) {
-				tokensWithCmd := append([]string{cmd.Name}, tokens...)
-				t2, a2, p2, r2, h2, err2 := app.resolveCommand(tokensWithCmd)
-				if err2 == nil {
-					targetCmd, ancestors, path, remaining, handled = t2, a2, p2, r2, h2
-				} else {
-					return fmt.Errorf("invalid command in example %q: %w", rawLine, resolveErr)
-				}
-			} else {
-				return fmt.Errorf("invalid command in example %q: %w", rawLine, resolveErr)
-			}
+		targetCmd, ancestors, remaining, handled, err := resolveExampleCommand(app, cmd, tokens, rawLine)
+		if err != nil {
+			return err
 		}
-
 		if handled {
 			continue
 		}
 
-		// Bind flags for parsing
-		cmdName := name
-		if targetCmd != nil {
-			cmdName = targetCmd.Name
+		if err := validateExampleTokens(app, targetCmd, ancestors, remaining, rawLine); err != nil {
+			return err
 		}
-		fs := pflag.NewFlagSet(cmdName, pflag.ContinueOnError)
-
-		var helpReq bool
-		fs.BoolVarP(&helpReq, "help", "h", false, "help")
-		_ = fs.MarkHidden("help")
-
-		_ = bindAndMark(fs, app.PersistentOptions)
-		_ = bindAndMark(fs, app.GlobalFlags)
-		for _, anc := range ancestors {
-			_ = bindAndMark(fs, anc.PersistentOptions)
-		}
-		if targetCmd != nil {
-			_ = bindAndMark(fs, targetCmd.PersistentOptions)
-			_ = bindAndMark(fs, targetCmd.Options)
-		}
-
-		if parseErr := fs.Parse(remaining); parseErr != nil {
-			return fmt.Errorf("invalid flag in example %q: %w", rawLine, parseErr)
-		}
-
-		// Options validation
-		if targetCmd != nil && targetCmd.OptionsValidator != nil {
-			if err := targetCmd.OptionsValidator(fs); err != nil {
-				return fmt.Errorf("option constraint failed in example %q: %w", rawLine, err)
-			}
-		}
-
-		// Positional arguments validation
-		cmdArgs := fs.Args()
-		if targetCmd != nil && targetCmd.Args != nil {
-			if err := targetCmd.Args(cmdArgs); err != nil {
-				return fmt.Errorf("argument validation failed in example %q: %w", rawLine, err)
-			}
-		}
-		_ = path
 	}
 
 	return nil

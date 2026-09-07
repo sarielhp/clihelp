@@ -284,45 +284,28 @@ func renderNavNode(b *strings.Builder, c clihelp.Command, path []string, depth i
 	}
 }
 
-// renderIndex renders the top-level application overview page.
-func renderIndex(a *clihelp.App) string {
-	var b strings.Builder
-	b.WriteString(pageHeader(pageMeta{title: a.Name, hasChildren: true}))
-	fmt.Fprintf(&b, "# %s\n\n", mdInline(a.Name))
-	if a.Description != "" {
-		fmt.Fprintf(&b, "%s\n\n", a.Description)
-	}
-
-	if len(a.Commands) > 0 {
-		b.WriteString("## Commands\n\n| clihelp.Command | Description |\n|---------|-------------|\n")
-		for _, c := range a.Commands {
-			if c.Hidden {
-				continue
-			}
-			desc := c.Description
-			if desc == "" {
-				desc = "—"
-			}
-			fmt.Fprintf(&b, "| [%s](%s) | %s |\n", mdInline(displayName(c)), markdownSlug(c.Name)+".md", mdTableCell(desc))
+func renderIndexCommandTable(b *strings.Builder, heading string, cmds []clihelp.Command) {
+	var visible []clihelp.Command
+	for _, c := range cmds {
+		if !c.Hidden {
+			visible = append(visible, c)
 		}
-		b.WriteString("\n")
 	}
-
-	if len(a.Shortcuts) > 0 {
-		b.WriteString("## Shortcut Commands\n\n| clihelp.Command | Description |\n|---------|-------------|\n")
-		for _, s := range a.Shortcuts {
-			if s.Hidden {
-				continue
-			}
-			desc := s.Description
-			if desc == "" {
-				desc = "—"
-			}
-			fmt.Fprintf(&b, "| [%s](%s) | %s |\n", mdInline(displayName(s)), markdownSlug(s.Name)+".md", mdTableCell(desc))
+	if len(visible) == 0 {
+		return
+	}
+	fmt.Fprintf(b, "## %s\n\n| clihelp.Command | Description |\n|---------|-------------|\n", heading)
+	for _, c := range visible {
+		desc := c.Description
+		if desc == "" {
+			desc = "—"
 		}
-		b.WriteString("\n")
+		fmt.Fprintf(b, "| [%s](%s) | %s |\n", mdInline(displayName(c)), markdownSlug(c.Name)+".md", mdTableCell(desc))
 	}
+	b.WriteString("\n")
+}
 
+func renderIndexGlobalFlags(b *strings.Builder, a *clihelp.App) {
 	var globalFlags []clihelp.Option
 	for _, f := range a.PersistentOptions {
 		if !f.Hidden {
@@ -334,30 +317,48 @@ func renderIndex(a *clihelp.App) string {
 			globalFlags = append(globalFlags, f)
 		}
 	}
-
-	if len(globalFlags) > 0 {
-		b.WriteString("## Global Flags\n\n| Flag | Description |\n|------|-------------|\n")
-		for _, f := range globalFlags {
-			desc := f.Description
-			if f.DefaultText != "" {
-				desc = desc + " (default: " + f.DefaultText + ")"
-			}
-			fmt.Fprintf(&b, "| %s | %s |\n", mdCode(f.Flags), desc)
+	if len(globalFlags) == 0 {
+		return
+	}
+	b.WriteString("## Global Flags\n\n| Flag | Description |\n|------|-------------|\n")
+	for _, f := range globalFlags {
+		desc := f.Description
+		if f.DefaultText != "" {
+			desc = desc + " (default: " + f.DefaultText + ")"
 		}
-		b.WriteString("\n")
+		fmt.Fprintf(b, "| %s | %s |\n", mdCode(f.Flags), desc)
+	}
+	b.WriteString("\n")
+}
+
+func renderMarkdownExamples(b *strings.Builder, examples []clihelp.Example) {
+	if len(examples) == 0 {
+		return
+	}
+	b.WriteString("## Examples\n\n")
+	for _, ex := range examples {
+		line := fmt.Sprintf("- %s", mdCode(ex.Line))
+		if ex.Description != "" {
+			line += " — " + ex.Description
+		}
+		b.WriteString(line + "\n")
+	}
+	b.WriteString("\n")
+}
+
+// renderIndex renders the top-level application overview page.
+func renderIndex(a *clihelp.App) string {
+	var b strings.Builder
+	b.WriteString(pageHeader(pageMeta{title: a.Name, hasChildren: true}))
+	fmt.Fprintf(&b, "# %s\n\n", mdInline(a.Name))
+	if a.Description != "" {
+		fmt.Fprintf(&b, "%s\n\n", a.Description)
 	}
 
-	if len(a.Examples) > 0 {
-		b.WriteString("## Examples\n\n")
-		for _, ex := range a.Examples {
-			line := fmt.Sprintf("- %s", mdCode(ex.Line))
-			if ex.Description != "" {
-				line += " — " + ex.Description
-			}
-			b.WriteString(line + "\n")
-		}
-		b.WriteString("\n")
-	}
+	renderIndexCommandTable(&b, "Commands", a.Commands)
+	renderIndexCommandTable(&b, "Shortcut Commands", a.Shortcuts)
+	renderIndexGlobalFlags(&b, a)
+	renderMarkdownExamples(&b, a.Examples)
 
 	if a.Version != "" {
 		fmt.Fprintf(&b, "## Version\n\n%s\n\n", mdInline(a.Version))
@@ -370,6 +371,69 @@ func renderIndex(a *clihelp.App) string {
 		fmt.Fprintf(&b, "%s\n\n", a.GlobalNote)
 	}
 	return b.String()
+}
+
+func findSubcommandFile(cmd *clihelp.Command, path []string, name string) string {
+	for i := range cmd.Subcommands {
+		if cmd.Subcommands[i].Name == name {
+			p := append(append([]string{}, path...), cmd.Subcommands[i].Name)
+			return markdownRelFile(p)
+		}
+		for _, alias := range cmd.Subcommands[i].Aliases {
+			if alias == name {
+				p := append(append([]string{}, path...), cmd.Subcommands[i].Name)
+				return markdownRelFile(p)
+			}
+		}
+	}
+	return ""
+}
+
+func renderCommandSubcommandsTable(b *strings.Builder, cmd *clihelp.Command, path []string) {
+	subs := subcommandEntries(cmd)
+	if len(subs) == 0 {
+		return
+	}
+	b.WriteString("## Subcommands\n\n| clihelp.Command | Description |\n|---------|-------------|\n")
+	for _, s := range subs {
+		file := findSubcommandFile(cmd, path, s.Name)
+		desc := s.Description
+		if desc == "" {
+			desc = "—"
+		}
+		if file != "" {
+			fmt.Fprintf(b, "| [%s](%s) | %s |\n", mdInline(s.Name), file, desc)
+		} else {
+			fmt.Fprintf(b, "| %s | %s |\n", mdInline(s.Name), desc)
+		}
+	}
+	b.WriteString("\n")
+}
+
+func renderCommandParametersTable(b *strings.Builder, params []clihelp.Param) {
+	if len(params) == 0 {
+		return
+	}
+	b.WriteString("## Parameters\n\n| Parameter | Description |\n|-----------|-------------|\n")
+	for _, p := range params {
+		fmt.Fprintf(b, "| %s | %s |\n", mdCode(p.Name), p.Description)
+	}
+	b.WriteString("\n")
+}
+
+func renderCommandFlagsTable(b *strings.Builder, options []clihelp.Option) {
+	if len(options) == 0 {
+		return
+	}
+	b.WriteString("## Flags\n\n| Flag | Description |\n|------|-------------|\n")
+	for _, f := range options {
+		desc := f.Description
+		if f.DefaultText != "" {
+			desc = desc + " (default: " + f.DefaultText + ")"
+		}
+		fmt.Fprintf(b, "| %s | %s |\n", mdCode(f.Flags), mdTableCell(desc))
+	}
+	b.WriteString("\n")
 }
 
 // renderCommandPage renders the detailed page for a single command.
@@ -398,73 +462,10 @@ func renderCommandPage(a *clihelp.App, n cmdNode) string {
 		b.WriteString("\n```\n\n")
 	}
 
-	if subs := subcommandEntries(&cmd); len(subs) > 0 {
-		b.WriteString("## Subcommands\n\n| clihelp.Command | Description |\n|---------|-------------|\n")
-		for _, s := range subs {
-			file := ""
-			for i := range cmd.Subcommands {
-				if cmd.Subcommands[i].Name == s.Name {
-					p := append(append([]string{}, n.path...), cmd.Subcommands[i].Name)
-					file = markdownRelFile(p)
-					break
-				}
-				for _, alias := range cmd.Subcommands[i].Aliases {
-					if alias == s.Name {
-						p := append(append([]string{}, n.path...), cmd.Subcommands[i].Name)
-						file = markdownRelFile(p)
-						break
-					}
-				}
-				if file != "" {
-					break
-				}
-			}
-			desc := s.Description
-			if desc == "" {
-				desc = "—"
-			}
-			if file != "" {
-				fmt.Fprintf(&b, "| [%s](%s) | %s |\n", mdInline(s.Name), file, desc)
-			} else {
-				fmt.Fprintf(&b, "| %s | %s |\n", mdInline(s.Name), desc)
-			}
-		}
-		b.WriteString("\n")
-	}
-
-	if len(cmd.Parameters) > 0 {
-		b.WriteString("## Parameters\n\n| Parameter | Description |\n|-----------|-------------|\n")
-		for _, p := range cmd.Parameters {
-			fmt.Fprintf(&b, "| %s | %s |\n", mdCode(p.Name), p.Description)
-		}
-		b.WriteString("\n")
-	}
-
-	allOptions := a.CollectOptions(n.path, &cmd)
-
-	if len(allOptions) > 0 {
-		b.WriteString("## Flags\n\n| Flag | Description |\n|------|-------------|\n")
-		for _, f := range allOptions {
-			desc := f.Description
-			if f.DefaultText != "" {
-				desc = desc + " (default: " + f.DefaultText + ")"
-			}
-			fmt.Fprintf(&b, "| %s | %s |\n", mdCode(f.Flags), mdTableCell(desc))
-		}
-		b.WriteString("\n")
-	}
-
-	if len(cmd.Examples) > 0 {
-		b.WriteString("## Examples\n\n")
-		for _, ex := range cmd.Examples {
-			line := fmt.Sprintf("- %s", mdCode(ex.Line))
-			if ex.Description != "" {
-				line += " — " + ex.Description
-			}
-			b.WriteString(line + "\n")
-		}
-		b.WriteString("\n")
-	}
+	renderCommandSubcommandsTable(&b, &cmd, n.path)
+	renderCommandParametersTable(&b, cmd.Parameters)
+	renderCommandFlagsTable(&b, a.CollectOptions(n.path, &cmd))
+	renderMarkdownExamples(&b, cmd.Examples)
 
 	for _, note := range cmd.Notes {
 		if note.Heading != "" {

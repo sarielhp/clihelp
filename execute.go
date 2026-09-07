@@ -27,49 +27,24 @@ func (a *App) Execute(args []string) error {
 	return a.ExecuteContext(context.Background(), args)
 }
 
-// ExecuteContext runs the application using the given context and argument slice.
-func (a *App) ExecuteContext(ctx context.Context, args []string) error {
-	// 1. Check for shell autocompletion protocol
-	if len(args) > 0 && args[0] == "__complete" {
-		return a.handleComplete(ctx, args[1:])
-	}
-
-	// 2. Silently auto-install shell completion if enabled and missing
-	a.maybeAutoInstallCompletion(args)
-
-	// 3. Check for top-level version flag
+func (a *App) checkTopLevelVersion(args []string) (bool, error) {
 	if len(args) == 1 && (args[0] == "--version" || args[0] == "version") {
 		if !a.hasCommandNamed("version") {
 			if a.Version == "" {
-				return fmt.Errorf("%s: no version is set for this application", appName(a))
+				return false, fmt.Errorf("%s: no version is set for this application", appName(a))
 			}
 			if a.Name != "" {
 				fmt.Fprintf(a.stdout(), "%s %s\n", a.Name, a.Version)
 			} else {
 				fmt.Fprintln(a.stdout(), a.Version)
 			}
-			return nil
+			return true, nil
 		}
 	}
+	return false, nil
+}
 
-	// 3. Resolve command hierarchy and separate command path from remaining args
-	targetCmd, ancestors, path, remaining, handled, err := a.resolveCommand(args)
-	if err != nil {
-		return err
-	}
-
-	// If resolveCommand handled the "help" subcommand, return early to avoid double render
-	if handled {
-		return nil
-	}
-
-	// If resolved to help subcommand
-	if targetCmd == nil && len(path) == 0 && len(remaining) == 0 && a.Run == nil {
-		a.RenderGlobal(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
-		return nil
-	}
-
-	// 4. Gather persistent + local options and bind to pflag.FlagSet
+func (a *App) setupFlagSet(targetCmd *Command, ancestors []*Command) (*pflag.FlagSet, *bool, error) {
 	cmdName := a.Name
 	if targetCmd != nil {
 		cmdName = targetCmd.Name
@@ -78,42 +53,33 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 	fs := pflag.NewFlagSet(cmdName, pflag.ContinueOnError)
 	fs.SetOutput(a.stderr())
 
-	// Register the built-in help flag for -h/--help handling.
 	var helpRequested bool
 	fs.BoolVarP(&helpRequested, "help", "h", false, "Help for "+cmdName)
 	_ = fs.MarkHidden("help")
 
-	// Bind App PersistentOptions
 	if err := bindAndMark(fs, a.PersistentOptions); err != nil {
-		return err
+		return nil, nil, err
 	}
-
-	// Bind App GlobalFlags
 	if err := bindAndMark(fs, a.GlobalFlags); err != nil {
-		return err
+		return nil, nil, err
 	}
-
-	// Bind Ancestors' PersistentOptions
 	for _, anc := range ancestors {
 		if err := bindAndMark(fs, anc.PersistentOptions); err != nil {
-			return err
+			return nil, nil, err
 		}
 	}
-
-	// Bind Target Command PersistentOptions & Options
 	if targetCmd != nil {
 		if err := bindAndMark(fs, targetCmd.PersistentOptions); err != nil {
-			return err
+			return nil, nil, err
 		}
 		if err := bindAndMark(fs, targetCmd.Options); err != nil {
-			return err
+			return nil, nil, err
 		}
 	}
+	return fs, &helpRequested, nil
+}
 
-	// Parse flags
-	parseErr := fs.Parse(remaining)
-
-	// Gather all options for validation, warnings, and fallbacks
+func (a *App) collectAllActiveOptions(targetCmd *Command, ancestors []*Command) []Option {
 	var allOptions []Option
 	allOptions = append(allOptions, a.PersistentOptions...)
 	allOptions = append(allOptions, a.GlobalFlags...)
@@ -124,12 +90,10 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 		allOptions = append(allOptions, targetCmd.PersistentOptions...)
 		allOptions = append(allOptions, targetCmd.Options...)
 	}
+	return allOptions
+}
 
-	if parseErr != nil {
-		return parseErr
-	}
-
-	// Check if any required options are missing
+func (a *App) validateParsedFlags(fs *pflag.FlagSet, allOptions []Option, targetCmd *Command, path []string) error {
 	missing := getMissingRequiredFlags(fs, allOptions)
 	prompted := false
 	if len(missing) > 0 {
@@ -167,27 +131,10 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 		cmdStr := constructCommand(a, path, fs, fs.Args())
 		fmt.Fprintf(a.stderr(), "\n💡 Tip: Next time, you can run this directly with:\n   %s\n\n", cmdStr)
 	}
+	return nil
+}
 
-	// Render help if -h / --help was passed
-	if helpRequested {
-		o := Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager}
-		if len(path) == 0 {
-			a.RenderGlobal(o)
-		} else {
-			a.RenderCommand(o, path...)
-		}
-		return nil
-	}
-
-	// 5. Validate positional args
-	cmdArgs := fs.Args()
-	if targetCmd != nil && targetCmd.Args != nil {
-		if err := targetCmd.Args(cmdArgs); err != nil {
-			return err
-		}
-	}
-
-	// 6. Lifecycle execution
+func (a *App) runLifecycle(ctx context.Context, targetCmd *Command, path []string, cmdArgs, args []string) error {
 	cliCtx := &Context{
 		Context: ctx,
 		App:     a,
@@ -219,7 +166,6 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 			return err
 		}
 	} else {
-		// Default to rendering help when command has no Run handler
 		o := Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager}
 		if len(path) == 0 {
 			a.RenderGlobal(o)
@@ -242,6 +188,61 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 	}
 
 	return nil
+}
+
+// ExecuteContext runs the application using the given context and argument slice.
+func (a *App) ExecuteContext(ctx context.Context, args []string) error {
+	if len(args) > 0 && args[0] == "__complete" {
+		return a.handleComplete(ctx, args[1:])
+	}
+
+	a.maybeAutoInstallCompletion(args)
+
+	if handled, err := a.checkTopLevelVersion(args); handled || err != nil {
+		return err
+	}
+
+	targetCmd, ancestors, path, remaining, handled, err := a.resolveCommand(args)
+	if handled || err != nil {
+		return err
+	}
+
+	if targetCmd == nil && len(path) == 0 && len(remaining) == 0 && a.Run == nil {
+		a.RenderGlobal(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+		return nil
+	}
+
+	fs, helpRequested, err := a.setupFlagSet(targetCmd, ancestors)
+	if err != nil {
+		return err
+	}
+
+	if parseErr := fs.Parse(remaining); parseErr != nil {
+		return parseErr
+	}
+
+	allOptions := a.collectAllActiveOptions(targetCmd, ancestors)
+	if err := a.validateParsedFlags(fs, allOptions, targetCmd, path); err != nil {
+		return err
+	}
+
+	if *helpRequested {
+		o := Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager}
+		if len(path) == 0 {
+			a.RenderGlobal(o)
+		} else {
+			a.RenderCommand(o, path...)
+		}
+		return nil
+	}
+
+	if targetCmd != nil && targetCmd.Args != nil {
+		if err := targetCmd.Args(fs.Args()); err != nil {
+			return err
+		}
+	}
+
+	return a.runLifecycle(ctx, targetCmd, path, fs.Args(), args)
 }
 
 func (a *App) hasCommandNamed(name string) bool {
@@ -321,6 +322,95 @@ func (a *App) lookupCommandPath(path []string) (*Command, []string) {
 	return found, resolvedPath
 }
 
+func (a *App) handleRootHelpTopic(topic string) (bool, error) {
+	switch {
+	case topic == "flags" || topic == "options" || topic == "opts" || topic == "flag" || (a.AbbrevCommands && (strings.HasPrefix("flags", topic) || strings.HasPrefix("options", topic))):
+		a.RenderFlags(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+		return true, nil
+	case topic == "man" || topic == "all" || topic == "full" || topic == "manual" || (a.AbbrevCommands && (strings.HasPrefix("man", topic) || strings.HasPrefix("manual", topic))):
+		a.RenderMan(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+		return true, nil
+	case topic == "topics" || topic == "help" || (a.AbbrevCommands && strings.HasPrefix("topics", topic)):
+		a.RenderHelpTopics(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+		return true, nil
+	case topic == "v" || topic == "-v" || topic == "version" || topic == "--version" || (a.AbbrevCommands && strings.HasPrefix("version", topic)):
+		if a.Version == "" {
+			return false, fmt.Errorf("%s: no version is set for this application", appName(a))
+		}
+		if a.Name != "" {
+			fmt.Fprintf(a.stdout(), "%s %s\n", a.Name, a.Version)
+		} else {
+			fmt.Fprintln(a.stdout(), a.Version)
+		}
+		return true, nil
+	case topic == "d" || topic == "-d" || topic == "docs" || topic == "doc" || topic == "more" || (a.AbbrevCommands && (strings.HasPrefix("docs", topic) || strings.HasPrefix("more", topic))):
+		th := a.Theme
+		if th == nil {
+			t := defaultTheme()
+			th = &t
+		}
+		o := Options{Writer: a.stdout(), Theme: th, Pager: a.Pager}
+		if a.GlobalNote != "" {
+			reflow(a.stdout(), th.Body, wrapWidth(o.width(), 0, o.maxContent()), 0, "", inline(a.GlobalNote))
+		} else if a.Description != "" {
+			reflow(a.stdout(), th.Body, wrapWidth(o.width(), 0, o.maxContent()), 0, "", inline(a.Description))
+		} else {
+			fmt.Fprintf(a.stdout(), "No extended documentation available for %s.\n", appName(a))
+		}
+		return true, nil
+	}
+	return false, fmt.Errorf("unknown help topic %q", topic)
+}
+
+func (a *App) handleHelpInvocation(helpPath []string) (bool, error) {
+	if len(helpPath) == 0 {
+		a.RenderGlobal(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+		return true, nil
+	}
+	if helpCmd, resolvedPath := a.lookupCommandPath(helpPath); helpCmd != nil {
+		a.RenderCommand(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager}, resolvedPath...)
+		return true, nil
+	}
+	if len(helpPath) == 1 {
+		return a.handleRootHelpTopic(helpPath[0])
+	}
+	return false, fmt.Errorf("unknown help topic %q", helpPath[0])
+}
+
+func matchAbbrevCommand(currentCommands []Command, arg string) (*Command, error) {
+	matches := filterCommandsByPrefix(currentCommands, arg)
+	if len(matches) == 1 {
+		return matches[0], nil
+	}
+	if len(matches) > 1 {
+		names := make([]string, len(matches))
+		for i, cmd := range matches {
+			names[i] = cmd.Name
+		}
+		var buf strings.Builder
+		buf.WriteString(fmt.Sprintf("command %q is ambiguous. Did you mean one of these?\n", arg))
+		for _, name := range names {
+			buf.WriteString(fmt.Sprintf("  %s\n", name))
+		}
+		return nil, errors.New(buf.String())
+	}
+	return nil, nil
+}
+
+func (a *App) checkUnknownCommand(currentCmd *Command, currentCommands []Command, arg string) error {
+	if len(currentCommands) > 0 && ((currentCmd == nil && a.Run == nil) || (currentCmd != nil && currentCmd.Run == nil)) {
+		parentName := a.Name
+		if currentCmd != nil {
+			parentName = currentCmd.Name
+		}
+		if suggestion := suggestCommand(arg, currentCommands); suggestion != "" {
+			return fmt.Errorf("unknown command %q for %q. Did you mean %q?", arg, parentName, suggestion)
+		}
+		return fmt.Errorf("unknown command %q for %q", arg, parentName)
+	}
+	return nil
+}
+
 // resolveCommandPath resolves a path of command names, using prefix matching when
 // AbbrevCommands is enabled and exact match fails.
 func (a *App) resolveCommandPath(args []string, currentCommands []Command) (*Command, []*Command, []string, []string, bool, error) {
@@ -332,72 +422,17 @@ func (a *App) resolveCommandPath(args []string, currentCommands []Command) (*Com
 	for idx < len(args) {
 		arg := args[idx]
 
-		// If help subcommand is passed: e.g. "app help scan", "app h", "app h build", "app help tree"
 		if isHelpToken(arg, currentCommands, a.AbbrevCommands) {
 			helpPath := append(path, args[idx+1:]...)
-			if len(helpPath) == 0 {
-				a.RenderGlobal(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
-				return nil, nil, nil, nil, true, nil
-			}
-
-			// If command exists at this path, render it
-			if helpCmd, resolvedPath := a.lookupCommandPath(helpPath); helpCmd != nil {
-				a.RenderCommand(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager}, resolvedPath...)
-				return nil, nil, nil, nil, true, nil
-			}
-
-			// Built-in root help topics
-			if len(helpPath) == 1 {
-				topic := helpPath[0]
-				switch {
-				case topic == "flags" || topic == "options" || topic == "opts" || topic == "flag" || (a.AbbrevCommands && (strings.HasPrefix("flags", topic) || strings.HasPrefix("options", topic))):
-					a.RenderFlags(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
-					return nil, nil, nil, nil, true, nil
-				case topic == "man" || topic == "all" || topic == "full" || topic == "manual" || (a.AbbrevCommands && (strings.HasPrefix("man", topic) || strings.HasPrefix("manual", topic))):
-					a.RenderMan(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
-					return nil, nil, nil, nil, true, nil
-				case topic == "topics" || topic == "help" || (a.AbbrevCommands && strings.HasPrefix("topics", topic)):
-					a.RenderHelpTopics(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
-					return nil, nil, nil, nil, true, nil
-				case topic == "v" || topic == "-v" || topic == "version" || topic == "--version" || (a.AbbrevCommands && strings.HasPrefix("version", topic)):
-					if a.Version == "" {
-						return nil, nil, nil, nil, false, fmt.Errorf("%s: no version is set for this application", appName(a))
-					}
-					if a.Name != "" {
-						fmt.Fprintf(a.stdout(), "%s %s\n", a.Name, a.Version)
-					} else {
-						fmt.Fprintln(a.stdout(), a.Version)
-					}
-					return nil, nil, nil, nil, true, nil
-				case topic == "d" || topic == "-d" || topic == "docs" || topic == "doc" || topic == "more" || (a.AbbrevCommands && (strings.HasPrefix("docs", topic) || strings.HasPrefix("more", topic))):
-					th := a.Theme
-					if th == nil {
-						t := defaultTheme()
-						th = &t
-					}
-					o := Options{Writer: a.stdout(), Theme: th, Pager: a.Pager}
-					if a.GlobalNote != "" {
-						reflow(a.stdout(), th.Body, wrapWidth(o.width(), 0, o.maxContent()), 0, "", inline(a.GlobalNote))
-					} else if a.Description != "" {
-						reflow(a.stdout(), th.Body, wrapWidth(o.width(), 0, o.maxContent()), 0, "", inline(a.Description))
-					} else {
-						fmt.Fprintf(a.stdout(), "No extended documentation available for %s.\n", appName(a))
-					}
-					return nil, nil, nil, nil, true, nil
-				}
-			}
-
-			return nil, nil, nil, nil, false, fmt.Errorf("unknown help topic %q", helpPath[0])
+			handled, err := a.handleHelpInvocation(helpPath)
+			return nil, nil, nil, nil, handled, err
 		}
 
-		// Flags denote end of command tree traversal
 		if strings.HasPrefix(arg, "-") {
 			break
 		}
 
-		// Look for matching command or alias
 		matched, _ := findCommand(currentCommands, arg)
-
 		if matched != nil {
 			if currentCmd != nil {
 				ancestors = append(ancestors, currentCmd)
@@ -409,50 +444,27 @@ func (a *App) resolveCommandPath(args []string, currentCommands []Command) (*Com
 			continue
 		}
 
-		// If exact match failed and abbreviation is enabled, try prefix matching
 		if a.AbbrevCommands {
-			matches := filterCommandsByPrefix(currentCommands, arg)
-			if len(matches) == 1 {
-				// Unique prefix match
+			abbrevMatch, err := matchAbbrevCommand(currentCommands, arg)
+			if err != nil {
+				return nil, nil, nil, nil, false, err
+			}
+			if abbrevMatch != nil {
 				if currentCmd != nil {
 					ancestors = append(ancestors, currentCmd)
 				}
-				currentCmd = matches[0]
-				path = append(path, matches[0].Name)
-				currentCommands = matches[0].Subcommands
+				currentCmd = abbrevMatch
+				path = append(path, abbrevMatch.Name)
+				currentCommands = abbrevMatch.Subcommands
 				idx++
 				continue
-			} else if len(matches) > 1 {
-				// Ambiguous prefix - show all candidates
-				names := make([]string, len(matches))
-				for i, cmd := range matches {
-					names[i] = cmd.Name
-				}
-				var buf strings.Builder
-				buf.WriteString(fmt.Sprintf("command %q is ambiguous. Did you mean one of these?\n", arg))
-				for _, name := range names {
-					buf.WriteString(fmt.Sprintf("  %s\n", name))
-				}
-				return nil, nil, nil, nil, false, errors.New(buf.String())
 			}
 		}
 
-		// Unknown command token: if the receiving node has subcommands and no
-		// Run handler (root uses a.Run), treat as typo/error. Otherwise it is
-		// a positional argument.
-		if len(currentCommands) > 0 && ((currentCmd == nil && a.Run == nil) || (currentCmd != nil && currentCmd.Run == nil)) {
-			parentName := a.Name
-			if currentCmd != nil {
-				parentName = currentCmd.Name
-			}
-			suggestion := suggestCommand(arg, currentCommands)
-			if suggestion != "" {
-				return nil, nil, nil, nil, false, fmt.Errorf("unknown command %q for %q. Did you mean %q?", arg, parentName, suggestion)
-			}
-			return nil, nil, nil, nil, false, fmt.Errorf("unknown command %q for %q", arg, parentName)
+		if err := a.checkUnknownCommand(currentCmd, currentCommands, arg); err != nil {
+			return nil, nil, nil, nil, false, err
 		}
 
-		// Otherwise positional argument for current command
 		break
 	}
 

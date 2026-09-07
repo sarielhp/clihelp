@@ -260,6 +260,73 @@ func (a *App) usageLine() string {
 	}
 }
 
+func optionsToParams(options []Option) []Param {
+	params := make([]Param, 0, len(options))
+	for _, opt := range options {
+		desc := opt.Description
+		if opt.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
+			desc = desc + " (default: " + opt.DefaultText + ")"
+		}
+		if opt.Required {
+			desc = desc + " (required)"
+		}
+		if opt.Deprecated != "" {
+			desc = desc + " (deprecated: " + opt.Deprecated + ")"
+		}
+		params = append(params, Param{Name: opt.Flags, Description: desc})
+	}
+	return params
+}
+
+func renderOptionList(w io.Writer, th Theme, o Options, termWidth int, options []Option) {
+	params := optionsToParams(options)
+	indent := colIndent(params)
+	for _, p := range params {
+		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Flag)
+	}
+}
+
+func (a *App) renderGlobalShortcuts(w io.Writer, th Theme, o Options, termWidth int) {
+	if len(a.Shortcuts) == 0 {
+		return
+	}
+	th.Accent.Fprintln(w, "Shortcut Commands:")
+	params := make([]Param, 0, len(a.Shortcuts))
+	for _, s := range a.Shortcuts {
+		if !s.Hidden {
+			params = append(params, Param{
+				Name:        DisplayName(s),
+				Description: firstSentence(s.Description),
+			})
+		}
+	}
+	indent := colIndent(params)
+	for _, p := range params {
+		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Subcommand)
+	}
+	fmt.Fprintln(w)
+}
+
+func (a *App) renderGlobalFlagsSection(w io.Writer, th Theme, o Options, termWidth int) {
+	var globalFlags []Option
+	for _, f := range a.PersistentOptions {
+		if !f.Hidden {
+			globalFlags = append(globalFlags, f)
+		}
+	}
+	for _, f := range a.GlobalFlags {
+		if !f.Hidden {
+			globalFlags = append(globalFlags, f)
+		}
+	}
+	if len(globalFlags) == 0 {
+		return
+	}
+	th.Accent.Fprintln(w, "Global Flags:")
+	renderOptionList(w, th, o, termWidth, globalFlags)
+	fmt.Fprintln(w)
+}
+
 // RenderGlobal writes the top-level application overview: a command-line usage
 // template, description, command list with aliases, shortcut commands,
 // global flags, and help footer.
@@ -289,58 +356,8 @@ func (a *App) RenderGlobal(o Options) {
 			fmt.Fprintln(w)
 		}
 
-		if len(a.Shortcuts) > 0 {
-			th.Accent.Fprintln(w, "Shortcut Commands:")
-			params := make([]Param, 0, len(a.Shortcuts))
-			for _, s := range a.Shortcuts {
-				if !s.Hidden {
-					params = append(params, Param{
-						Name:        DisplayName(s),
-						Description: firstSentence(s.Description),
-					})
-				}
-			}
-			indent := colIndent(params)
-			for _, p := range params {
-				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Subcommand)
-			}
-			fmt.Fprintln(w)
-		}
-
-		var globalFlags []Option
-		for _, f := range a.PersistentOptions {
-			if !f.Hidden {
-				globalFlags = append(globalFlags, f)
-			}
-		}
-		for _, f := range a.GlobalFlags {
-			if !f.Hidden {
-				globalFlags = append(globalFlags, f)
-			}
-		}
-
-		if len(globalFlags) > 0 {
-			th.Accent.Fprintln(w, "Global Flags:")
-			params := make([]Param, 0, len(globalFlags))
-			for _, f := range globalFlags {
-				desc := f.Description
-				if f.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
-					desc = desc + " (default: " + f.DefaultText + ")"
-				}
-				if f.Required {
-					desc = desc + " (required)"
-				}
-				if f.Deprecated != "" {
-					desc = desc + " (deprecated: " + f.Deprecated + ")"
-				}
-				params = append(params, Param{Name: f.Flags, Description: desc})
-			}
-			indent := colIndent(params)
-			for _, p := range params {
-				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Flag)
-			}
-			fmt.Fprintln(w)
-		}
+		a.renderGlobalShortcuts(w, th, o, termWidth)
+		a.renderGlobalFlagsSection(w, th, o, termWidth)
 
 		if len(a.Examples) > 0 {
 			th.Accent.Fprintln(w, "Examples:")
@@ -360,6 +377,93 @@ func (a *App) RenderGlobal(o Options) {
 	})
 }
 
+func renderCommandTitle(w io.Writer, th Theme, o Options, cmd *Command, termWidth, sepW int) {
+	if !th.Separator && th.TitlePrefix == "" {
+		return
+	}
+	fmt.Fprintln(w)
+	if th.Separator {
+		separator(w, th, sepW)
+	}
+	reflow(w, th.Accent, wrapWidth(termWidth, 2, o.maxContent()), 2, "", th.TitlePrefix+title(cmd))
+	if th.Separator {
+		separator(w, th, sepW)
+	}
+}
+
+func (a *App) buildDefaultUsage(cmd *Command, path []string) string {
+	if cmd.UsageLine != "" {
+		return cmd.UsageLine
+	}
+	fullPath := strings.Join(append([]string{appName(a)}, path...), " ")
+	hasFlags := len(a.collectOptions(path, cmd)) > 0
+	hasSubs := len(cmd.Subcommands) > 0
+	switch {
+	case hasSubs && hasFlags:
+		return fmt.Sprintf("%s [flags] <subcommand> [args]", fullPath)
+	case hasSubs:
+		return fmt.Sprintf("%s <subcommand> [args]", fullPath)
+	case hasFlags:
+		return fmt.Sprintf("%s [flags] [args]", fullPath)
+	default:
+		return fmt.Sprintf("%s [args]", fullPath)
+	}
+}
+
+func (a *App) renderCommandSubcommands(w io.Writer, th Theme, o Options, termWidth int, cmd *Command) {
+	subs := subcommandEntries(cmd)
+	if len(subs) == 0 {
+		return
+	}
+	th.Hdr.Fprintln(w, "\nSubcommands:")
+	if len(cmd.SubcommandEntries) > 0 {
+		indent := colIndent(subs)
+		for _, s := range subs {
+			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, s.Name, inline(s.Description), th.Subcommand)
+		}
+	} else {
+		a.renderCommandGrouped(w, th, o, termWidth, cmd.Subcommands)
+	}
+}
+
+func renderCommandParams(w io.Writer, th Theme, o Options, termWidth int, params []Param) {
+	if len(params) == 0 {
+		return
+	}
+	th.Hdr.Fprintln(w, "\nParameters:")
+	indent := colIndent(params)
+	for _, p := range params {
+		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description))
+	}
+}
+
+func (a *App) renderCommandFlags(w io.Writer, th Theme, o Options, termWidth int, path []string, cmd *Command) {
+	localOptions := a.collectLocalOptions(cmd)
+	if len(localOptions) > 0 {
+		th.Hdr.Fprintln(w, "\nFlags:")
+		renderOptionList(w, th, o, termWidth, localOptions)
+	}
+
+	globalOptions := a.collectGlobalOptions(path, cmd)
+	if len(globalOptions) > 0 {
+		th.Hdr.Fprintln(w, "\nGlobal Flags:")
+		if a.OmitGlobalFlagsInCommands {
+			reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", fmt.Sprintf("Run '%s help flags' for flags available to all commands.", appName(a)))
+		} else {
+			renderOptionList(w, th, o, termWidth, globalOptions)
+		}
+	}
+}
+
+func renderCommandNotes(w io.Writer, th Theme, o Options, termWidth int, notes []Note) {
+	for _, note := range notes {
+		if note.Heading != "" {
+			th.Hdr.Fprintln(w, "\n"+note.Heading+":")
+		}
+		reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", inline(note.Text))
+	}
+}
+
 // RenderCommand writes help for the command at path (e.g. "config" "set"),
 // rendering any of these present sections in order: Usage, Description,
 // Subcommands, Parameters, Flags, Examples, Notes. Returns true if the path
@@ -374,33 +478,9 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 		sepW := min(o.width(), o.maxContent())
 		termWidth := o.width()
 
-		if th.Separator || th.TitlePrefix != "" {
-			fmt.Fprintln(w)
-			if th.Separator {
-				separator(w, th, sepW)
-			}
-			reflow(w, th.Accent, wrapWidth(termWidth, 2, o.maxContent()), 2, "", th.TitlePrefix+title(cmd))
-			if th.Separator {
-				separator(w, th, sepW)
-			}
-		}
+		renderCommandTitle(w, th, o, cmd, termWidth, sepW)
 
-		usage := cmd.UsageLine
-		if usage == "" {
-			fullPath := strings.Join(append([]string{appName(a)}, path...), " ")
-			hasFlags := len(a.collectOptions(path, cmd)) > 0
-			hasSubs := len(cmd.Subcommands) > 0
-			switch {
-			case hasSubs && hasFlags:
-				usage = fmt.Sprintf("%s [flags] <subcommand> [args]", fullPath)
-			case hasSubs:
-				usage = fmt.Sprintf("%s <subcommand> [args]", fullPath)
-			case hasFlags:
-				usage = fmt.Sprintf("%s [flags] [args]", fullPath)
-			default:
-				usage = fmt.Sprintf("%s [args]", fullPath)
-			}
-		}
+		usage := a.buildDefaultUsage(cmd, path)
 		th.Hdr.Fprint(w, "Usage:  ")
 		fmt.Fprintln(w, inline(usage))
 
@@ -409,88 +489,16 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", inline(cmd.Description))
 		}
 
-		if subs := subcommandEntries(cmd); len(subs) > 0 {
-			th.Hdr.Fprintln(w, "\nSubcommands:")
-			if len(cmd.SubcommandEntries) > 0 {
-				indent := colIndent(subs)
-				for _, s := range subs {
-					reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, s.Name, inline(s.Description), th.Subcommand)
-				}
-			} else {
-				a.renderCommandGrouped(w, th, o, termWidth, cmd.Subcommands)
-			}
-		}
-
-		if len(cmd.Parameters) > 0 {
-			th.Hdr.Fprintln(w, "\nParameters:")
-			indent := colIndent(cmd.Parameters)
-			for _, p := range cmd.Parameters {
-				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description))
-			}
-		}
-
-		localOptions := a.collectLocalOptions(cmd)
-		globalOptions := a.collectGlobalOptions(path, cmd)
-
-		if len(localOptions) > 0 {
-			th.Hdr.Fprintln(w, "\nFlags:")
-			optParams := make([]Param, 0, len(localOptions))
-			for _, o0 := range localOptions {
-				desc := o0.Description
-				if o0.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
-					desc = desc + " (default: " + o0.DefaultText + ")"
-				}
-				if o0.Required {
-					desc = desc + " (required)"
-				}
-				if o0.Deprecated != "" {
-					desc = desc + " (deprecated: " + o0.Deprecated + ")"
-				}
-				optParams = append(optParams, Param{Name: o0.Flags, Description: desc})
-			}
-			indent := colIndent(optParams)
-			for _, p := range optParams {
-				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Flag)
-			}
-		}
-
-		if len(globalOptions) > 0 {
-			th.Hdr.Fprintln(w, "\nGlobal Flags:")
-			if a.OmitGlobalFlagsInCommands {
-				reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", fmt.Sprintf("Run '%s help flags' for flags available to all commands.", appName(a)))
-			} else {
-				optParams := make([]Param, 0, len(globalOptions))
-				for _, o0 := range globalOptions {
-					desc := o0.Description
-					if o0.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
-						desc = desc + " (default: " + o0.DefaultText + ")"
-					}
-					if o0.Required {
-						desc = desc + " (required)"
-					}
-					if o0.Deprecated != "" {
-						desc = desc + " (deprecated: " + o0.Deprecated + ")"
-					}
-					optParams = append(optParams, Param{Name: o0.Flags, Description: desc})
-				}
-				indent := colIndent(optParams)
-				for _, p := range optParams {
-					reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Flag)
-				}
-			}
-		}
+		a.renderCommandSubcommands(w, th, o, termWidth, cmd)
+		renderCommandParams(w, th, o, termWidth, cmd.Parameters)
+		a.renderCommandFlags(w, th, o, termWidth, path, cmd)
 
 		if len(cmd.Examples) > 0 {
 			th.Hdr.Fprintln(w, "\nExamples:")
 			renderExamples(w, a, cmd, th, o, termWidth, cmd.Examples, 2, 4)
 		}
 
-		for _, note := range cmd.Notes {
-			if note.Heading != "" {
-				th.Hdr.Fprintln(w, "\n"+note.Heading+":")
-			}
-			reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", inline(note.Text))
-		}
+		renderCommandNotes(w, th, o, termWidth, cmd.Notes)
 
 		if th.Separator {
 			separator(w, th, sepW)

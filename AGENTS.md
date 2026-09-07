@@ -81,18 +81,22 @@ make run
 
 Two limits, and they are not equally important:
 
-### Functions — hard limit 80 lines
+### Functions — hard limit 80 lines (exceptions apply)
 
-No function may exceed **80 lines**. This is the limit that protects correctness, so when it conflicts with anything else, it wins.
-Extracting a function is a *semantic* edit: the extracted piece needs a name, parameters and return values, and the compiler checks every call site.
+- **Production functions** (`*.go`, excluding `*_test.go`): Hard limit **80 lines**. This limit protects correctness, so when it conflicts with anything else, it wins. Extracting a function is a *semantic* edit: the extracted piece needs a name, parameters and return values, and the compiler checks every call site.
+  - **Declarative builders exception**: Functions named `build*` with cyclomatic branches <= 2 have a relaxed limit of **150 lines** (e.g. static CLI command tree builders).
+- **Test functions** (`*_test.go`): Relaxed limit of **200 lines** to permit thorough table-driven test cases without unnatural fragmentation.
 
-### Files — warn over 800 lines, hard limit 1100
+### Files — comfort metrics, warnings, and hard limits
 
-Files should stay comfortably readable, but file length is a *comfort* metric, not a correctness one. Keep functions under 80 lines and files land in the 300–700 range on their own; the 800-line warning exists to catch the cases where they do not.
+File length is a *comfort* metric, not a correctness one. Keep functions under their limits and files land in the comfort range on their own:
+- **Production files**: Comfort **300–700 lines**, warn > **800 lines**, hard limit **1100 lines**.
+- **Test files**: Comfort **300–1000 lines**, warn > **1200 lines**, hard limit **1600 lines**.
 
 ### Never split a file through a function body
 
 When a file grows past the warning threshold, **decompose its long functions in place** into named helpers rather than cutting the file underneath an oversized function. Never split a file across a function body.
+Enforce sizing via `tools/audit_lines.rb` (`make audit`).
 
 ## Hard Constraints & Code Hygiene
 

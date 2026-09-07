@@ -47,73 +47,34 @@ func splitLines(text string) []string {
 	return out
 }
 
-// reflowSegment word-wraps a single paragraph (no newlines) so that no visual
-// line exceeds width columns. An optional prefix is placed in its own first-line
-// column and following lines are indented to align it.
-func reflowSegment(w io.Writer, c *color.Color, prefixColor *color.Color, width, indent int, prefix, text string) {
-	words := strings.Fields(text)
-
-	if prefix != "" {
-		prefixDisplay := "  " + prefix
-		if prefixColor != nil {
-			prefixDisplay = prefixColor.Sprint(prefixDisplay)
-		}
-		var prefixStr string
-		var curLen int
-		if visualLen(prefixDisplay)+2 > indent {
-			c.Fprintln(w, prefixDisplay)
-			prefixStr = strings.Repeat(" ", indent)
-			curLen = indent
-		} else {
-			prefixStr = fmt.Sprintf("  %-*s", indent-2, prefix)
-			if prefixColor != nil {
-				prefixStr = prefixColor.Sprint(prefixStr)
-			}
-			curLen = visualLen(prefixStr)
-		}
-		if len(words) == 0 {
-			if visualLen(prefixDisplay)+2 <= indent {
-				c.Fprintln(w, prefixDisplay)
-			}
-			return
-		}
-		indentStr := strings.Repeat(" ", indent)
-		var cur strings.Builder
-		cur.WriteString(prefixStr)
-		for _, word := range words {
-			wlen := visualLen(word)
-			space := 0
-			if curLen > indent {
-				space = 1
-			}
-			if curLen+space+wlen > width {
-				c.Fprintln(w, cur.String())
-				cur.Reset()
-				cur.WriteString(indentStr)
-				cur.WriteString(word)
-				curLen = indent + wlen
-			} else {
-				if space > 0 {
-					cur.WriteString(" ")
-					curLen++
-				}
-				cur.WriteString(word)
-				curLen += wlen
-			}
-		}
-		if curLen > indent {
-			c.Fprintln(w, cur.String())
-		}
-		return
+func formatPrefix(w io.Writer, c *color.Color, prefixColor *color.Color, indent int, prefix string, noWords bool) (string, int, bool) {
+	prefixDisplay := "  " + prefix
+	if prefixColor != nil {
+		prefixDisplay = prefixColor.Sprint(prefixDisplay)
 	}
-
-	if len(words) == 0 {
-		return
+	if visualLen(prefixDisplay)+2 > indent {
+		c.Fprintln(w, prefixDisplay)
+		if noWords {
+			return "", 0, true
+		}
+		return strings.Repeat(" ", indent), indent, false
 	}
+	if noWords {
+		c.Fprintln(w, prefixDisplay)
+		return "", 0, true
+	}
+	prefixStr := fmt.Sprintf("  %-*s", indent-2, prefix)
+	if prefixColor != nil {
+		prefixStr = prefixColor.Sprint(prefixStr)
+	}
+	return prefixStr, visualLen(prefixStr), false
+}
+
+func reflowWords(w io.Writer, c *color.Color, width, indent int, initialStr string, initialLen int, words []string) {
 	indentStr := strings.Repeat(" ", indent)
 	var cur strings.Builder
-	cur.WriteString(indentStr)
-	curLen := indent
+	cur.WriteString(initialStr)
+	curLen := initialLen
 	for _, word := range words {
 		wlen := visualLen(word)
 		space := 0
@@ -138,6 +99,25 @@ func reflowSegment(w io.Writer, c *color.Color, prefixColor *color.Color, width,
 	if curLen > indent {
 		c.Fprintln(w, cur.String())
 	}
+}
+
+// reflowSegment word-wraps a single paragraph (no newlines) so that no visual
+// line exceeds width columns. An optional prefix is placed in its own first-line
+// column and following lines are indented to align it.
+func reflowSegment(w io.Writer, c *color.Color, prefixColor *color.Color, width, indent int, prefix, text string) {
+	words := strings.Fields(text)
+	if prefix != "" {
+		initialStr, initialLen, done := formatPrefix(w, c, prefixColor, indent, prefix, len(words) == 0)
+		if done {
+			return
+		}
+		reflowWords(w, c, width, indent, initialStr, initialLen, words)
+		return
+	}
+	if len(words) == 0 {
+		return
+	}
+	reflowWords(w, c, width, indent, strings.Repeat(" ", indent), indent, words)
 }
 
 // reflow word-wraps text so that no visual line exceeds width columns. It

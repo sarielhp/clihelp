@@ -53,6 +53,56 @@ func Render(w io.Writer, a *clihelp.App, opts ...Options) {
 	}
 }
 
+func computeContBase(prefix string, isLastCmd, hasSubcommands bool) string {
+	if hasSubcommands {
+		if !isLastCmd {
+			return prefix + "│   │   "
+		}
+		return prefix + "    │   "
+	}
+	if !isLastCmd {
+		return prefix + "│   "
+	}
+	return prefix + "    "
+}
+
+func renderTreeNode(w io.Writer, th clihelp.Theme, width int, cmd clihelp.Command, treeColor, cmdColor *color.Color, prefix, branch string, currentPath []string, isLastCmd bool) {
+	label := strings.Join(currentPath, " ")
+	if len(cmd.Aliases) > 0 {
+		label += fmt.Sprintf(" (%s)", strings.Join(cmd.Aliases, ", "))
+	}
+
+	treeBranch := prefix + branch
+	firstLineCmd := treeColor.Sprint(treeBranch) + cmdColor.Sprint(label)
+	rawFirstPrefix := treeBranch + label + "  "
+	firstWidth := visualLen(rawFirstPrefix)
+	maxWidth := width
+	remainingWidth := maxWidth - firstWidth
+
+	contBase := computeContBase(prefix, isLastCmd, len(cmd.Subcommands) > 0)
+
+	if cmd.Description == "" {
+		fmt.Fprintln(w, firstLineCmd)
+		return
+	}
+
+	if firstWidth > 24 || remainingWidth < 45 {
+		fmt.Fprintln(w, firstLineCmd)
+		descPrefix := treeColor.Sprint(contBase) + "  "
+		descIndent := visualLen(contBase) + 2
+		reflowTree(w, th.Body, descIndent, maxWidth, descPrefix, descPrefix, firstSentence(cmd.Description))
+		return
+	}
+
+	firstPrefixFormatted := firstLineCmd + "  "
+	totalWidth := firstWidth
+	contPrefixFormatted := treeColor.Sprint(contBase)
+	if rem := totalWidth - visualLen(contBase); rem > 0 {
+		contPrefixFormatted += strings.Repeat(" ", rem)
+	}
+	reflowTree(w, th.Body, totalWidth, maxWidth, firstPrefixFormatted, contPrefixFormatted, firstSentence(cmd.Description))
+}
+
 func renderTreeTo(w io.Writer, th clihelp.Theme, width int, commands []clihelp.Command, prefix string, path []string, isLast bool) {
 	if len(commands) == 0 {
 		return
@@ -82,49 +132,7 @@ func renderTreeTo(w io.Writer, th clihelp.Theme, width int, commands []clihelp.C
 		}
 
 		currentPath := append(append([]string(nil), path...), cmd.Name)
-		label := strings.Join(currentPath, " ")
-		if len(cmd.Aliases) > 0 {
-			label += fmt.Sprintf(" (%s)", strings.Join(cmd.Aliases, ", "))
-		}
-
-		treeBranch := prefix + branch
-		firstLineCmd := treeColor.Sprint(treeBranch) + cmdColor.Sprint(label)
-		rawFirstPrefix := treeBranch + label + "  "
-		firstWidth := visualLen(rawFirstPrefix)
-		maxWidth := width
-		remainingWidth := maxWidth - firstWidth
-
-		var contBase string
-		if len(cmd.Subcommands) > 0 {
-			if !isLastCmd {
-				contBase = prefix + "│   │   "
-			} else {
-				contBase = prefix + "    │   "
-			}
-		} else {
-			if !isLastCmd {
-				contBase = prefix + "│   "
-			} else {
-				contBase = prefix + "    "
-			}
-		}
-
-		if cmd.Description == "" {
-			fmt.Fprintln(w, firstLineCmd)
-		} else if firstWidth > 24 || remainingWidth < 45 {
-			fmt.Fprintln(w, firstLineCmd)
-			descPrefix := treeColor.Sprint(contBase) + "  "
-			descIndent := visualLen(contBase) + 2
-			reflowTree(w, th.Body, descIndent, maxWidth, descPrefix, descPrefix, firstSentence(cmd.Description))
-		} else {
-			firstPrefixFormatted := firstLineCmd + "  "
-			totalWidth := firstWidth
-			contPrefixFormatted := treeColor.Sprint(contBase)
-			if rem := totalWidth - visualLen(contBase); rem > 0 {
-				contPrefixFormatted += strings.Repeat(" ", rem)
-			}
-			reflowTree(w, th.Body, totalWidth, maxWidth, firstPrefixFormatted, contPrefixFormatted, firstSentence(cmd.Description))
-		}
+		renderTreeNode(w, th, width, cmd, treeColor, cmdColor, prefix, branch, currentPath, isLastCmd)
 
 		if len(cmd.Subcommands) > 0 {
 			nextPrefix := prefix + "│   "
