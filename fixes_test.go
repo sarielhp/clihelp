@@ -106,3 +106,31 @@ func TestVisualLenWideCJK(t *testing.T) {
 		t.Errorf("visualLen of two wide CJK chars = %d, want 4", visualLen(green))
 	}
 }
+
+func TestRenderCommandNoDuplicateFlags(t *testing.T) {
+	app := &App{
+		Name: "testcli",
+		Commands: []Command{
+			{
+				Name:        "run",
+				Description: "Run the task",
+				Options: []Option{
+					{Flags: "-o, --output <path>", Description: "Output path"},
+					{Flags: "-v, --verbose", Description: "Verbose output"},
+				},
+			},
+		},
+	}
+	o, buf := captureOptions(80)
+	if !app.RenderCommand(o, "run") {
+		t.Fatal("RenderCommand returned false")
+	}
+	out := strip(buf.String())
+	if count := strings.Count(out, "Flags:"); count != 1 {
+		t.Errorf("expected exactly 1 'Flags:' section, got %d:\n%s", count, out)
+	}
+	if count := strings.Count(out, "--output"); count != 1 {
+		t.Errorf("expected '--output' flag to appear exactly once, got %d:\n%s", count, out)
+	}
+}
+

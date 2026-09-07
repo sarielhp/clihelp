@@ -478,26 +478,6 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 					reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Flag)
 				}
 			}
-		} else if len(cmd.Options) > 0 {
-			// Presentation fallback for legacy command options
-			var optParams []Param
-			for _, opt := range cmd.Options {
-				if opt.Hidden {
-					continue
-				}
-				desc := opt.Description
-				if opt.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
-					desc = desc + " (default: " + opt.DefaultText + ")"
-				}
-				optParams = append(optParams, Param{Name: opt.Flags, Description: desc})
-			}
-			if len(optParams) > 0 {
-				th.Hdr.Fprintln(w, "\nFlags:")
-				indent := colIndent(optParams)
-				for _, p := range optParams {
-					reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Flag)
-				}
-			}
 		}
 
 		if len(cmd.Examples) > 0 {
