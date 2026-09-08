@@ -3,4 +3,5 @@
 opencode.json
 /bin/
 podctl
+.bws/
 
