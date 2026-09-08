@@ -46,6 +46,22 @@ These features fix existing gaps, improve testability, or enhance validation cla
 * **Critique:** Instead of importing a heavy prompt library, this can be integrated using a simple config toggle: `App.InteractiveFallback bool`.
 * **Why it's clean:** If a required parameter is missing, the command prompts the user, runs, and prints the exact direct CLI equivalent to `Stderr` (e.g. `💡 Shortcut next time: mytool build -o out.mp3 in.wav`). It requires **zero extra code** from the programmer, teaches the end-user how to use the CLI, and serves as an interactive script builder.
 
+### E. Extended Command Documentation & Tiered Help (`-h` vs `--help` / `-H`)
+* **Critique:** As commands gain comprehensive documentation, architectural overviews ("What This Command Does"), and step-by-step guides ("Importing Into AntennaPod"), displaying the entire manual on `-h` causes severe screen overflow (> 24 lines) on standard terminals. Furthermore, list continuations (numbered or bulleted) in command notes wrap to column 2 rather than maintaining a hanging indent, and `-h` vs `--help` currently produce identical output.
+* **Why it's clean:**
+  1. **Tiered Progressive Disclosure (`-h` vs `--help` / `help <cmd>`)**:
+     * **Concise Help (`-h`)**: Displays `Usage:`, concise summary, parameters, and flags (suppressing verbose `Notes` and extended prose to stay <= 24 lines) with a footer hint: `Use '<app> help <cmd>' (or --help) for full guide and examples.`
+     * **Extended Documentation (`--help` or `help <cmd>`)**: Renders full `LongDescription`, examples, and all `Notes` sections (automatically piped to `$PAGER` via `App.Pager` when output exceeds terminal height).
+     * **Opt-in `-H` Flag (`App.ExtendedHelpFlag`)**: For applications that do not use `-H` for `--header` or `--host`, provides an opt-in toggle to treat `-H` as a single-letter shortcut for extended help (`--help`).
+  2. **`Command.LongDescription`**:
+     * `Command.Description` remains the concise 1-sentence summary used in index tables and compact `-h`.
+     * `Command.LongDescription` provides top-level architectural prose rendered directly below `Usage:` in extended help mode, eliminating the need to misuse trailing notes for command overviews.
+  3. **Hanging Indents for Lists in `format.go`**:
+     * `reflow` detects list item prefixes (`1. `, `2. `, `- `, `* `) and sets the continuation line indent to `indent + len(prefix)`, cleanly aligning multi-line step instructions and bullet points.
+  4. **Verbatim Code / Block Preservation**:
+     * Supports raw/preformatted blocks in `Note` (or `Note.Raw: true`) so whitespace, ASCII diagrams, shell snippets, or config samples are not collapsed by `strings.Fields`.
+
+
 ---
 
 ## 2. 🔴 Should Not Be Done (Rejected due to API Bloat / Complexity)
