@@ -7,6 +7,12 @@ parent: 'podctl completion'
 
 Generate Bash tab-completion script
 
+## Usage
+
+```
+completion bash
+```
+
 ## Flags
 
 | Flag | Description |

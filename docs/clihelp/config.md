@@ -15,10 +15,10 @@ podctl config <subcommand> [options]
 
 ## Subcommands
 
-| Command | Description |
+| clihelp.Command | Description |
 |---------|-------------|
-| set \<attribute> \<value> | Assign, update, or override configuration attribute values. Supports nested key paths and bulk operations for efficient setup across development, staging, and production targets. |
-| get \<attribute> | Display, inspect, and print configured attribute values. Reads from the persistent store or falls back to built-in defaults when no explicit user configuration value has been set. |
+| [set](config-set.md) | Assign, update, or override configuration attribute values. Supports nested key paths and bulk operations for efficient setup across development, staging, and production targets. |
+| [get](config-get.md) | Display, inspect, and print configured attribute values. Reads from the persistent store or falls back to built-in defaults when no explicit user configuration value has been set. |
 
 ## Flags
 

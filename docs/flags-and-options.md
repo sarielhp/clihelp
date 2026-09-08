@@ -201,10 +201,9 @@ clihelp.Command{
 ## Automatic Help Flag Collision Trap
 
 > [!CAUTION]
-> **Never manually declare `-h` or `--help` in Options**: `clihelp` automatically binds `-h` and `--help` to every command during execution. Explicitly registering a help flag will cause a `pflag` panic at runtime:
+> **Never manually declare `-h`, `--help`, or `-H` in Options**: `clihelp` automatically binds and manages help flags for all commands:
+> - `-h`: Concise help suppressing verbose notes and fitting within 24-line terminals.
+> - `--help`: Extended help rendering `LongDescription`, all notes, and examples.
+> - `-H`: Opt-in single-letter shortcut for extended help when `App.ExtendedHelpFlag = true`.
 >
-> ```
-> panic: help flag redefined: help
-> ```
->
-> Always let `clihelp` manage help flags and help text generation automatically.
+> Explicitly registering a help flag will return a validation error or cause a `pflag` conflict. Always let `clihelp` manage help flags and help text generation automatically.

@@ -17,6 +17,7 @@ While Cobra excels at building large CLI ecosystems, `clihelp` offers a differen
 | **Markdown Documentation** | Separate package (`cobra/doc`) | Built-in GitHub Markdown tree generator with SHA-256 caching |
 | **Flag Specification** | Method-based binding (`Flags().StringVarP(...)`) | Concise spec string (e.g. `"-o, --output PATH"`) |
 | **Shell Completion** | Bash, Zsh, Fish, PowerShell | Bash, Zsh, Fish |
+| **Tiered Progressive Help** | `-h` and `--help` render identical help output | `-h` provides concise help (<= 24 lines); `--help` / `-H` renders full documentation |
 | **AI Agent Prompting** | Multi-step `init()` wiring patterns | Self-contained struct literal with `llms.txt` spec |
 
 ---
@@ -119,6 +120,13 @@ clihelp.BoolToggle(&cache, "--[no-]cache", true, "Enable build cache")
 
 ### 5. AI Agent & LLM Code Generation
 Self-contained struct declarations are straightforward for LLMs to generate in a single pass without hallucinating missing `init()` registrations or unimported flag methods.
+
+### 6. Tiered Progressive Help vs. Flat Monolithic Help
+In Cobra, `-h` and `--help` execute identical rendering logic: when commands define long descriptions, multi-step examples, and notes, requesting `-h` frequently scrolls hundreds of lines past the visible terminal viewport.
+
+`clihelp` implements tiered progressive disclosure:
+- `-h` renders a compact summary (<= 24 lines) without notes, giving immediate visibility to syntax and flags, ending with an actionable footer pointing to full documentation.
+- `--help`, `help <cmd>`, and `-H` (when `App.ExtendedHelpFlag` is enabled) display the complete manual (`LongDescription`, all notes, code blocks, examples), automatically paged through `$PAGER` when longer than the screen.
 
 ---
 

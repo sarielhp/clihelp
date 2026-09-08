@@ -13,6 +13,7 @@
 - [Subcommands & Persistent Options](#subcommands--persistent-options)
 - [Positional Argument Validation](#positional-argument-validation)
 - [Fuzzy Typo Suggestions & Built-in `help`](#fuzzy-typo-suggestions--built-in-help)
+- [Tiered Progressive Help (`-h` vs `--help` / `-H`)](#tiered-progressive-help--h-vs---help---h)
 
 ---
 
@@ -220,3 +221,60 @@ Error: unknown command "biuld" for "podctl". Did you mean "build"?
 ### Built-in `help` Subcommand
 
 `clihelp` automatically routes `app help <subcommand>` (e.g. `podctl help config set`) to render detailed help pages for that command path, unless you register a custom command named `"help"`.
+
+---
+
+## Tiered Progressive Help (`-h` vs `--help` / `-H`)
+
+As commands grow complex and incorporate in-depth architectural guides or multi-step examples, displaying the entire manual on `-h` causes severe screen overflow on standard 24-line terminal windows. `clihelp` solves this by introducing progressive disclosure:
+
+### 1. Concise Help (`-h`)
+
+Concise help is designed for fast, non-scrolling terminal scanning:
+- Displays `UsageLine`, concise `Description`, parameters, subcommands, and flags.
+- **Suppresses verbose notes** and long multi-paragraph prose.
+- When `LongDescription` or notes are present, appends a clean footer guidance hint:
+  ```text
+  Run 'podctl help build' (or --help) for extended documentation and examples.
+  ```
+
+### 2. Extended Documentation (`--help`, `help <cmd>`, or `-H`)
+
+Extended mode renders complete reference documentation:
+- Prioritizes `Command.LongDescription` over `Command.Description`.
+- Renders all `Command.Notes` and `Command.Examples`.
+- Automatically pipes output through `$PAGER` (when `App.Pager = true`) if content exceeds terminal height.
+
+### 3. Enabling the `-H` Flag (`App.ExtendedHelpFlag`)
+
+For tools that do not use `-H` for other purposes (e.g. `--header` or `--host`), set `ExtendedHelpFlag = true` on `App`:
+
+```go
+app := &clihelp.App{
+    Name:             "podctl",
+    ExtendedHelpFlag: true, // Enables -H for extended help
+    // ...
+}
+```
+
+When enabled, users can invoke `podctl build -H` for full help, and the concise footer automatically reflects:
+```text
+Run 'podctl help build' (or --help / -H) for extended documentation and examples.
+```
+
+### 4. Raw Notes & Verbatim Formatting (`Note.Raw`)
+
+Use `Note.Raw: true` or markdown code blocks (```` ``` ````) to preserve ASCII diagrams, preformatted spacing, and tables without reflow:
+
+```go
+Notes: []clihelp.Note{
+    {
+        Heading: "Architecture Diagram",
+        Raw:     true,
+        Text: `
+  [WAV Source] ──► [Normalizer] ──► [LAME Encoder] ──► [MP3 Output]
+                           ▲
+                     [-b 320 kbps]`,
+    },
+}
+```

@@ -16,10 +16,10 @@ podctl deep alpha alpha_two alpha_two_b [options] [arguments...] — This is a *
 
 ## Subcommands
 
-| Command | Description |
+| clihelp.Command | Description |
 |---------|-------------|
-| alpha\_two\_b\_i \[arguments...\] | This is the [alpha_two_b_i command](https://example.com/deep/alpha/alpha_two/alpha_two_b/alpha_two_b_i) at depth 5 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
-| alpha\_two\_b\_ii \[arguments...\] | This is the [alpha_two_b_ii command](https://example.com/deep/alpha/alpha_two/alpha_two_b/alpha_two_b_ii) at depth 5 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
+| [alpha\_two\_b\_i](deep-alpha-alpha-two-alpha-two-b-alpha-two-b-i.md) | This is the [alpha_two_b_i command](https://example.com/deep/alpha/alpha_two/alpha_two_b/alpha_two_b_i) at depth 5 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
+| [alpha\_two\_b\_ii](deep-alpha-alpha-two-alpha-two-b-alpha-two-b-ii.md) | This is the [alpha_two_b_ii command](https://example.com/deep/alpha/alpha_two/alpha_two_b/alpha_two_b_ii) at depth 5 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
 
 ## Flags
 

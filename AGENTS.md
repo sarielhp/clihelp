@@ -133,6 +133,10 @@ Enforce sizing via `tools/audit_lines.rb` (`make audit`).
 
 ## New Features
 
+- **Tiered Progressive Help (`-h` vs `--help` / `-H`)**: Differentiates concise help (`-h`, suppressing `Notes`, using `Description`, and displaying a footer hint) from extended help (`--help`, `help <cmd>`, or opt-in `-H` via `App.ExtendedHelpFlag` displaying `LongDescription`, parameters, flags, examples, all notes, and paging through `$PAGER`).
+- **Extended Command Documentation (`Command.LongDescription`)**: In-depth command documentation rendered in extended help and documentation sites, keeping `Description` concise for listings.
+- **Verbatim Text & Fenced Code Blocks (`Note.Raw`)**: Preserves preformatted text, indentation, and markdown code fences in notes and manual pages without word-wrapping or collapsing spaces.
+- **Hanging Indentation for Lists**: `reflowSegment` automatically detects bullet lists (`- `, `* `, `• `) and numbered lists (`1. `, `2. `, etc.), aligning continuation lines with hanging indents to the start of the list item text.
 - **UV-Style Command Listings**: Command and subcommand index tables render strictly bare command names and aliases without argument or flag signatures, guaranteeing clean single-line scannability.
 - **Command Tree Traversal (`App.Walk`)**: Programmatic depth-first traversal of all commands and nested subcommands with path slice isolation and early error-exit for testing and interface coverage.
 - **Global Flag De-Cluttering & Topic Routing**: Added `Option.Group` and `Group()` helper to organize options by category, `App.OmitGlobalFlagsInCommands` to suppress verbose global flags in subcommands, and dedicated help topic routing (`help flags`, `help man`, `help topics`).
@@ -149,11 +153,17 @@ Enforce sizing via `tools/audit_lines.rb` (`make audit`).
 |------|---------|
 | `clihelp.go` | Core data types (`App`, `Command`, `Option`, `Param`, `Example`, `Note`, `Context`) and `App.Walk` |
 | `topics.go` | Specialized help topic renderers (`RenderFlags`, `RenderMan`, `RenderHelpTopics`, grouped option reflow) |
+| `topics_test.go` | Unit tests for topic routing, manual pages, and help flags |
 | `render.go` | Terminal help rendering for global app, individual commands, and grouped commands |
-| `format.go` | Text layout, word-wrapping, string reflow, ANSI stripping, and column indentation utilities |
-| `format_test.go` | Unit tests for word-wrapping, line reflow, visual string measurement, and column indent |
+| `format.go` | Text layout, word-wrapping, hanging list indentation, ANSI stripping, and column indentation utilities |
+| `format_test.go` | Unit tests for word-wrapping, list hanging indents, visual string measurement, and column indent |
 | `execute.go` | Command lookup, flag parsing, command execution dispatch, alias handling, and error formatting |
+| `execute_test.go` | Unit tests for command execution, tiered help (`-h` vs `--help` / `-H`), and lifecycle hooks |
 | `options.go` | Option builder functions (`Bool`, `String`, `Int`, `Duration`, `Enum`, `StringSlice`) and flag binding |
+| `args.go` | Positional argument validators (`ExactArgs`, `RangeArgs`, `MinimumNArgs`, `NoArgs`) |
+| `interactive.go` | Interactive prompt fallback for missing required options in TTY environments |
+| `validation.go` | Declarative option constraint validation (`MutuallyExclusive`, `RequiredTogether`, etc.) |
+| `testing.go` | Testing harnesses (`TestExecute`, `Audit`) for simulating execution and verifying command trees |
 | `inline.go` | Inline markdown parsing and ANSI/OSC8 terminal formatting (bold, italic, code, hyperlinks) |
 | `pager.go` | Pager detection/execution (`$PAGER`, `less`), terminal height check, and paged output |
 | `completion.go` | Shell autocompletion script generation (Bash, Zsh, Fish), dynamic completion, and XDG auto-installation |

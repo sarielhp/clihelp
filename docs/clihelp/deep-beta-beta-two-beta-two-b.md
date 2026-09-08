@@ -16,10 +16,10 @@ podctl deep beta beta_two beta_two_b [options] [arguments...] — This is a **ve
 
 ## Subcommands
 
-| Command | Description |
+| clihelp.Command | Description |
 |---------|-------------|
-| beta\_two\_b\_i \[arguments...\] | This is the [beta_two_b_i command](https://example.com/deep/beta/beta_two/beta_two_b/beta_two_b_i) at depth 5 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
-| beta\_two\_b\_ii \[arguments...\] | This is the [beta_two_b_ii command](https://example.com/deep/beta/beta_two/beta_two_b/beta_two_b_ii) at depth 5 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
+| [beta\_two\_b\_i](deep-beta-beta-two-beta-two-b-beta-two-b-i.md) | This is the [beta_two_b_i command](https://example.com/deep/beta/beta_two/beta_two_b/beta_two_b_i) at depth 5 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
+| [beta\_two\_b\_ii](deep-beta-beta-two-beta-two-b-beta-two-b-ii.md) | This is the [beta_two_b_ii command](https://example.com/deep/beta/beta_two/beta_two_b/beta_two_b_ii) at depth 5 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
 
 ## Flags
 

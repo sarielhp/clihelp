@@ -14,6 +14,8 @@ It provides clean, structured usage messages with support for ANSI colors and cl
 ## Features
 
 - **UV-Style Command Listings** — Two-column command index tables display clean, bare command names and aliases without argument or flag clutter, ensuring strictly single-line scannability.
+- **Tiered Progressive Help (`-h` vs `--help` / `-H`)** — Differentiate concise summary help (`-h` <= 24 lines, suppressing notes with a footer hint) from extended documentation (`--help`, `help <cmd>`, or opt-in `-H` via `App.ExtendedHelpFlag`) with `$PAGER` support.
+- **Extended Command Documentation (`Command.LongDescription`)** — Support comprehensive architectural overviews and multi-paragraph guides on command pages, while keeping command lists and concise `-h` compact.
 - **Command Tree Traversal (`App.Walk`)** — Programmatic depth-first traversal of all commands and nested subcommands with path slice isolation and early error-exit for testing and interface verification.
 - **Declarative CLI Definition** — Define applications, subcommands, persistent options, and flags in clean struct definitions.
 - **Pflag-Backed Option Parsing** — Robust flag parsing supporting aliases, boolean toggle pairs (`--[no-]flag`), typed values, and custom value parsers.
@@ -22,7 +24,8 @@ It provides clean, structured usage messages with support for ANSI colors and cl
 - **Fuzzy Typo Suggestions** — Levenshtein-distance suggestions for mistyped commands (e.g. *Did you mean "build"?*).
 - **Prefix Command Matching** — Enable abbreviated commands (e.g. `podctl b` instead of `podctl build`).
 - **Shell Autocompletion & Auto-Installation** — Built-in `__complete` protocol with generators for Bash, Zsh, and Fish, zero-boilerplate `CompletionCommand()`, and one-command user XDG self-installation (`InstallCompletion`).
-- **Rich Terminal Styling** — Theme-driven ANSI colors, auto-detected terminal width with 70-column fallback, and ANSI-aware word wrapping.
+- **Rich Terminal Styling** — Theme-driven ANSI colors, auto-detected terminal width with 70-column fallback, hanging indents for lists, and ANSI-aware word wrapping.
+- **Verbatim Text & Fenced Code Blocks (`Note.Raw`)** — Preserve ASCII diagrams, preformatted configs, and markdown fenced code blocks in notes without line reflow or whitespace collapsing.
 - **Inline Markdown & OSC 8 Hyperlinks** — Rich text formatting in descriptions: bold, italic, code, strikethrough, and clickable terminal hyperlinks.
 - **Markdown Documentation Generator** — Automatically generates navigable, GitHub-friendly Markdown doc trees with SHA-256 change-detection caching.
 - **Global Flag De-Cluttering & Topic Routing** — Categorize global options by group (`Option.Group` and `clihelp.Group`), suppress noisy global flags in subcommands (`App.OmitGlobalFlagsInCommands`), and route dedicated help topics (`help flags`, `help man`, `help tree`, `help topics`).
@@ -181,6 +184,20 @@ func main() {
 
 ---
 
+## Tiered Progressive Help & Extended Documentation
+
+`clihelp` differentiates between concise terminal usage and in-depth reference documentation:
+
+* **Concise Help (`-h`):** Formatted to stay within typical 24-line terminal windows. Suppresses verbose notes, displays a compact description, and shows an actionable footer hint:
+  ```text
+  Run 'podctl help build' (or --help) for extended documentation and examples.
+  ```
+* **Extended Help (`--help`, `help <cmd>`, or `-H`):** Renders the full `Command.LongDescription`, positional parameters, all flag descriptions, detailed examples, and all `Notes` sections. Automatically paged via `$PAGER` when output exceeds the screen height.
+* **Opt-in `-H` Flag (`App.ExtendedHelpFlag`):** Set `ExtendedHelpFlag: true` on your `App` struct to treat `-H` as a single-letter shortcut for extended help on all commands.
+* **Preformatted Notes (`Note.Raw`):** Set `Raw: true` on any `clihelp.Note` (or wrap content in markdown code fences) to output ASCII tables, config snippets, or diagrams verbatim without line wrapping or whitespace collapsing.
+
+---
+
 ## Documentation & Topic Guides
 
 Detailed technical guides and reference documentation are available in the [`docs/`](docs/) directory:
@@ -251,6 +268,8 @@ Descriptions and notes support markdown-like inline formatting:
 
 - Terminal width is auto-detected with a **70-column fallback** for non-TTY output.
 - Content wraps at `indent + MaxContentWidth` columns (default `MaxContentWidth` is 80), so indented lists gain extra horizontal room without exceeding the terminal width. Set `Options.MaxContentWidth` to change the content cap.
+- **Hanging list indentation:** Bullet lists (`- `, `* `, `• `) and numbered lists (`1. `, `2. `, etc.) automatically wrap continuation lines with hanging indents aligned to the list item text.
+- **Verbatim notes & code blocks:** Use `Note.Raw: true` or markdown code fences (```` ``` ````) to preserve ASCII diagrams, preformatted spacing, and tables without line reflow or space collapsing.
 - Command lists can be grouped with `Command.Group`; a group heading is rendered when the group value changes.
 
 ---

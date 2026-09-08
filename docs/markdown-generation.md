@@ -15,9 +15,10 @@
 
 ## Overview
 
-Calling `clihelp.RenderMarkdown(app, MarkdownOptions{})` generates:
+Calling `doc.RenderMarkdown(app, doc.MarkdownOptions{})` (from subpackage `github.com/sarielhp/clihelp/doc`) generates:
 - An `index.md` listing commands, global flags, and version information.
-- Dedicated `.md` pages for every command and subcommand.
+- Dedicated `.md` pages for every command and subcommand, displaying `Command.LongDescription` (preferring it over `Command.Description`).
+- Automatically formats `Note.Raw` blocks inside Markdown fenced code blocks (```) to preserve formatting.
 - Navigable relative links between parents, children, and peer commands.
 
 ---
@@ -27,12 +28,22 @@ Calling `clihelp.RenderMarkdown(app, MarkdownOptions{})` generates:
 Add a gated bootstrap check to your application's `main()`:
 
 ```go
+package main
+
+import (
+    "fmt"
+    "os"
+
+    "github.com/sarielhp/clihelp"
+    "github.com/sarielhp/clihelp/doc"
+)
+
 func main() {
     app := &clihelp.App{ /* ... */ }
 
     // Run: CLIHELP_GEN=1 go run .
     if os.Getenv("CLIHELP_GEN") != "" {
-        changed, err := clihelp.RenderMarkdown(app, clihelp.MarkdownOptions{
+        changed, err := doc.RenderMarkdown(app, doc.MarkdownOptions{
             Dir: "docs/clihelp",
         })
         if err != nil {

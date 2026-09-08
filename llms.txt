@@ -13,13 +13,16 @@
 
 ```go
 type App struct {
-    Name              string
-    Description       string
-    Version           string
-    GlobalNote        string
+    Name                      string
+    Description               string
+    Version                   string
+    GlobalNote                string
     AbbrevCommands            bool       // Enable prefix command abbreviation matching (e.g. "b" -> "build")
     Pager                     bool       // Enable automatic paging via $PAGER when output exceeds terminal height
     OmitGlobalFlagsInCommands bool       // Suppress global flags table in subcommands, showing 1-line reference
+    ExtendedHelpFlag          bool       // Enable -H as opt-in single-letter shortcut for extended help (--help)
+    InteractiveFallback       bool       // Prompt interactively for missing required options in a TTY
+    AutoInstallCompletion     bool       // Silently install shell autocompletion on first run
     Theme                     Theme      // ANSI styling configuration
     PersistentOptions         []Option
     Commands                  []Command
@@ -34,6 +37,7 @@ type Command struct {
     Name              string
     Aliases           []string
     Description       string
+    LongDescription   string     // In-depth documentation displayed in extended help (--help/-H/help)
     UsageLine         string
     Group             string     // Group heading in command lists
     Hidden            bool       // Hide from help listings
@@ -41,10 +45,18 @@ type Command struct {
     Options           []Option
     Subcommands       []Command
     Examples          []Example
+    Notes             []Note
     Args              ArgsValidator
+    OptionsValidator  OptionsValidator
     PreRun            func(ctx *Context) error
     Run               func(ctx *Context) error
     PostRun           func(ctx *Context) error
+}
+
+type Note struct {
+    Heading string
+    Text    string
+    Raw     bool       // Preserve preformatted text and verbatim spacing without reflow
 }
 
 type Context struct {
@@ -97,6 +109,14 @@ Abort Semantics:
 - XDG Auto-Install: `clihelp.InstallCompletion(app, shell)` (installs for `"bash"`, `"zsh"`, `"fish"`, or detects active shell if empty).
 - Generators: `clihelp.GenBashCompletion(app, w)`, `clihelp.GenZshCompletion(app, w)`, `clihelp.GenFishCompletion(app, w)`.
 - Dynamic Option Completion: attach `Complete: func(toComplete string) []string` to any `Option`.
+
+## Tiered Progressive Help & Documentation
+
+- **Concise Help (`-h`)**: Displays concise summary (`Command.Description`), parameters, and flags; suppresses `Notes` and displays a footer hint pointing to extended help (keeps output <= 24 lines).
+- **Extended Help (`--help`, `help <cmd>`, `-H`)**: Displays full `Command.LongDescription`, parameters, flags, examples, and all `Notes` (piped through `$PAGER` when enabled).
+- **Opt-in `-H` Flag (`App.ExtendedHelpFlag`)**: Set `ExtendedHelpFlag: true` on `App` to enable `-H` as a single-letter shortcut for extended help on all commands.
+- **Preformatted Notes (`Note.Raw`)**: Set `Note.Raw: true` or wrap text in markdown code fences (```) to preserve ASCII tables, spacing, or code blocks verbatim without line reflow.
+- **List Hanging Indents**: Bullet (`- `, `* `, `• `) and numbered (`1. `, `2. `, etc.) lists automatically wrap continuation lines with hanging indents.
 
 ## Critical AI Agent Rules & Pitfalls
 

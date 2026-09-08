@@ -35,6 +35,9 @@ When implementing or modifying applications using `clihelp`, AI assistants, codi
 7. **Shell Completion Integration**:
    When implementing completion, prefer mounting `clihelp.CompletionCommand()` for zero-boilerplate setup across `bash`, `zsh`, `fish`, and user-level self-installation (`InstallCompletion`). For manual pipelines, use `clihelp.GenBashCompletion`, `clihelp.GenZshCompletion`, `clihelp.GenFishCompletion`, and `clihelp.InstallCompletion`.
 
+8. **Structure Concise and Extended Help**:
+   Keep `Command.Description` to a concise single-sentence summary used in index tables and `-h`. Place architectural details and multi-paragraph guides in `Command.LongDescription`. Use `Note.Raw: true` or markdown code fences to output ASCII tables, diagrams, or configurations verbatim.
+
 ---
 
 ## Canonical Application Template

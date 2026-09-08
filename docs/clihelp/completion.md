@@ -10,17 +10,17 @@ Generate or install shell tab-completion scripts
 ## Usage
 
 ```
-<command> completion <bash|zsh|fish|install> [options]
+completion <subcommand>
 ```
 
 ## Subcommands
 
-| Command | Description |
+| clihelp.Command | Description |
 |---------|-------------|
 | [bash](completion-bash.md) | Generate Bash tab-completion script |
 | [zsh](completion-zsh.md) | Generate Zsh tab-completion script |
 | [fish](completion-fish.md) | Generate Fish tab-completion script |
-| install \[\<shell>\] | Install tab-completion script to standard user directory |
+| [install](completion-install.md) | Install tab-completion script to standard user directory |
 
 ## Flags
 
@@ -33,6 +33,15 @@ Generate or install shell tab-completion scripts
 | `-v, --verbose` | Enable verbose output logs |
 | `-s, --silent` | Suppress non-error output |
 | `--no-color` | Disable ANSI color output |
+
+## Examples
+
+- `completion zsh` — Generate Zsh tab-completion script
+- `completion install` — Install tab-completions for the active shell
+
+## Shell Tip
+
+Tip: <Tab> to complete, Ctrl-D to list choices, Alt-H for instant command help.
 
 ---
 

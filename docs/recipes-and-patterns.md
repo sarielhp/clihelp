@@ -13,6 +13,7 @@ Practical design patterns, testing strategies, and advanced recipes for building
 - [Rendering the Command Tree](#rendering-the-command-tree)
 - [Customizing Terminal Themes](#customizing-terminal-themes)
 - [Prefix Command Abbreviations](#prefix-command-abbreviations)
+- [Tiered Help, Extended Documentation & Preformatted Notes](#tiered-help-extended-documentation--preformatted-notes)
 
 ---
 
@@ -299,3 +300,69 @@ app := &clihelp.App{
 - `podctl b` resolves to `podctl build`
 - `podctl se` resolves to `podctl serve`
 - `podctl s` returns a clear error: `ambiguous command "s": matching "serve", "status"`
+
+---
+
+## Tiered Help, Extended Documentation & Preformatted Notes
+
+Structure commands so that `-h` remains concise and scannable within standard 24-line terminals, while `--help` (or `-H`) delivers comprehensive architectural manuals:
+
+```go
+package main
+
+import (
+	"github.com/sarielhp/clihelp"
+)
+
+func buildApp() *clihelp.App {
+	return &clihelp.App{
+		Name:             "podctl",
+		ExtendedHelpFlag: true, // Enables -H as shortcut for extended help
+		Pager:            true, // Pipes long help through $PAGER
+		Commands: []clihelp.Command{
+			{
+				Name:        "deploy",
+				// Short summary displayed in command index tables and -h:
+				Description: "Deploy packaged podcast feeds to remote hosting providers.",
+				// In-depth architectural guide displayed in --help, -H, and generated docs:
+				LongDescription: `Deploy packages generated episodes, validates RSS XML schemas, 
+and syncs audio assets to S3-compatible buckets or SFTP servers.
+
+It executes the following release phases:
+  1. Validates local episode MP3 checksums and ID3 metadata tags.
+  2. Uploads binary media assets to the remote CDN edge distribution.
+  3. Rebuilds and atomically swaps the public RSS podcast feed.`,
+				UsageLine: "podctl deploy [options] <target>",
+				Notes: []clihelp.Note{
+					{
+						Heading: "Step-by-Step Guide",
+						Text: `To perform a zero-downtime feed deployment:
+- Ensure all episodes have valid LUFS normalization tags.
+- Verify AWS or Cloudflare credentials in environment.
+- Run dry-run validation before committing live feed.`,
+					},
+					{
+						Heading: "Asset Flow Architecture",
+						Raw:     true, // Verbatim ASCII diagram without word-wrapping
+						Text: `
+  +--------------+      +----------------+      +---------------+
+  | Local Assets | ---> | CDN Storage S3 | ---> | RSS Feed Edge |
+  +--------------+      +----------------+      +---------------+`,
+					},
+				},
+			},
+		},
+	}
+}
+```
+
+### Help Output Comparison
+
+* **Running `podctl deploy -h` (Concise):**
+  Renders the `Usage:` line, concise `Description`, and flag options. Suppresses `Notes` and prints:
+  ```text
+  Run 'podctl help deploy' (or --help / -H) for extended documentation and examples.
+  ```
+
+* **Running `podctl deploy --help` or `podctl deploy -H` (Extended):**
+  Renders the full multi-paragraph `LongDescription`, parameters, flags, list items with hanging indents, and the verbatim ASCII architecture diagram. Automatically paginated when taller than the terminal window.

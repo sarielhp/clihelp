@@ -16,10 +16,10 @@ podctl deep alpha alpha_one [options] [arguments...] — This is a **very long u
 
 ## Subcommands
 
-| Command | Description |
+| clihelp.Command | Description |
 |---------|-------------|
-| alpha\_one\_a \[arguments...\] | This is the [alpha_one_a command](https://example.com/deep/alpha/alpha_one/alpha_one_a) at depth 4 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
-| alpha\_one\_b \[arguments...\] | This is the [alpha_one_b command](https://example.com/deep/alpha/alpha_one/alpha_one_b) at depth 4 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
+| [alpha\_one\_a](deep-alpha-alpha-one-alpha-one-a.md) | This is the [alpha_one_a command](https://example.com/deep/alpha/alpha_one/alpha_one_a) at depth 4 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
+| [alpha\_one\_b](deep-alpha-alpha-one-alpha-one-b.md) | This is the [alpha_one_b command](https://example.com/deep/alpha/alpha_one/alpha_one_b) at depth 4 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
 
 ## Flags
 

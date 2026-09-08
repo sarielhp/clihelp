@@ -2,7 +2,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-export PATH="$HOME/go/bin:$PATH"
+export PATH="$HOME/.go/bin:$HOME/go/bin:$PATH"
 
 echo "=== Formatting ==="
 gofmt -s -w .

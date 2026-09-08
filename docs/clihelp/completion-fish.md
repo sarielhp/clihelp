@@ -7,6 +7,12 @@ parent: 'podctl completion'
 
 Generate Fish tab-completion script
 
+## Usage
+
+```
+completion fish
+```
+
 ## Flags
 
 | Flag | Description |

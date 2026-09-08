@@ -10,7 +10,7 @@ Install tab-completion script to standard user directory
 ## Usage
 
 ```
-<command> completion install [<shell>]
+completion install [<shell>]
 ```
 
 ## Parameters
@@ -30,6 +30,10 @@ Install tab-completion script to standard user directory
 | `-v, --verbose` | Enable verbose output logs |
 | `-s, --silent` | Suppress non-error output |
 | `--no-color` | Disable ANSI color output |
+
+## Examples
+
+- `completion install zsh` — Install completions to ~/.local/share/zsh/site-functions
 
 ---
 
