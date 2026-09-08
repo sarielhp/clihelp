@@ -44,7 +44,16 @@ func (a *App) checkTopLevelVersion(args []string) (bool, error) {
 	return false, nil
 }
 
-func (a *App) setupFlagSet(targetCmd *Command, ancestors []*Command) (*pflag.FlagSet, *bool, error) {
+type helpFlags struct {
+	concise  bool
+	extended bool
+}
+
+func (h *helpFlags) requested() bool {
+	return h.concise || h.extended
+}
+
+func (a *App) setupFlagSet(targetCmd *Command, ancestors []*Command) (*pflag.FlagSet, *helpFlags, error) {
 	cmdName := a.Name
 	if targetCmd != nil {
 		cmdName = targetCmd.Name
@@ -53,8 +62,15 @@ func (a *App) setupFlagSet(targetCmd *Command, ancestors []*Command) (*pflag.Fla
 	fs := pflag.NewFlagSet(cmdName, pflag.ContinueOnError)
 	fs.SetOutput(a.stderr())
 
-	var helpRequested bool
-	fs.BoolVarP(&helpRequested, "help", "h", false, "Help for "+cmdName)
+	var h helpFlags
+	fs.BoolVarP(&h.concise, "help-concise", "h", false, "Concise help for "+cmdName)
+	_ = fs.MarkHidden("help-concise")
+
+	if a.ExtendedHelpFlag {
+		fs.BoolVarP(&h.extended, "help", "H", false, "Extended help for "+cmdName)
+	} else {
+		fs.BoolVar(&h.extended, "help", false, "Extended help for "+cmdName)
+	}
 	_ = fs.MarkHidden("help")
 
 	if err := bindAndMark(fs, a.PersistentOptions); err != nil {
@@ -76,7 +92,7 @@ func (a *App) setupFlagSet(targetCmd *Command, ancestors []*Command) (*pflag.Fla
 			return nil, nil, err
 		}
 	}
-	return fs, &helpRequested, nil
+	return fs, &h, nil
 }
 
 func (a *App) collectAllActiveOptions(targetCmd *Command, ancestors []*Command) []Option {
@@ -212,7 +228,7 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 		return nil
 	}
 
-	fs, helpRequested, err := a.setupFlagSet(targetCmd, ancestors)
+	fs, helpFlags, err := a.setupFlagSet(targetCmd, ancestors)
 	if err != nil {
 		return err
 	}
@@ -221,19 +237,26 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 		return parseErr
 	}
 
-	allOptions := a.collectAllActiveOptions(targetCmd, ancestors)
-	if err := a.validateParsedFlags(fs, allOptions, targetCmd, path); err != nil {
-		return err
-	}
-
-	if *helpRequested {
-		o := Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager}
+	if helpFlags.requested() {
+		isExtended := helpFlags.extended
+		o := Options{
+			Writer:   a.stdout(),
+			Theme:    a.Theme,
+			Pager:    a.Pager,
+			Concise:  !isExtended,
+			Extended: isExtended,
+		}
 		if len(path) == 0 {
 			a.RenderGlobal(o)
 		} else {
 			a.RenderCommand(o, path...)
 		}
 		return nil
+	}
+
+	allOptions := a.collectAllActiveOptions(targetCmd, ancestors)
+	if err := a.validateParsedFlags(fs, allOptions, targetCmd, path); err != nil {
+		return err
 	}
 
 	if targetCmd != nil && targetCmd.Args != nil {
@@ -363,12 +386,13 @@ func (a *App) handleRootHelpTopic(topic string) (bool, error) {
 }
 
 func (a *App) handleHelpInvocation(helpPath []string) (bool, error) {
+	o := Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager, Extended: true}
 	if len(helpPath) == 0 {
-		a.RenderGlobal(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+		a.RenderGlobal(o)
 		return true, nil
 	}
 	if helpCmd, resolvedPath := a.lookupCommandPath(helpPath); helpCmd != nil {
-		a.RenderCommand(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager}, resolvedPath...)
+		a.RenderCommand(o, resolvedPath...)
 		return true, nil
 	}
 	if len(helpPath) == 1 {

@@ -527,3 +527,124 @@ func TestExecuteShortHelpCommand(t *testing.T) {
 		t.Errorf("expected version output, got: %q", outBuf.String())
 	}
 }
+
+func TestExecuteTieredHelpFlags(t *testing.T) {
+	newTestApp := func(extendedHelpFlag bool) (*App, *bytes.Buffer) {
+		var out bytes.Buffer
+		app := &App{
+			Name:             "tierapp",
+			Version:          "1.0.0",
+			ExtendedHelpFlag: extendedHelpFlag,
+			Stdout:           &out,
+			Commands: []Command{
+				{
+					Name:            "deploy",
+					Description:     "Brief deploy description.",
+					LongDescription: "Full extended deploy description with all details.",
+					Options: []Option{
+						Required(String(new(string), "-t, --target <env>", "", "Target deployment environment")),
+					},
+					Examples: []Example{
+						{Line: "tierapp deploy --stage prod", Description: "Deploy to production"},
+					},
+					Notes: []Note{
+						{Heading: "Security", Text: "Requires production credentials."},
+					},
+				},
+			},
+		}
+		return app, &out
+	}
+
+	t.Run("-h concise help suppresses notes and shows hint", func(t *testing.T) {
+		app, out := newTestApp(false)
+		if err := app.Execute([]string{"deploy", "-h"}); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		res := stripansi.Strip(out.String())
+		if !strings.Contains(res, "Brief deploy description.") {
+			t.Errorf("expected Description in -h, got:\n%s", res)
+		}
+		if strings.Contains(res, "Full extended deploy description") {
+			t.Errorf("did not expect LongDescription in -h, got:\n%s", res)
+		}
+		if strings.Contains(res, "Requires production credentials.") {
+			t.Errorf("did not expect Notes in -h, got:\n%s", res)
+		}
+		if !strings.Contains(res, "Run 'tierapp help deploy' (or --help)") || !strings.Contains(res, "extended documentation and") {
+			t.Errorf("expected footer hint, got:\n%s", res)
+		}
+	})
+
+	t.Run("--help displays full extended help", func(t *testing.T) {
+		app, out := newTestApp(false)
+		if err := app.Execute([]string{"deploy", "--help"}); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		res := stripansi.Strip(out.String())
+		if !strings.Contains(res, "Full extended deploy description") {
+			t.Errorf("expected LongDescription in --help, got:\n%s", res)
+		}
+		if strings.Contains(res, "Brief deploy description.") {
+			t.Errorf("did not expect short description in --help, got:\n%s", res)
+		}
+		if !strings.Contains(res, "Requires production credentials.") {
+			t.Errorf("expected Notes in --help, got:\n%s", res)
+		}
+		if !strings.Contains(res, "tierapp deploy --stage prod") {
+			t.Errorf("expected Examples in --help, got:\n%s", res)
+		}
+		if strings.Contains(res, "for extended documentation and examples.") {
+			t.Errorf("did not expect footer hint in --help, got:\n%s", res)
+		}
+	})
+
+	t.Run("help deploy displays full extended help", func(t *testing.T) {
+		app, out := newTestApp(false)
+		if err := app.Execute([]string{"help", "deploy"}); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		res := stripansi.Strip(out.String())
+		if !strings.Contains(res, "Full extended deploy description") {
+			t.Errorf("expected LongDescription in help deploy, got:\n%s", res)
+		}
+		if !strings.Contains(res, "Requires production credentials.") {
+			t.Errorf("expected Notes in help deploy, got:\n%s", res)
+		}
+	})
+
+	t.Run("-H with ExtendedHelpFlag=true displays extended help", func(t *testing.T) {
+		app, out := newTestApp(true)
+		if err := app.Execute([]string{"deploy", "-H"}); err != nil {
+			t.Fatalf("unexpected error with -H when ExtendedHelpFlag=true: %v", err)
+		}
+		res := stripansi.Strip(out.String())
+		if !strings.Contains(res, "Full extended deploy description") {
+			t.Errorf("expected LongDescription in -H, got:\n%s", res)
+		}
+		if !strings.Contains(res, "Requires production credentials.") {
+			t.Errorf("expected Notes in -H, got:\n%s", res)
+		}
+	})
+
+	t.Run("-H on root with ExtendedHelpFlag=true displays root help", func(t *testing.T) {
+		app, out := newTestApp(true)
+		if err := app.Execute([]string{"-H"}); err != nil {
+			t.Fatalf("unexpected error on root -H: %v", err)
+		}
+		res := stripansi.Strip(out.String())
+		if !strings.Contains(res, "Usage:  tierapp") {
+			t.Errorf("expected root help on -H, got:\n%s", res)
+		}
+	})
+
+	t.Run("-H with ExtendedHelpFlag=false returns error", func(t *testing.T) {
+		app, _ := newTestApp(false)
+		if err := app.Execute([]string{"deploy", "-H"}); err == nil {
+			t.Fatalf("expected error for -H when ExtendedHelpFlag=false, got nil")
+		}
+		if err := app.Execute([]string{"-H"}); err == nil {
+			t.Fatalf("expected error for root -H when ExtendedHelpFlag=false, got nil")
+		}
+	})
+}

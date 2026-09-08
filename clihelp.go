@@ -49,10 +49,12 @@ type Param struct {
 }
 
 // Note carries an optional heading (rendered as a section label) and a body
-// of prose that is reflowed to the available width.
+// of prose that is reflowed to the available width. When Raw is true, preformatted
+// text and verbatim spacing are preserved without reflow or space collapsing.
 type Note struct {
 	Heading string
 	Text    string
+	Raw     bool
 }
 
 // ArgsValidator validates positional arguments after flag parsing.
@@ -66,6 +68,7 @@ type Command struct {
 	Name              string
 	Aliases           []string
 	Description       string
+	LongDescription   string
 	UsageLine         string
 	Group             string
 	Hidden            bool
@@ -111,6 +114,9 @@ type App struct {
 	// OmitGlobalFlagsInCommands when true replaces the full list of persistent/global
 	// flags in subcommand help with a one-line reference pointing to 'help flags'.
 	OmitGlobalFlagsInCommands bool
+	// ExtendedHelpFlag enables -H as an opt-in single-letter shortcut for
+	// extended help (--help) on commands and root.
+	ExtendedHelpFlag bool
 	// InteractiveFallback enables prompting for missing inputs/flags interactively.
 	InteractiveFallback bool
 	// AutoInstallCompletion when true silently ensures that the shell completion script

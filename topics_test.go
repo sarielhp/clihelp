@@ -214,3 +214,41 @@ func TestOmitGlobalFlagsInCommands(t *testing.T) {
 		t.Errorf("expected global flags table to be omitted when OmitGlobalFlagsInCommands is true")
 	}
 }
+
+func TestRenderManLongDescriptionAndRawNotes(t *testing.T) {
+	app := &App{
+		Name:             "podctl",
+		ExtendedHelpFlag: true,
+		Commands: []Command{
+			{
+				Name:            "build",
+				Description:     "Short description",
+				LongDescription: "Exhaustive long build description for man page.",
+				Notes: []Note{
+					{
+						Heading: "Environment",
+						Text:    "  PODCTL_BUILD_FAST=1\n    PODCTL_BUILD_DEBUG=1",
+						Raw:     true,
+					},
+				},
+			},
+		},
+	}
+
+	o, buf := captureOptions(80)
+	app.RenderMan(o)
+	out := strip(buf.String())
+
+	if !strings.Contains(out, "Exhaustive long build description for man page.") {
+		t.Errorf("expected LongDescription in man page, got:\n%s", out)
+	}
+	if strings.Contains(out, "Short description") {
+		t.Errorf("Short description should be replaced by LongDescription in man page, got:\n%s", out)
+	}
+	if !strings.Contains(out, "Environment:") {
+		t.Errorf("expected note heading in man page, got:\n%s", out)
+	}
+	if !strings.Contains(out, "          PODCTL_BUILD_FAST=1") {
+		t.Errorf("expected raw note with 8 base indent + 2 text indent, got:\n%s", out)
+	}
+}

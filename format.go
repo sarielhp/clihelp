@@ -101,10 +101,84 @@ func reflowWords(w io.Writer, c *color.Color, width, indent int, initialStr stri
 	}
 }
 
+// detectListPrefix checks if s starts with a list item prefix:
+// - numbered lists (1. , 2. , etc., including any leading whitespace)
+// - bullet lists (- , * , • , including any leading whitespace)
+func detectListPrefix(s string) (string, bool) {
+	i := 0
+	for i < len(s) && (s[i] == ' ' || s[i] == '\t') {
+		i++
+	}
+	if i >= len(s) {
+		return "", false
+	}
+
+	rem := s[i:]
+	for _, b := range []string{"-", "*", "•"} {
+		if strings.HasPrefix(rem, b) {
+			after := rem[len(b):]
+			if len(after) > 0 && (after[0] == ' ' || after[0] == '\t') {
+				j := 0
+				for j < len(after) && (after[j] == ' ' || after[j] == '\t') {
+					j++
+				}
+				return s[:i+len(b)+j], true
+			}
+		}
+	}
+
+	digitLen := 0
+	for digitLen < len(rem) && rem[digitLen] >= '0' && rem[digitLen] <= '9' {
+		digitLen++
+	}
+	if digitLen > 0 && digitLen < len(rem) && rem[digitLen] == '.' {
+		after := rem[digitLen+1:]
+		if len(after) > 0 && (after[0] == ' ' || after[0] == '\t') {
+			j := 0
+			for j < len(after) && (after[j] == ' ' || after[j] == '\t') {
+				j++
+			}
+			return s[:i+digitLen+1+j], true
+		}
+	}
+
+	return "", false
+}
+
 // reflowSegment word-wraps a single paragraph (no newlines) so that no visual
 // line exceeds width columns. An optional prefix is placed in its own first-line
-// column and following lines are indented to align it.
+// column and following lines are indented to align it. When text starts with a
+// list prefix (bullet or numbered list), continuation lines use hanging indents
+// aligned to the list item text (indent + visualLen(listPrefix)).
 func reflowSegment(w io.Writer, c *color.Color, prefixColor *color.Color, width, indent int, prefix, text string) {
+	listPrefix, isList := detectListPrefix(text)
+	if isList {
+		remText := text[len(listPrefix):]
+		words := strings.Fields(remText)
+		hangingIndent := indent + visualLen(listPrefix)
+		if prefix != "" {
+			initialStr, initialLen, done := formatPrefix(w, c, prefixColor, indent, prefix, false)
+			if done {
+				return
+			}
+			initialStr += listPrefix
+			initialLen += visualLen(listPrefix)
+			if len(words) == 0 {
+				c.Fprintln(w, initialStr)
+				return
+			}
+			reflowWords(w, c, width, hangingIndent, initialStr, initialLen, words)
+			return
+		}
+		if len(words) == 0 {
+			c.Fprintln(w, strings.Repeat(" ", indent)+strings.TrimRight(listPrefix, " \t"))
+			return
+		}
+		initialStr := strings.Repeat(" ", indent) + listPrefix
+		reflowWords(w, c, width, hangingIndent, initialStr, hangingIndent, words)
+		return
+	}
+
 	words := strings.Fields(text)
 	if prefix != "" {
 		initialStr, initialLen, done := formatPrefix(w, c, prefixColor, indent, prefix, len(words) == 0)
@@ -134,7 +208,10 @@ func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string,
 	if prefix != "" && indent < 2 {
 		indent = 2
 	}
-	segments := splitLines(strings.TrimSpace(text))
+	if strings.TrimSpace(text) == "" {
+		return
+	}
+	segments := splitLines(strings.Trim(text, "\r\n"))
 	for i, seg := range segments {
 		if seg == "" && i+1 < len(segments) {
 			if prefix != "" {

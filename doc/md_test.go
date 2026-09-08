@@ -487,3 +487,40 @@ func TestRenderCommandPageNested(t *testing.T) {
 		}
 	}
 }
+
+func TestRenderCommandPageLongDescriptionAndRawNotes(t *testing.T) {
+	app := &clihelp.App{
+		Name: "testcli",
+	}
+	node := cmdNode{
+		path: []string{"deploy"},
+		cmd: clihelp.Command{
+			Name:            "deploy",
+			Description:     "Short description",
+			LongDescription: "Full Markdown documentation for deploy command.",
+			Notes: []clihelp.Note{
+				{
+					Heading: "Configuration Example",
+					Text:    "host: localhost\nport: 8080",
+					Raw:     true,
+				},
+			},
+		},
+	}
+
+	out := renderCommandPage(app, node)
+
+	if !strings.Contains(out, "Full Markdown documentation for deploy command.") {
+		t.Errorf("expected LongDescription in Markdown page, got:\n%s", out)
+	}
+	if strings.Contains(out, "Short description") {
+		t.Errorf("Short description should be replaced by LongDescription, got:\n%s", out)
+	}
+	if !strings.Contains(out, "## Configuration Example") {
+		t.Errorf("expected heading in Markdown page, got:\n%s", out)
+	}
+	expectedCodeBlock := "```\nhost: localhost\nport: 8080\n```"
+	if !strings.Contains(out, expectedCodeBlock) {
+		t.Errorf("expected raw note wrapped in fenced code block, got:\n%s", out)
+	}
+}

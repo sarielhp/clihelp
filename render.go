@@ -77,6 +77,12 @@ type Options struct {
 	// the terminal height. When true, output is buffered and piped through
 	// the pager only when it doesn't fit on one screen.
 	Pager bool
+	// Concise requests concise command help (-h), suppressing notes and
+	// displaying a footer hint pointing to extended help.
+	Concise bool
+	// Extended requests full command help (--help / -H / help <cmd>),
+	// displaying LongDescription, all Notes, and Examples.
+	Extended bool
 }
 
 // maxContent resolves the content width cap, defaulting to 80.
@@ -455,13 +461,79 @@ func (a *App) renderCommandFlags(w io.Writer, th Theme, o Options, termWidth int
 	}
 }
 
+func renderRawLines(w io.Writer, th Theme, indent int, text string) {
+	indentStr := strings.Repeat(" ", indent)
+	lines := splitLines(strings.Trim(text, "\r\n"))
+	for _, line := range lines {
+		if line == "" {
+			fmt.Fprintln(w)
+		} else {
+			th.Body.Fprintln(w, indentStr+line)
+		}
+	}
+}
+
+func renderNoteContent(w io.Writer, th Theme, o Options, termWidth, indent int, note Note) {
+	if note.Raw {
+		renderRawLines(w, th, indent, note.Text)
+		return
+	}
+
+	lines := splitLines(strings.Trim(note.Text, "\r\n"))
+	var proseLines []string
+	inFence := false
+
+	flushProse := func() {
+		if len(proseLines) > 0 {
+			prose := strings.Join(proseLines, "\n")
+			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, "", inline(prose))
+			proseLines = nil
+		}
+	}
+
+	indentStr := strings.Repeat(" ", indent)
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "```") {
+			if !inFence {
+				flushProse()
+				inFence = true
+			} else {
+				inFence = false
+			}
+			continue
+		}
+
+		if inFence {
+			if line == "" {
+				fmt.Fprintln(w)
+			} else {
+				th.Body.Fprintln(w, indentStr+line)
+			}
+		} else {
+			proseLines = append(proseLines, line)
+		}
+	}
+	flushProse()
+}
+
 func renderCommandNotes(w io.Writer, th Theme, o Options, termWidth int, notes []Note) {
 	for _, note := range notes {
 		if note.Heading != "" {
 			th.Hdr.Fprintln(w, "\n"+note.Heading+":")
 		}
-		reflow(w, th.Body, wrapWidth(termWidth, 2, o.maxContent()), 2, "", inline(note.Text))
+		renderNoteContent(w, th, o, termWidth, 2, note)
 	}
+}
+
+func (a *App) renderCommandConciseFooter(w io.Writer, th Theme, o Options, termWidth int, path []string) {
+	helpHint := "(or --help)"
+	if a.ExtendedHelpFlag {
+		helpHint = "(or --help / -H)"
+	}
+	footer := fmt.Sprintf("Run '%s help %s' %s for extended documentation and examples.", appName(a), strings.Join(path, " "), helpHint)
+	fmt.Fprintln(w)
+	reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", footer)
 }
 
 // RenderCommand writes help for the command at path (e.g. "config" "set"),
@@ -484,9 +556,13 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 		th.Hdr.Fprint(w, "Usage:  ")
 		fmt.Fprintln(w, inline(usage))
 
-		if cmd.Description != "" {
+		desc := cmd.Description
+		if !o.Concise && cmd.LongDescription != "" {
+			desc = cmd.LongDescription
+		}
+		if desc != "" {
 			fmt.Fprintln(w)
-			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", inline(cmd.Description))
+			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", inline(desc))
 		}
 
 		a.renderCommandSubcommands(w, th, o, termWidth, cmd)
@@ -498,7 +574,11 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 			renderExamples(w, a, cmd, th, o, termWidth, cmd.Examples, 2, 4)
 		}
 
-		renderCommandNotes(w, th, o, termWidth, cmd.Notes)
+		if !o.Concise {
+			renderCommandNotes(w, th, o, termWidth, cmd.Notes)
+		} else if cmd.LongDescription != "" || len(cmd.Notes) > 0 {
+			a.renderCommandConciseFooter(w, th, o, termWidth, path)
+		}
 
 		if th.Separator {
 			separator(w, th, sepW)

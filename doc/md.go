@@ -452,8 +452,12 @@ func renderCommandPage(a *clihelp.App, n cmdNode) string {
 	var b strings.Builder
 	b.WriteString(pageHeader(meta))
 	fmt.Fprintf(&b, "# %s\n\n", mdInline(fullTitle))
-	if cmd.Description != "" {
-		fmt.Fprintf(&b, "%s\n\n", cmd.Description)
+	desc := cmd.LongDescription
+	if desc == "" {
+		desc = cmd.Description
+	}
+	if desc != "" {
+		fmt.Fprintf(&b, "%s\n\n", desc)
 	}
 
 	if cmd.UsageLine != "" {
@@ -471,7 +475,16 @@ func renderCommandPage(a *clihelp.App, n cmdNode) string {
 		if note.Heading != "" {
 			fmt.Fprintf(&b, "## %s\n\n", mdInline(note.Heading))
 		}
-		fmt.Fprintf(&b, "%s\n\n", note.Text)
+		if note.Raw {
+			trimmed := strings.Trim(note.Text, "\r\n")
+			if !strings.HasPrefix(strings.TrimSpace(trimmed), "```") {
+				fmt.Fprintf(&b, "```\n%s\n```\n\n", trimmed)
+			} else {
+				fmt.Fprintf(&b, "%s\n\n", trimmed)
+			}
+		} else {
+			fmt.Fprintf(&b, "%s\n\n", note.Text)
+		}
 	}
 
 	fmt.Fprintf(&b, "---\n\n[↑ %s](index.md) — [nav](nav.md)\n", mdInline(a.Name))

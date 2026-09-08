@@ -795,3 +795,99 @@ func TestAuditHelper(t *testing.T) {
 		t.Errorf("expected whitelisted permutation to pass audit, got error: %v", err)
 	}
 }
+
+func TestTieredHelpConciseAndExtended(t *testing.T) {
+	app := &App{
+		Name: "testcli",
+		Commands: []Command{
+			{
+				Name:            "build",
+				Description:     "Short build description.",
+				LongDescription: "Comprehensive long build description that covers all aspects of the build pipeline in depth.",
+				Options: []Option{
+					{Flags: "-o, --output <path>", Description: "Output artifact path"},
+				},
+				Examples: []Example{
+					{Line: "testcli build -o dist/app", Description: "Build application binary"},
+				},
+				Notes: []Note{
+					{Heading: "Notes", Text: "Detailed notes about caching and compiler flags."},
+				},
+			},
+			{
+				Name:        "simple",
+				Description: "A simple command with no notes or long description.",
+			},
+		},
+	}
+
+	t.Run("concise help suppresses notes and shows footer hint", func(t *testing.T) {
+		o, buf := captureOptions(80)
+		o.Concise = true
+		app.RenderCommand(o, "build")
+		out := strip(buf.String())
+
+		if !strings.Contains(out, "Short build description.") {
+			t.Errorf("expected Description in concise help, got:\n%s", out)
+		}
+		if strings.Contains(out, "Comprehensive long build description") {
+			t.Errorf("LongDescription should NOT appear in concise help, got:\n%s", out)
+		}
+		if strings.Contains(out, "Detailed notes about caching") {
+			t.Errorf("Notes should be suppressed in concise help, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Run 'testcli help build' (or --help)") || !strings.Contains(out, "extended documentation and") {
+			t.Errorf("expected footer hint in concise help, got:\n%s", out)
+		}
+	})
+
+	t.Run("concise help with ExtendedHelpFlag includes -H in footer hint", func(t *testing.T) {
+		appWithH := *app
+		appWithH.ExtendedHelpFlag = true
+		o, buf := captureOptions(80)
+		o.Concise = true
+		appWithH.RenderCommand(o, "build")
+		out := strip(buf.String())
+
+		if !strings.Contains(out, "Run 'testcli help build' (or --help / -H)") || !strings.Contains(out, "extended documentation and") {
+			t.Errorf("expected footer hint with -H, got:\n%s", out)
+		}
+	})
+
+	t.Run("concise help on command without notes or long description renders normally", func(t *testing.T) {
+		o, buf := captureOptions(80)
+		o.Concise = true
+		app.RenderCommand(o, "simple")
+		out := strip(buf.String())
+
+		if !strings.Contains(out, "A simple command with no notes or long description.") {
+			t.Errorf("expected description, got:\n%s", out)
+		}
+		if strings.Contains(out, "extended documentation and examples") {
+			t.Errorf("simple command should NOT have footer hint, got:\n%s", out)
+		}
+	})
+
+	t.Run("extended help displays LongDescription Notes and Examples", func(t *testing.T) {
+		o, buf := captureOptions(80)
+		o.Extended = true
+		app.RenderCommand(o, "build")
+		out := strip(buf.String())
+
+		if !strings.Contains(out, "Comprehensive long build description") {
+			t.Errorf("expected LongDescription in extended help, got:\n%s", out)
+		}
+		if strings.Contains(out, "Short build description.") {
+			t.Errorf("Short Description should be replaced by LongDescription, got:\n%s", out)
+		}
+		if !strings.Contains(out, "Detailed notes about caching") {
+			t.Errorf("expected Notes in extended help, got:\n%s", out)
+		}
+		if !strings.Contains(out, "testcli build -o dist/app") {
+			t.Errorf("expected Examples in extended help, got:\n%s", out)
+		}
+		if strings.Contains(out, "for extended documentation and examples") {
+			t.Errorf("extended help should NOT have footer hint, got:\n%s", out)
+		}
+	})
+}

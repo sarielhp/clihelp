@@ -76,8 +76,12 @@ func (a *App) collectRenderFlags() []Option {
 	helpGroup := "Help & Information"
 	var stdFlags []Option
 	if !hasHelp {
+		flagsStr := "-h, --help"
+		if a.ExtendedHelpFlag {
+			flagsStr = "-h, --help, -H"
+		}
 		stdFlags = append(stdFlags, Option{
-			Flags:       "-h, --help",
+			Flags:       flagsStr,
 			Description: "Show help for command or application",
 			Group:       helpGroup,
 		})
@@ -237,8 +241,12 @@ func (a *App) renderManCommands(w io.Writer, th Theme, o Options, termWidth int,
 		cmdPath := strings.Join(append(parentPath, c.Name), " ")
 		th.Subcommand.Fprintf(w, "  %s\n", cmdPath)
 
-		if c.Description != "" {
-			reflow(w, th.Body, wrapWidth(termWidth, 6, o.maxContent()), 6, "", inline(c.Description))
+		desc := c.LongDescription
+		if desc == "" {
+			desc = c.Description
+		}
+		if desc != "" {
+			reflow(w, th.Body, wrapWidth(termWidth, 6, o.maxContent()), 6, "", inline(desc))
 		}
 
 		if len(c.Parameters) > 0 {
@@ -281,19 +289,23 @@ func (a *App) renderManCommands(w io.Writer, th Theme, o Options, termWidth int,
 		}
 
 		if len(c.Notes) > 0 {
-			for _, n := range c.Notes {
-				fmt.Fprintln(w)
-				if n.Heading != "" {
-					th.Hdr.Fprintf(w, "      %s:\n", n.Heading)
-				}
-				reflow(w, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 8, "", inline(n.Text))
-			}
+			a.renderManNotes(w, th, o, termWidth, c.Notes)
 		}
 
 		if len(c.Subcommands) > 0 {
 			fmt.Fprintln(w)
 			a.renderManCommands(w, th, o, termWidth, c.Subcommands, append(parentPath, c.Name))
 		}
+	}
+}
+
+func (a *App) renderManNotes(w io.Writer, th Theme, o Options, termWidth int, notes []Note) {
+	for _, n := range notes {
+		fmt.Fprintln(w)
+		if n.Heading != "" {
+			th.Hdr.Fprintf(w, "      %s:\n", n.Heading)
+		}
+		renderNoteContent(w, th, o, termWidth, 8, n)
 	}
 }
 

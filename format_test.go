@@ -313,3 +313,151 @@ func TestUniformWrappingWithLinks(t *testing.T) {
 	}
 	t.Logf("uniform wrapping: max gap from width 40 = %d chars (mid-lines)", maxGap)
 }
+
+func TestHangingIndentNumberedAndBulletLists(t *testing.T) {
+	tests := []struct {
+		name        string
+		indent      int
+		width       int
+		input       string
+		wantPrefix  string
+		wantContInd int
+	}{
+		{
+			name:        "numbered list",
+			indent:      2,
+			width:       30,
+			input:       "1. First step is very long and has several words to cause wrapping across multiple lines.",
+			wantPrefix:  "  1. First",
+			wantContInd: 5,
+		},
+		{
+			name:        "indented numbered list",
+			indent:      2,
+			width:       35,
+			input:       "  1. Indented step is very long and has several words to cause wrapping across lines.",
+			wantPrefix:  "    1. Indented",
+			wantContInd: 7,
+		},
+		{
+			name:        "dash bullet",
+			indent:      2,
+			width:       30,
+			input:       "- Dash bullet item that wraps nicely across multiple lines in the terminal.",
+			wantPrefix:  "  - Dash",
+			wantContInd: 4,
+		},
+		{
+			name:        "star bullet",
+			indent:      2,
+			width:       30,
+			input:       "* Star bullet item that wraps nicely across multiple lines in the terminal.",
+			wantPrefix:  "  * Star",
+			wantContInd: 4,
+		},
+		{
+			name:        "unicode bullet",
+			indent:      2,
+			width:       30,
+			input:       "• Unicode bullet item that wraps nicely across multiple lines in the terminal.",
+			wantPrefix:  "  • Unicode",
+			wantContInd: 4,
+		},
+		{
+			name:        "indented dash bullet",
+			indent:      2,
+			width:       35,
+			input:       "  - Indented bullet item that wraps nicely across multiple lines in the terminal.",
+			wantPrefix:  "    - Indented",
+			wantContInd: 6,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			reflow(&buf, color.New(color.FgWhite), tt.width, tt.indent, "", tt.input)
+			plain := stripANSI(buf.String())
+			lines := strings.Split(strings.TrimRight(plain, "\n"), "\n")
+			if len(lines) < 2 {
+				t.Fatalf("expected multiple wrapped lines, got %d:\n%s", len(lines), plain)
+			}
+			if !strings.HasPrefix(lines[0], tt.wantPrefix) {
+				t.Errorf("line 0 prefix mismatch: got %q, want prefix %q", lines[0], tt.wantPrefix)
+			}
+			expectedIndentStr := strings.Repeat(" ", tt.wantContInd)
+			for i := 1; i < len(lines); i++ {
+				if !strings.HasPrefix(lines[i], expectedIndentStr) || strings.HasPrefix(lines[i], expectedIndentStr+" ") {
+					t.Errorf("continuation line %d has incorrect indent (want %d spaces):\nline: %q", i, tt.wantContInd, lines[i])
+				}
+			}
+		})
+	}
+}
+
+func TestRawAndFencedNotesFormatting(t *testing.T) {
+	t.Run("raw note preserves spacing and indent", func(t *testing.T) {
+		app := &App{
+			Name: "testapp",
+			Commands: []Command{
+				{
+					Name:        "run",
+					Description: "Run command",
+					Notes: []Note{
+						{
+							Heading: "Environment",
+							Text:    "  CONFIG_A=1\n    CONFIG_B=2\n\n  CONFIG_C=3",
+							Raw:     true,
+						},
+					},
+				},
+			},
+		}
+		o, buf := captureOptions(80)
+		o.Extended = true
+		app.RenderCommand(o, "run")
+		plain := stripANSI(buf.String())
+
+		if !strings.Contains(plain, "    CONFIG_A=1") {
+			t.Errorf("expected 4 spaces (2 note indent + 2 text indent) for CONFIG_A, got:\n%s", plain)
+		}
+		if !strings.Contains(plain, "      CONFIG_B=2") {
+			t.Errorf("expected 6 spaces for CONFIG_B, got:\n%s", plain)
+		}
+		if !strings.Contains(plain, "    CONFIG_C=3") {
+			t.Errorf("expected 4 spaces for CONFIG_C, got:\n%s", plain)
+		}
+	})
+
+	t.Run("fenced code block in note preserves formatting", func(t *testing.T) {
+		app := &App{
+			Name: "testapp",
+			Commands: []Command{
+				{
+					Name:        "exec",
+					Description: "Exec command",
+					Notes: []Note{
+						{
+							Heading: "Usage Example",
+							Text:    "```sh\n$ curl -X POST https://api.example.com \\\n    -H \"Auth: Bearer token\"\n```",
+						},
+					},
+				},
+			},
+		}
+		o, buf := captureOptions(80)
+		o.Extended = true
+		app.RenderCommand(o, "exec")
+		plain := stripANSI(buf.String())
+
+		if !strings.Contains(plain, "  $ curl -X POST https://api.example.com \\") {
+			t.Errorf("expected curl command in output, got:\n%s", plain)
+		}
+		if !strings.Contains(plain, "      -H \"Auth: Bearer token\"") {
+			t.Errorf("expected continuation flag with preserved indentation, got:\n%s", plain)
+		}
+		if strings.Contains(plain, "```") {
+			t.Errorf("fences should not appear in terminal output:\n%s", plain)
+		}
+	})
+}

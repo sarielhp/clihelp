@@ -2,9 +2,14 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
-## [0.3.5] - 2026-09-07
+## [0.3.5] - 2026-09-08
 
 ### Added
+- **Extended Command Documentation & Tiered Help** - Added `Command.LongDescription` for in-depth command documentation, `Note.Raw` to preserve preformatted text and verbatim spacing, and `App.ExtendedHelpFlag` for opt-in `-H` single-letter shortcut for extended help on commands and root.
+- **Hanging Indentation for Lists** - `reflowSegment` detects bullet lists (`- `, `* `, `• `) and numbered lists (`1. `, `2. `, etc., including any leading whitespace) and wraps continuation lines with hanging indents aligned to the start of the list item text.
+- **Raw & Preformatted Block Support** - `renderCommandNotes` and `RenderMan` support `Note.Raw` and fenced code blocks (```), bypassing reflow and space collapsing to preserve internal spacing and verbatim indentation.
+- **Tiered Progressive Help (`-h` vs `--help` / `-H`)** - Differentiated concise help (`-h`) from extended help (`--help`, `help <cmd>`, or `-H`). Concise help suppresses `Notes`, uses `Description`, and outputs a clean footer hint pointing to extended documentation. Extended help renders full `LongDescription`, all parameters, flags, examples, and notes, with automatic `$PAGER` support.
+- **Markdown Documentation Site Generation** - `doc.RenderMarkdown` renders `LongDescription` (preferring it over `Description`) and formats raw notes inside Markdown fenced code blocks.
 - **UV-Style Command Listings** - Two-column command index tables in `RenderGlobal` and `RenderCommand` display clean, bare command names and aliases without argument or flag clutter, guaranteeing single-line scannability.
 - **Command Tree Traversal (`App.Walk`)** - Programmatic depth-first traversal of all commands and nested subcommands with path slice isolation and early error-exit for testing, interface coverage, and static analysis.
 - **Example App Testing Demonstration** - Added `example/main_test.go` demonstrating how consumer applications can test command coverage, leaf usage lines, example validity via `ValidateAllExamples`, and smoke-render all command help pages.
