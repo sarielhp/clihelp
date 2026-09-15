@@ -12,14 +12,14 @@ func TestMaxContentWidthCapsWrapping(t *testing.T) {
 	o, buf := captureOptions(200)
 	o.MaxContentWidth = 40
 	reflow(buf, defaultTheme().Body, wrapWidth(o.width(), 2, o.maxContent()), 2, "", long)
-	max := 0
+	maxLen := 0
 	for _, line := range strings.Split(strings.TrimRight(buf.String(), "\n"), "\n") {
-		if l := len(strip(line)); l > max {
-			max = l
+		if l := len(strip(line)); l > maxLen {
+			maxLen = l
 		}
 	}
-	if max > 42 {
-		t.Errorf("MaxContentWidth=40 not honored, max line = %d", max)
+	if maxLen > 42 {
+		t.Errorf("MaxContentWidth=40 not honored, max line = %d", maxLen)
 	}
 }
 

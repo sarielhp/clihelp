@@ -159,7 +159,7 @@ func (a *App) completeSubcommands(w io.Writer, currentCmd *Command, toComplete s
 	}
 }
 
-func (a *App) handleComplete(ctx context.Context, args []string) error {
+func (a *App) handleComplete(_ context.Context, args []string) error {
 	w := a.stdout()
 	if len(args) == 0 {
 		a.completeRootCommands(w)
@@ -402,7 +402,7 @@ func InstallCompletion(app *App, shell string) (string, error) {
 	shell = strings.ToLower(strings.TrimSpace(shell))
 
 	targetDir := filepath.Dir(targetPath)
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
+	if err = os.MkdirAll(targetDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create directory %q: %w", targetDir, err)
 	}
 

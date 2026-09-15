@@ -40,11 +40,11 @@ func MaximumNArgs(n int) ArgsValidator {
 	}
 }
 
-// RangeArgs returns an ArgsValidator that ensures between min and max arguments are provided.
-func RangeArgs(min, max int) ArgsValidator {
+// RangeArgs returns an ArgsValidator that ensures between minArgs and maxArgs arguments are provided.
+func RangeArgs(minArgs, maxArgs int) ArgsValidator {
 	return func(args []string) error {
-		if len(args) < min || len(args) > max {
-			return fmt.Errorf("accepts between %d and %d arg(s), received %d", min, max, len(args))
+		if len(args) < minArgs || len(args) > maxArgs {
+			return fmt.Errorf("accepts between %d and %d arg(s), received %d", minArgs, maxArgs, len(args))
 		}
 		return nil
 	}

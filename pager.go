@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/fatih/color"
 	"golang.org/x/term"
 )
 
@@ -31,16 +30,6 @@ func (a *App) pageOutput(o Options, fn func(w io.Writer)) {
 		fd = int(f.Fd())
 		isTerminal = term.IsTerminal(fd)
 	}
-
-	// When outputting to a terminal, ensure ANSI color escape sequences are preserved
-	// during buffering so that the pager receives full color formatting.
-	hadNoColor := color.NoColor
-	if isTerminal && os.Getenv("NO_COLOR") == "" {
-		color.NoColor = false
-	}
-	defer func() {
-		color.NoColor = hadNoColor
-	}()
 
 	var buf bytes.Buffer
 	fn(&buf)

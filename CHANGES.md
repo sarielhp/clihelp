@@ -2,6 +2,17 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.8] - 2026-09-15
+
+### Fixed
+- **Race Condition in Paged Output** - Removed package-level `color.NoColor` mutation in `pageOutput`, eliminating data races when rendering help concurrently.
+- **Tree Command Description Color** - Wired `bodyColor` in `tree.reflowTree` so tree descriptions correctly honor `Theme.Body`.
+- **Code Hygiene & Shadowing** - Replaced custom `min` with Go builtin, renamed `min`/`max` parameters in `RangeArgs`, and resolved variable shadowing.
+
+### Changed
+- **Cognitive Complexity Flattening** - Decomposed `renderInline` in `inline.go`, `collectRenderFlags` in `topics.go`, and `promptForMissing` in `interactive.go` into focused helpers conforming to cognitive complexity thresholds (depth $\le 4$, branches $\le 15$).
+- **Test Suite Partitioning** - Extracted help rendering unit tests from `clihelp_test.go` into `render_test.go` to keep all test files comfortably within sizing limits.
+
 ## [0.3.5] - 2026-09-08
 
 ### Added

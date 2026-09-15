@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -110,4 +111,43 @@ func TestBuildPagerArgs(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConcurrentRender(t *testing.T) {
+	app := &App{
+		Name:        "testapp",
+		Description: "A concurrent test app",
+		Commands: []Command{
+			{
+				Name:        "run",
+				Description: "Run the task",
+			},
+			{
+				Name:        "status",
+				Description: "Show status",
+			},
+		},
+	}
+
+	const goroutines = 20
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+
+	for i := 0; i < goroutines; i++ {
+		go func(id int) {
+			defer wg.Done()
+			var buf bytes.Buffer
+			opts := Options{Writer: &buf}
+			if id%2 == 0 {
+				app.RenderGlobal(opts)
+			} else {
+				app.RenderCommand(opts, "run")
+			}
+			if buf.Len() == 0 {
+				t.Errorf("goroutine %d got empty render output", id)
+			}
+		}(i)
+	}
+
+	wg.Wait()
 }

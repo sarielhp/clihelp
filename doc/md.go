@@ -1,6 +1,5 @@
+// Package doc provides markdown documentation site generation for clihelp applications.
 package doc
-
-import "github.com/sarielhp/clihelp"
 
 import (
 	"bytes"
@@ -14,6 +13,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/sarielhp/clihelp"
 )
 
 // markdownFormatVersion is baked into the output hash so that a future change
@@ -529,13 +530,13 @@ func writeMarkdownPages(dir string, pages map[string]string) error {
 // Outside a git work tree it silently does nothing.
 func ensureHashIgnored(dir, hashPath string) {
 	cmd := exec.Command("git", "check-ignore", "-q", hashPath)
-	if err := cmd.Run(); err == nil {
+	runErr := cmd.Run()
+	if runErr == nil {
 		return // already ignored
-	} else {
-		var ee *exec.ExitError
-		if !errors.As(err, &ee) || ee.ExitCode() != 1 {
-			return // git unavailable / not a repo
-		}
+	}
+	var ee *exec.ExitError
+	if !errors.As(runErr, &ee) || ee.ExitCode() != 1 {
+		return // git unavailable / not a repo
 	}
 
 	gi := filepath.Join(dir, ".gitignore")

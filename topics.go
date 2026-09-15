@@ -49,7 +49,7 @@ func renderOptionsGrouped(w io.Writer, th Theme, o Options, termWidth int, opts 
 	}
 }
 
-func (a *App) collectRenderFlags() []Option {
+func (a *App) collectVisibleFlags() []Option {
 	var allFlags []Option
 	for _, f := range a.PersistentOptions {
 		if !f.Hidden {
@@ -61,10 +61,13 @@ func (a *App) collectRenderFlags() []Option {
 			allFlags = append(allFlags, f)
 		}
 	}
+	return allFlags
+}
 
+func (a *App) synthesizeStandardFlags(existing []Option) []Option {
 	hasHelp := false
 	hasVersion := false
-	for _, f := range allFlags {
+	for _, f := range existing {
 		if strings.Contains(f.Flags, "--help") || strings.Contains(f.Flags, "-h") {
 			hasHelp = true
 		}
@@ -93,7 +96,10 @@ func (a *App) collectRenderFlags() []Option {
 			Group:       helpGroup,
 		})
 	}
+	return stdFlags
+}
 
+func normalizeFlagGroups(allFlags, stdFlags []Option) {
 	hasAnyGroup := false
 	for _, f := range allFlags {
 		if f.Group != "" {
@@ -113,7 +119,12 @@ func (a *App) collectRenderFlags() []Option {
 			stdFlags[i].Group = ""
 		}
 	}
+}
 
+func (a *App) collectRenderFlags() []Option {
+	allFlags := a.collectVisibleFlags()
+	stdFlags := a.synthesizeStandardFlags(allFlags)
+	normalizeFlagGroups(allFlags, stdFlags)
 	return append(allFlags, stdFlags...)
 }
 

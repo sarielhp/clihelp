@@ -46,10 +46,10 @@ func Render(w io.Writer, a *clihelp.App, opts ...Options) {
 		treeColor = color.New(color.FgGreen)
 	}
 	treeColor.Fprintln(w, name)
-	renderTreeTo(w, th, width, a.Commands, "", nil, false)
+	renderTreeTo(w, th, width, a.Commands, "", nil)
 	if len(a.Shortcuts) > 0 {
 		fmt.Fprintln(w, "\nShortcut Commands:")
-		renderTreeTo(w, th, width, a.Shortcuts, "", nil, true)
+		renderTreeTo(w, th, width, a.Shortcuts, "", nil)
 	}
 }
 
@@ -103,7 +103,7 @@ func renderTreeNode(w io.Writer, th clihelp.Theme, width int, cmd clihelp.Comman
 	reflowTree(w, th.Body, totalWidth, maxWidth, firstPrefixFormatted, contPrefixFormatted, firstSentence(cmd.Description))
 }
 
-func renderTreeTo(w io.Writer, th clihelp.Theme, width int, commands []clihelp.Command, prefix string, path []string, isLast bool) {
+func renderTreeTo(w io.Writer, th clihelp.Theme, width int, commands []clihelp.Command, prefix string, path []string) {
 	if len(commands) == 0 {
 		return
 	}
@@ -139,7 +139,7 @@ func renderTreeTo(w io.Writer, th clihelp.Theme, width int, commands []clihelp.C
 			if isLastCmd {
 				nextPrefix = prefix + "    "
 			}
-			renderTreeTo(w, th, width, cmd.Subcommands, nextPrefix, currentPath, isLastCmd)
+			renderTreeTo(w, th, width, cmd.Subcommands, nextPrefix, currentPath)
 		}
 	}
 }
@@ -162,6 +162,13 @@ func firstSentence(s string) string {
 	return s
 }
 
+func colorizeTreeWord(c *color.Color, word string) string {
+	if c == nil {
+		return word
+	}
+	return c.Sprint(word)
+}
+
 func reflowTree(w io.Writer, bodyColor *color.Color, indent, width int, firstPrefixFormatted, contPrefixFormatted, text string) {
 	words := strings.Fields(text)
 	if len(words) == 0 {
@@ -176,6 +183,7 @@ func reflowTree(w io.Writer, bodyColor *color.Color, indent, width int, firstPre
 
 	for _, word := range words {
 		wlen := visualLen(word)
+		colored := colorizeTreeWord(bodyColor, word)
 		space := 0
 		if lineHasWords {
 			space = 1
@@ -184,7 +192,7 @@ func reflowTree(w io.Writer, bodyColor *color.Color, indent, width int, firstPre
 			fmt.Fprintln(w, cur.String())
 			cur.Reset()
 			cur.WriteString(contPrefixFormatted)
-			cur.WriteString(word)
+			cur.WriteString(colored)
 			curLen = indent + wlen
 			lineHasWords = true
 		} else {
@@ -192,7 +200,7 @@ func reflowTree(w io.Writer, bodyColor *color.Color, indent, width int, firstPre
 				cur.WriteString(" ")
 				curLen++
 			}
-			cur.WriteString(word)
+			cur.WriteString(colored)
 			curLen += wlen
 			lineHasWords = true
 		}

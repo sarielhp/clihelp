@@ -1,3 +1,4 @@
+// Package tree_test demonstrates using the tree package.
 package tree_test
 
 import (

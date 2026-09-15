@@ -347,14 +347,6 @@ func subcommandEntries(c *Command) []Param {
 	return out
 }
 
-// min returns the smaller of two integers.
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 // wrapWidth calculates the effective wrapping width for a given terminal
 // width, indent, and content cap (maxContent).
 func wrapWidth(termWidth, indent, maxContent int) int {

@@ -54,34 +54,14 @@ func renderInline(w io.Writer, s string, showURLs ...bool) {
 			}
 		}
 		// link [text](url)
-		if s[i] == '[' {
-			cb := strings.IndexByte(s[i+1:], ']')
-			if cb >= 0 && i+1+cb+1 < len(s) && s[i+1+cb+1] == '(' {
-				depth := 1
-				ue := -1
-				for j := i + 1 + cb + 2; j < len(s); j++ {
-					if s[j] == '(' {
-						depth++
-					} else if s[j] == ')' {
-						depth--
-						if depth == 0 {
-							ue = j - (i + 1 + cb + 2)
-							break
-						}
-					}
-				}
-				if ue >= 0 {
-					text := s[i+1 : i+1+cb]
-					url := s[i+1+cb+2 : i+1+cb+2+ue]
-					if show {
-						fmt.Fprintf(w, "%s (%s)", text, url)
-					} else {
-						fmt.Fprintf(w, "%s%s%s%s%s", osc8, url, oscEnd, text, osc8+oscEnd)
-					}
-					i += cb + 2 + ue + 2
-					continue
-				}
+		if text, url, advance, ok := parseMarkdownLink(s, i); ok {
+			if show {
+				fmt.Fprintf(w, "%s (%s)", text, url)
+			} else {
+				fmt.Fprintf(w, "%s%s%s%s%s", osc8, url, oscEnd, text, osc8+oscEnd)
 			}
+			i += advance
+			continue
 		}
 		// **bold**
 		if i+1 < len(s) && s[i] == '*' && s[i+1] == '*' {
@@ -113,4 +93,34 @@ func renderInline(w io.Writer, s string, showURLs ...bool) {
 		w.Write([]byte{s[i]})
 		i++
 	}
+}
+
+func parseMarkdownLink(s string, i int) (text, url string, advance int, ok bool) {
+	if s[i] != '[' {
+		return "", "", 0, false
+	}
+	cb := strings.IndexByte(s[i+1:], ']')
+	if cb < 0 || i+1+cb+1 >= len(s) || s[i+1+cb+1] != '(' {
+		return "", "", 0, false
+	}
+	depth := 1
+	ue := -1
+	for j := i + 1 + cb + 2; j < len(s); j++ {
+		if s[j] == '(' {
+			depth++
+		} else if s[j] == ')' {
+			depth--
+			if depth == 0 {
+				ue = j - (i + 1 + cb + 2)
+				break
+			}
+		}
+	}
+	if ue < 0 {
+		return "", "", 0, false
+	}
+	text = s[i+1 : i+1+cb]
+	url = s[i+1+cb+2 : i+1+cb+2+ue]
+	advance = cb + 2 + ue + 2
+	return text, url, advance, true
 }

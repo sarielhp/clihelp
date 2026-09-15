@@ -32,66 +32,70 @@ func getMissingRequiredFlags(fs *pflag.FlagSet, allOptions []Option) []*pflag.Fl
 	return missing
 }
 
+func promptBoolChoice(fs *pflag.FlagSet, flg *pflag.Flag, cleanName string, reader *bufio.Reader, stderr io.Writer) error {
+	for {
+		fmt.Fprintf(stderr, "\nPlease select a value for required flag --%s:\n", cleanName)
+		fmt.Fprintln(stderr, "  [1] true")
+		fmt.Fprintln(stderr, "  [2] false")
+		fmt.Fprint(stderr, "Select option (1-2): ")
+
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return err
+		}
+		choice := strings.TrimSpace(line)
+		switch choice {
+		case "1":
+			return fs.Set(flg.Name, "true")
+		case "2":
+			return fs.Set(flg.Name, "false")
+		default:
+			fmt.Fprintln(stderr, "Invalid choice. Please enter 1 or 2.")
+		}
+	}
+}
+
+func promptTextInput(fs *pflag.FlagSet, flg *pflag.Flag, cleanName string, reader *bufio.Reader, stderr io.Writer) error {
+	for {
+		defaultPrompt := ""
+		if flg.DefValue != "" {
+			defaultPrompt = fmt.Sprintf(" [default: %s]", flg.DefValue)
+		}
+		fmt.Fprintf(stderr, "\nEnter value for required flag --%s%s: ", cleanName, defaultPrompt)
+
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return err
+		}
+		input := strings.TrimSpace(line)
+		if input == "" && flg.DefValue != "" {
+			input = flg.DefValue
+		}
+		if input == "" {
+			fmt.Fprintf(stderr, "Error: flag --%s is required and cannot be empty.\n", cleanName)
+			continue
+		}
+		if err := fs.Set(flg.Name, input); err != nil {
+			fmt.Fprintf(stderr, "Error: invalid value: %v\n", err)
+			continue
+		}
+		return nil
+	}
+}
+
 // promptForMissing prompts the user for each missing required flag using numbered choice or text input.
 func promptForMissing(fs *pflag.FlagSet, missing []*pflag.Flag, stdin io.Reader, stderr io.Writer) error {
 	reader := bufio.NewReader(stdin)
 	for _, flg := range missing {
 		cleanName := strings.TrimPrefix(flg.Name, "flag-")
-
-		// If it's a boolean flag, present a numbered choice menu (True/False)
 		if flg.Value.Type() == "bool" {
-			for {
-				fmt.Fprintf(stderr, "\nPlease select a value for required flag --%s:\n", cleanName)
-				fmt.Fprintln(stderr, "  [1] true")
-				fmt.Fprintln(stderr, "  [2] false")
-				fmt.Fprint(stderr, "Select option (1-2): ")
-
-				line, err := reader.ReadString('\n')
-				if err != nil {
-					return err
-				}
-				choice := strings.TrimSpace(line)
-				if choice == "1" {
-					if err := fs.Set(flg.Name, "true"); err != nil {
-						return err
-					}
-					break
-				} else if choice == "2" {
-					if err := fs.Set(flg.Name, "false"); err != nil {
-						return err
-					}
-					break
-				}
-				fmt.Fprintln(stderr, "Invalid choice. Please enter 1 or 2.")
+			if err := promptBoolChoice(fs, flg, cleanName, reader, stderr); err != nil {
+				return err
 			}
 			continue
 		}
-
-		// Otherwise, prompt for standard text input
-		for {
-			defaultPrompt := ""
-			if flg.DefValue != "" {
-				defaultPrompt = fmt.Sprintf(" [default: %s]", flg.DefValue)
-			}
-			fmt.Fprintf(stderr, "\nEnter value for required flag --%s%s: ", cleanName, defaultPrompt)
-
-			line, err := reader.ReadString('\n')
-			if err != nil {
-				return err
-			}
-			input := strings.TrimSpace(line)
-			if input == "" && flg.DefValue != "" {
-				input = flg.DefValue
-			}
-			if input == "" {
-				fmt.Fprintf(stderr, "Error: flag --%s is required and cannot be empty.\n", cleanName)
-				continue
-			}
-			if err := fs.Set(flg.Name, input); err != nil {
-				fmt.Fprintf(stderr, "Error: invalid value: %v\n", err)
-				continue
-			}
-			break
+		if err := promptTextInput(fs, flg, cleanName, reader, stderr); err != nil {
+			return err
 		}
 	}
 	return nil

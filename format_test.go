@@ -27,14 +27,14 @@ func TestReflowHonorsWidth(t *testing.T) {
 	longText := "The quick brown fox jumps over the lazy dog near the riverside cottage daily."
 	var buf bytes.Buffer
 	reflow(&buf, color.New(color.FgWhite), 20, 2, "", longText)
-	max := 0
+	maxLen := 0
 	for _, line := range strings.Split(strings.TrimRight(buf.String(), "\n"), "\n") {
-		if l := len(strip(line)); l > max {
-			max = l
+		if l := len(strip(line)); l > maxLen {
+			maxLen = l
 		}
 	}
-	if max > 20 {
-		t.Fatalf("reflow exceeded width: max line %d (>20)\n%s", max, buf.String())
+	if maxLen > 20 {
+		t.Fatalf("reflow exceeded width: max line %d (>20)\n%s", maxLen, buf.String())
 	}
 }
 
