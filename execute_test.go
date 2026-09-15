@@ -120,6 +120,143 @@ func TestExecuteTypoSuggestion(t *testing.T) {
 	}
 }
 
+func TestExecuteSubcommandLocationSuggestion(t *testing.T) {
+	app := &App{
+		Name: "testcli",
+		Commands: []Command{
+			{
+				Name: "spam",
+				Subcommands: []Command{
+					{Name: "bye"},
+				},
+			},
+			{
+				Name: "scan",
+			},
+			{
+				Name: "cache",
+				Subcommands: []Command{
+					{Name: "prune"},
+				},
+			},
+			{
+				Name: "logs",
+				Subcommands: []Command{
+					{Name: "prune"},
+				},
+			},
+			{
+				Name: "account",
+				Subcommands: []Command{
+					{Name: "create", Aliases: []string{"new"}},
+					{Name: "list"},
+				},
+			},
+			{
+				Name: "folder",
+				Subcommands: []Command{
+					{Name: "list"},
+				},
+			},
+			{
+				Name: "rule",
+				Subcommands: []Command{
+					{Name: "list"},
+				},
+			},
+			{
+				Name: "server",
+				Subcommands: []Command{
+					{Name: "list"},
+				},
+			},
+			{
+				Name: "session",
+				Subcommands: []Command{
+					{Name: "list"},
+				},
+			},
+			{
+				Name: "identity",
+				Subcommands: []Command{
+					{Name: "list"},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name        string
+		args        []string
+		wantContain []string
+	}{
+		{
+			name: "single nested subcommand match",
+			args: []string{"bye"},
+			wantContain: []string{
+				`unknown command "bye" for "testcli". Did you mean "spam bye"?`,
+			},
+		},
+		{
+			name: "case-insensitive nested subcommand match",
+			args: []string{"BYE"},
+			wantContain: []string{
+				`unknown command "BYE" for "testcli". Did you mean "spam bye"?`,
+			},
+		},
+		{
+			name: "multiple nested subcommand matches",
+			args: []string{"prune"},
+			wantContain: []string{
+				`unknown command "prune" for "testcli". Did you mean one of these?`,
+				"  cache prune",
+				"  logs prune",
+			},
+		},
+		{
+			name: "nested subcommand alias match",
+			args: []string{"new"},
+			wantContain: []string{
+				`unknown command "new" for "testcli". Did you mean "account create"?`,
+			},
+		},
+		{
+			name: "capped suggestions for >5 matches",
+			args: []string{"list"},
+			wantContain: []string{
+				`unknown command "list" for "testcli". Did you mean one of these?`,
+				"  account list",
+				"  folder list",
+				"  rule list",
+				"  server list",
+				"  session list",
+				"  (... and 1 more)",
+			},
+		},
+		{
+			name: "sibling typo takes priority over deep command",
+			args: []string{"scna"},
+			wantContain: []string{
+				`unknown command "scna" for "testcli". Did you mean "scan"?`,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := app.ExecuteContext(context.Background(), tt.args)
+			if err == nil {
+				t.Fatalf("expected error, got nil")
+			}
+			for _, want := range tt.wantContain {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("error %q did not contain %q", err.Error(), want)
+				}
+			}
+		})
+	}
+}
+
 func TestExecuteVersionAndHelpInterception(t *testing.T) {
 	var outBuf bytes.Buffer
 	app := &App{

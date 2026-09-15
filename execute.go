@@ -421,11 +421,55 @@ func matchAbbrevCommand(currentCommands []Command, arg string) (*Command, error)
 	return nil, nil
 }
 
+func (a *App) findSubcommandPaths(target string) []string {
+	var matches []string
+	_ = a.Walk(func(path []string, cmd *Command) error {
+		if cmd.Hidden || len(path) <= 1 {
+			return nil
+		}
+		if strings.EqualFold(cmd.Name, target) {
+			matches = append(matches, strings.Join(path, " "))
+			return nil
+		}
+		for _, alias := range cmd.Aliases {
+			if strings.EqualFold(alias, target) {
+				matches = append(matches, strings.Join(path, " "))
+				return nil
+			}
+		}
+		return nil
+	})
+	return matches
+}
+
+func formatSubcommandSuggestions(arg, parentName string, suggestions []string) error {
+	if len(suggestions) == 1 {
+		return fmt.Errorf("unknown command %q for %q. Did you mean %q?", arg, parentName, suggestions[0])
+	}
+	const maxDisplay = 5
+	var buf strings.Builder
+	buf.WriteString(fmt.Sprintf("unknown command %q for %q. Did you mean one of these?\n", arg, parentName))
+	limit := len(suggestions)
+	if limit > maxDisplay {
+		limit = maxDisplay
+	}
+	for i := 0; i < limit; i++ {
+		buf.WriteString(fmt.Sprintf("  %s\n", suggestions[i]))
+	}
+	if len(suggestions) > maxDisplay {
+		buf.WriteString(fmt.Sprintf("  (... and %d more)\n", len(suggestions)-maxDisplay))
+	}
+	return errors.New(strings.TrimRight(buf.String(), "\n"))
+}
+
 func (a *App) checkUnknownCommand(currentCmd *Command, currentCommands []Command, arg string) error {
 	if len(currentCommands) > 0 && ((currentCmd == nil && a.Run == nil) || (currentCmd != nil && currentCmd.Run == nil)) {
 		parentName := a.Name
 		if currentCmd != nil {
 			parentName = currentCmd.Name
+		}
+		if suggestions := a.findSubcommandPaths(arg); len(suggestions) > 0 {
+			return formatSubcommandSuggestions(arg, parentName, suggestions)
 		}
 		if suggestion := suggestCommand(arg, currentCommands); suggestion != "" {
 			return fmt.Errorf("unknown command %q for %q. Did you mean %q?", arg, parentName, suggestion)
