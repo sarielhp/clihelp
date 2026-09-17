@@ -1,7 +1,6 @@
 package clihelp
 
 import (
-	"fmt"
 	"io"
 	"regexp"
 	"strings"
@@ -47,6 +46,17 @@ func splitLines(text string) []string {
 	return out
 }
 
+// padPrefix lays prefix out in its own column, padded to indent display
+// columns. fmt's "%-*s" pads by rune count, so a wide (CJK) name — two columns
+// per rune — pushed its description out of line with every other row.
+func padPrefix(prefix string, indent int) string {
+	pad := indent - 2 - visualLen(prefix)
+	if pad < 0 {
+		pad = 0
+	}
+	return "  " + prefix + strings.Repeat(" ", pad)
+}
+
 func formatPrefix(w io.Writer, c *color.Color, prefixColor *color.Color, indent int, prefix string, noWords bool) (string, int, bool) {
 	prefixDisplay := "  " + prefix
 	if prefixColor != nil {
@@ -63,7 +73,7 @@ func formatPrefix(w io.Writer, c *color.Color, prefixColor *color.Color, indent 
 		c.Fprintln(w, prefixDisplay)
 		return "", 0, true
 	}
-	prefixStr := fmt.Sprintf("  %-*s", indent-2, prefix)
+	prefixStr := padPrefix(prefix, indent)
 	if prefixColor != nil {
 		prefixStr = prefixColor.Sprint(prefixStr)
 	}
@@ -75,6 +85,7 @@ func reflowWords(w io.Writer, c *color.Color, width, indent int, initialStr stri
 	var cur strings.Builder
 	cur.WriteString(initialStr)
 	curLen := initialLen
+	wrote := false
 	for _, word := range words {
 		wlen := visualLen(word)
 		space := 0
@@ -95,8 +106,12 @@ func reflowWords(w io.Writer, c *color.Color, width, indent int, initialStr stri
 			cur.WriteString(word)
 			curLen += wlen
 		}
+		wrote = true
 	}
-	if curLen > indent {
+	// A word of zero display width — a "[](url)" link, a stray "**", a
+	// zero-width space — still belongs to a row that has a prefix to show, so
+	// the test is whether anything was written, not how wide it came out.
+	if wrote || curLen > indent {
 		c.Fprintln(w, cur.String())
 	}
 }
@@ -209,13 +224,18 @@ func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string,
 		indent = 2
 	}
 	if strings.TrimSpace(text) == "" {
+		if prefix != "" {
+			// The prefix is the name of something — a command, a flag — and it
+			// has to be listed whether or not it came with a description.
+			formatPrefix(w, c, prefixColor, indent, prefix, true)
+		}
 		return
 	}
 	segments := splitLines(strings.Trim(text, "\r\n"))
 	for i, seg := range segments {
 		if seg == "" && i+1 < len(segments) {
 			if prefix != "" {
-				prefixStr := fmt.Sprintf("  %-*s", indent-2, prefix)
+				prefixStr := padPrefix(prefix, indent)
 				if prefixColor != nil {
 					prefixStr = prefixColor.Sprint(prefixStr)
 				}

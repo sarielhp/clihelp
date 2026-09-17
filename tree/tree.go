@@ -9,6 +9,7 @@ import (
 
 	"github.com/acarl005/stripansi"
 	"github.com/fatih/color"
+	"github.com/mattn/go-runewidth"
 	"github.com/sarielhp/clihelp"
 )
 
@@ -144,8 +145,12 @@ func renderTreeTo(w io.Writer, th clihelp.Theme, width int, commands []clihelp.C
 	}
 }
 
+// visualLen returns the display column width of s, ignoring ANSI escapes.
+// Counting bytes here measured every box-drawing glyph the tree draws with as
+// three columns instead of one, so descriptions were indented and wrapped as if
+// the tree were far wider than it is.
 func visualLen(s string) int {
-	return len(stripansi.Strip(s))
+	return runewidth.StringWidth(stripansi.Strip(s))
 }
 
 func firstSentence(s string) string {

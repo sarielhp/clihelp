@@ -64,24 +64,47 @@ func (a *App) collectVisibleFlags() []Option {
 	return allFlags
 }
 
+// specDeclares reports whether spec declares the given long or short name.
+// Testing the raw spec for a substring read "--verbose" as declaring "-v" and
+// "--host" as declaring "-h", which deleted the --version and --help rows from
+// "help flags".
+func specDeclares(spec flagSpec, long, short string) bool {
+	if long != "" {
+		for _, l := range spec.longNames {
+			if l == long {
+				return true
+			}
+		}
+	}
+	if short != "" {
+		for _, s := range spec.shortNames {
+			if s == short {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (a *App) synthesizeStandardFlags(existing []Option) []Option {
-	hasHelp := false
-	hasVersion := false
+	var hasHelp, hasVersion, tookH, tookV bool
 	for _, f := range existing {
-		if strings.Contains(f.Flags, "--help") || strings.Contains(f.Flags, "-h") {
-			hasHelp = true
-		}
-		if strings.Contains(f.Flags, "--version") || strings.Contains(f.Flags, "-v") {
-			hasVersion = true
-		}
+		spec := parseFlagSpec(f.Flags)
+		hasHelp = hasHelp || specDeclares(spec, "help", "")
+		hasVersion = hasVersion || specDeclares(spec, "version", "")
+		tookH = tookH || specDeclares(spec, "", "h")
+		tookV = tookV || specDeclares(spec, "", "v")
 	}
 
 	helpGroup := "Help & Information"
 	var stdFlags []Option
 	if !hasHelp {
 		flagsStr := "-h, --help"
+		if tookH {
+			flagsStr = "--help"
+		}
 		if a.ExtendedHelpFlag {
-			flagsStr = "-h, --help, -H"
+			flagsStr += ", -H"
 		}
 		stdFlags = append(stdFlags, Option{
 			Flags:       flagsStr,
@@ -90,8 +113,14 @@ func (a *App) synthesizeStandardFlags(existing []Option) []Option {
 		})
 	}
 	if a.Version != "" && !hasVersion {
+		versionFlags := "-v, --version"
+		if tookV {
+			// Something else already answers to -v, so the row offers only the
+			// long name rather than disappearing altogether.
+			versionFlags = "--version"
+		}
 		stdFlags = append(stdFlags, Option{
-			Flags:       "-v, --version",
+			Flags:       versionFlags,
 			Description: "Show application version",
 			Group:       helpGroup,
 		})

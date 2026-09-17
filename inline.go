@@ -25,6 +25,27 @@ func Inline(s string) string {
 	return inline(s)
 }
 
+// emphasisEnd returns the index in s at which the emphasis span opened by
+// marker and beginning at start closes, or -1 when it does not close.
+//
+// The span must not begin or end with whitespace, which is what tells emphasis
+// from arithmetic: without the rule, "2 * 3 * 4" rendered as "2  3  4", the
+// asterisks eaten by an italic span nobody wrote.
+func emphasisEnd(s string, start int, marker string) int {
+	if start >= len(s) || isSpaceByte(s[start]) {
+		return -1
+	}
+	rel := strings.Index(s[start:], marker)
+	if rel <= 0 {
+		return -1
+	}
+	end := start + rel
+	if isSpaceByte(s[end-1]) {
+		return -1
+	}
+	return end
+}
+
 // renderInline writes s to w, translating inline markdown patterns into
 // ANSI escape sequences and OSC 8 hyperlinks for terminal display.
 //
@@ -65,19 +86,23 @@ func renderInline(w io.Writer, s string, showURLs ...bool) {
 		}
 		// **bold**
 		if i+1 < len(s) && s[i] == '*' && s[i+1] == '*' {
-			end := strings.Index(s[i+2:], "**")
-			if end >= 0 {
-				fmt.Fprintf(w, "%s%s%s", sgrBoldOn, s[i+2:i+2+end], sgrBoldOff)
-				i += end + 4
+			if end := emphasisEnd(s, i+2, "**"); end >= 0 {
+				fmt.Fprintf(w, "%s%s%s", sgrBoldOn, s[i+2:end], sgrBoldOff)
+				i = end + 2
 				continue
 			}
+			// Not emphasis: two literal asterisks. Falling through here let the
+			// italic branch take the second one as its own closer, swallowing
+			// both and emitting a pair of escapes around nothing.
+			w.Write([]byte{'*'})
+			i++
+			continue
 		}
 		// *italic*
 		if s[i] == '*' {
-			end := strings.IndexByte(s[i+1:], '*')
-			if end >= 0 {
-				fmt.Fprintf(w, "%s%s%s", sgrItalicOn, s[i+1:i+1+end], sgrItalicOff)
-				i += end + 2
+			if end := emphasisEnd(s, i+1, "*"); end >= 0 {
+				fmt.Fprintf(w, "%s%s%s", sgrItalicOn, s[i+1:end], sgrItalicOff)
+				i = end + 1
 				continue
 			}
 		}
