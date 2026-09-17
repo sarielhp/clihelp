@@ -2,7 +2,7 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
-## [Unreleased]
+## [0.3.15] - 2026-09-17
 
 Fixes from the deep review of the shell-integration surface
 (`review/findings-2026-09-17-shell-integration.md`). Every finding below was
