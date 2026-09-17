@@ -12,6 +12,32 @@ import (
 // SupportedShells lists available shell autocompletion formats.
 var SupportedShells = []string{"bash", "zsh", "fish"}
 
+// completionScriptVersion marks the generated scripts. It is raised whenever a
+// template changes in a way that already-installed scripts must pick up, so that
+// the auto-install path rewrites them instead of leaving an old script in place.
+const completionScriptVersion = 2
+
+// sanitizeCompletionField makes a string safe to put in one field of a
+// completion record. The protocol is line-oriented with a tab between candidate
+// and description, so an embedded newline or tab would forge a record; control
+// characters are dropped because the candidates are printed to a terminal.
+func sanitizeCompletionField(s string) string {
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r == '\n' || r == '\r' || r == '\t':
+			return ' '
+		case r < 0x20 || r == 0x7f:
+			return -1
+		}
+		return r
+	}, s)
+}
+
+// emitCandidate writes one completion record: candidate, tab, description.
+func emitCandidate(w io.Writer, candidate, description string) {
+	fmt.Fprintf(w, "%s\t%s\n", sanitizeCompletionField(candidate), sanitizeCompletionField(description))
+}
+
 func (a *App) completeRootCommands(w io.Writer) {
 	seen := map[string]bool{}
 	emit := func(name, desc string) {
@@ -19,7 +45,7 @@ func (a *App) completeRootCommands(w io.Writer) {
 			return
 		}
 		seen[name] = true
-		fmt.Fprintf(w, "%s\t%s\n", name, desc)
+		emitCandidate(w, name, desc)
 	}
 	for _, cmd := range a.Commands {
 		if !cmd.Hidden {
@@ -57,7 +83,10 @@ func completePrevFlagValue(w io.Writer, activeOptions []Option, prevWord, toComp
 		}
 		if matched {
 			for _, res := range opt.Complete(toComplete) {
-				fmt.Fprintln(w, res)
+				// A callback may return "value\tdescription"; the first tab is
+				// the field boundary, any later one is not.
+				cand, desc, _ := strings.Cut(res, "\t")
+				emitCandidate(w, cand, desc)
 			}
 			return true
 		}
@@ -91,10 +120,11 @@ func completeFlagInlineValue(w io.Writer, activeOptions []Option, toComplete str
 		}
 		if opt.Complete != nil {
 			for _, res := range opt.Complete(toComplete[eq+1:]) {
-				fmt.Fprintf(w, "%s=%s\t%s\n", namePart, res, opt.Description)
+				value, _, _ := strings.Cut(res, "\t")
+				emitCandidate(w, namePart+"="+value, opt.Description)
 			}
 		} else {
-			fmt.Fprintf(w, "%s=\t%s\n", namePart, opt.Description)
+			emitCandidate(w, namePart+"=", opt.Description)
 		}
 	}
 }
@@ -112,13 +142,13 @@ func completeFlags(w io.Writer, activeOptions []Option, toComplete string) {
 		for _, long := range spec.longNames {
 			flagName := "--" + long
 			if strings.HasPrefix(flagName, toComplete) {
-				fmt.Fprintf(w, "%s\t%s\n", flagName, opt.Description)
+				emitCandidate(w, flagName, opt.Description)
 			}
 		}
 		for _, short := range spec.shortNames {
 			flagName := "-" + short
 			if strings.HasPrefix(flagName, toComplete) {
-				fmt.Fprintf(w, "%s\t%s\n", flagName, opt.Description)
+				emitCandidate(w, flagName, opt.Description)
 			}
 		}
 	}
@@ -132,10 +162,10 @@ func (a *App) completeSubcommands(w io.Writer, currentCmd *Command, toComplete s
 
 	matches := filterCommandsByPrefix(subcommands, toComplete)
 	for _, cmd := range matches {
-		fmt.Fprintf(w, "%s\t%s\n", cmd.Name, cmd.Description)
+		emitCandidate(w, cmd.Name, cmd.Description)
 		for _, alias := range cmd.Aliases {
 			if strings.HasPrefix(alias, toComplete) {
-				fmt.Fprintf(w, "%s\t%s\n", alias, cmd.Description)
+				emitCandidate(w, alias, cmd.Description)
 			}
 		}
 	}
@@ -153,7 +183,7 @@ func (a *App) completeSubcommands(w io.Writer, currentCmd *Command, toComplete s
 			}
 			seen[s.Name] = true
 			if strings.HasPrefix(s.Name, toComplete) {
-				fmt.Fprintf(w, "%s\t%s\n", s.Name, s.Description)
+				emitCandidate(w, s.Name, s.Description)
 			}
 		}
 	}
@@ -201,6 +231,7 @@ func GenBashCompletion(app *App, w io.Writer) error {
 	}
 	cleanName := strings.ReplaceAll(name, "-", "_")
 	tmpl := fmt.Sprintf(`# bash completion for %[1]s
+# clihelp-completion-version: %[3]d
 _%[2]s_complete() {
     local cur prev words cword
     if declare -F _init_completion >/dev/null 2>&1; then
@@ -218,15 +249,18 @@ _%[2]s_complete() {
         return
     fi
 
-    local IFS=$'\n'
-    local comps=()
-    for line in $out; do
-        comps+=("${line%%%%	*}")
-    done
-    COMPREPLY=( $(compgen -W "${comps[*]}" -- "$cur") )
+    # Candidates are data: add them literally. compgen -W would expand them,
+    # running any command substitution a candidate happens to contain.
+    COMPREPLY=()
+    local line cand
+    while IFS= read -r line; do
+        [[ -z $line ]] && continue
+        cand="${line%%%%	*}"
+        [[ $cand == "$cur"* ]] && COMPREPLY+=("$cand")
+    done <<< "$out"
 }
 complete -o default -F _%[2]s_complete %[1]s
-`, name, cleanName)
+`, name, cleanName, completionScriptVersion)
 	_, err := io.WriteString(w, tmpl)
 	return err
 }
@@ -384,9 +418,28 @@ func (a *App) maybeAutoInstallCompletion(args []string) {
 		return
 	}
 	sh := detectShell()
-	if !IsCompletionInstalled(a, sh) {
+	if !IsCompletionInstalled(a, sh) || !completionIsCurrent(a, sh) {
 		_, _ = InstallCompletion(a, sh)
 	}
+}
+
+// completionIsCurrent reports whether the installed script was generated by this
+// version of the templates. IsCompletionInstalled keeps its documented meaning
+// ("a script exists"); staleness is checked only where a rewrite is safe.
+func completionIsCurrent(app *App, shell string) bool {
+	path, err := CompletionPath(app, shell)
+	if err != nil {
+		return true // nothing we could install anyway
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return true
+	}
+	defer f.Close()
+	head := make([]byte, 256)
+	n, _ := f.Read(head)
+	marker := fmt.Sprintf("clihelp-completion-version: %d", completionScriptVersion)
+	return strings.Contains(string(head[:n]), marker)
 }
 
 // InstallCompletion installs the shell completion script for the given app and shell.
