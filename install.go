@@ -135,6 +135,44 @@ func integrationIsCurrent(path string) bool {
 	return strings.Contains(string(head[:n]), integrationMarkerFn+": "+integrationVersion())
 }
 
+// writeIntegrationFile writes the generated file and nothing else.
+//
+// It is separate from InstallShellIntegration because the two have different
+// callers with different rights: an explicit install may edit a startup file,
+// and the refresh that happens inside an ordinary program run may not. Folding
+// them together is what let an upgrade re-add a block the user had deleted by
+// hand, and create a startup file that never existed.
+func writeIntegrationFile(app *App, shell string, keys bool, target string) error {
+	var body bytes.Buffer
+	if err := GenShellIntegration(app, shell, keys, &body); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		return fmt.Errorf("failed to create directory %q: %w", filepath.Dir(target), err)
+	}
+	if err := writeFileAtomically(target, body.Bytes(), 0o644); err != nil {
+		return fmt.Errorf("failed to write %q: %w", target, err)
+	}
+	return nil
+}
+
+// refreshShellIntegration brings an already-installed integration file up to
+// date and touches nothing else. It is what an ordinary program run is allowed
+// to do; everything that edits a startup file needs an explicit install.
+func refreshShellIntegration(app *App, shell string, keys bool) error {
+	target, err := IntegrationPath(app, shell)
+	if err != nil {
+		return err
+	}
+	return writeIntegrationFile(app, shell, keys, target)
+}
+
+// uninstalledMarker names the file that records a deliberate uninstall, so that
+// an ordinary program run does not put back what the user removed.
+func uninstalledMarker(target string) string {
+	return filepath.Join(filepath.Dir(target), ".uninstalled")
+}
+
 // InstallResult reports everything an install or uninstall touched, so the
 // command can tell the user exactly what changed in their home directory.
 type InstallResult struct {
@@ -259,16 +297,11 @@ func InstallShellIntegration(app *App, shell string, keys bool) (InstallResult, 
 	shell = strings.ToLower(strings.TrimSpace(shell))
 	res := InstallResult{Shell: shell, Integration: target}
 
-	var body bytes.Buffer
-	if err := GenShellIntegration(app, shell, keys, &body); err != nil {
+	if err := writeIntegrationFile(app, shell, keys, target); err != nil {
 		return res, err
 	}
-	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-		return res, fmt.Errorf("failed to create directory %q: %w", filepath.Dir(target), err)
-	}
-	if err := writeFileAtomically(target, body.Bytes(), 0o644); err != nil {
-		return res, fmt.Errorf("failed to write %q: %w", target, err)
-	}
+	// An explicit install is the user asking for it back.
+	_ = os.Remove(uninstalledMarker(target))
 
 	res.Startup, res.StartupEdit, err = installBootstrap(app, shell, target)
 	if err != nil {
@@ -326,9 +359,13 @@ func UninstallShellIntegration(app *App, shell string) (InstallResult, error) {
 
 	if err := os.Remove(target); err == nil {
 		res.Removed = append(res.Removed, target)
-		_ = os.Remove(filepath.Dir(target)) // only if it is now empty
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return res, err
+	}
+	// Record the removal so that an ordinary program run does not undo it. The
+	// directory is deliberately kept for this one file.
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err == nil {
+		_ = os.WriteFile(uninstalledMarker(target), []byte("removed by "+appName(app)+" completion uninstall\n"), 0o644)
 	}
 
 	path, owned, err := startupFile(app, shell)

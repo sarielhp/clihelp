@@ -467,9 +467,14 @@ func (a *App) maybeAutoInstallCompletion(args []string) {
 	// run an unrelated command would be an overreach, and editing a startup file
 	// unasked doubly so.
 	if path, err := IntegrationPath(a, sh); err == nil {
+		if _, statErr := os.Stat(uninstalledMarker(path)); statErr == nil {
+			return // the user removed it on purpose; putting anything back is not ours to do
+		}
 		if _, statErr := os.Stat(path); statErr == nil {
 			if !integrationIsCurrent(path) {
-				_, _ = InstallShellIntegration(a, sh, integrationHasKeys(path))
+				// Refresh only: an ordinary program run rewrites the generated
+				// file and never touches a startup file.
+				_ = refreshShellIntegration(a, sh, integrationHasKeys(path))
 			}
 			return
 		}
