@@ -379,12 +379,12 @@ func resolveExampleCommand(app *App, cmd *Command, tokens []string, rawLine stri
 			tokensWithCmd := append([]string{cmd.Name}, tokens...)
 			retry, err2 := app.resolveCommand(tokensWithCmd)
 			if err2 == nil {
-				return retry.cmd, retry.ancestors, retry.remaining, retry.handled, nil
+				return retry.cmd, retry.ancestors, retry.remaining, retry.isHelp, nil
 			}
 		}
 		return nil, nil, nil, false, fmt.Errorf("invalid command in example %q: %w", rawLine, resolveErr)
 	}
-	return res.cmd, res.ancestors, res.remaining, res.handled, nil
+	return res.cmd, res.ancestors, res.remaining, res.isHelp, nil
 }
 
 func validateExampleTokens(app *App, targetCmd *Command, ancestors []*Command, remaining []string, rawLine string) error {

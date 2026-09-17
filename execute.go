@@ -227,8 +227,12 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 	}
 
 	res, err := a.resolveCommand(args)
-	if res.handled || err != nil {
+	if err != nil {
 		return err
+	}
+	if res.isHelp {
+		_, helpErr := a.handleHelpInvocation(res.helpPath)
+		return helpErr
 	}
 	targetCmd, ancestors, path, remaining := res.cmd, res.ancestors, res.path, res.remaining
 
@@ -496,7 +500,8 @@ type resolution struct {
 	path      []string   // names of the matched commands, in order
 	indices   []int      // position in args of each matched command token
 	remaining []string   // arguments left for pflag: skipped flags, then the rest
-	handled   bool       // a help invocation was recognized and already rendered
+	isHelp    bool       // the arguments name a help invocation, not a command
+	helpPath  []string   // for a help invocation, what help was asked for
 }
 
 // leadingFlagSet builds a throwaway flag set holding every flag that may legally
@@ -601,10 +606,14 @@ func (a *App) resolveCommandPath(args []string, currentCommands []Command) (reso
 	for idx < len(args) {
 		arg := args[idx]
 
+		// Resolution only reports that help was asked for; rendering it here
+		// would make every caller that merely resolves — completion, example
+		// colorization, example validation — emit a help page as a side effect.
 		if isHelpToken(arg, currentCommands, a.AbbrevCommands) {
-			helpPath := append(append([]string{}, res.path...), args[idx+1:]...)
-			handled, err := a.handleHelpInvocation(helpPath)
-			return resolution{handled: handled}, err
+			return resolution{
+				isHelp:   true,
+				helpPath: append(append([]string{}, res.path...), args[idx+1:]...),
+			}, nil
 		}
 
 		if strings.HasPrefix(arg, "-") {
