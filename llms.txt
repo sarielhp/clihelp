@@ -105,7 +105,13 @@ Abort Semantics:
 
 ## Shell Autocompletion & Installation
 
-- Pre-Built Command: `clihelp.CompletionCommand()` (returns a standard Command providing `bash`, `zsh`, `fish`, and `install`).
+- Pre-Built Command: `clihelp.CompletionCommand()` (returns a standard Command providing `bash`, `zsh`, `fish`, `keys`, `install`, and `uninstall`).
+- One-Command Setup: `<app> completion install` writes `~/.config/<app>/shell/<shell>` and **a marked block in the user's shell startup file** (`~/.bashrc`, `~/.zshrc`; fish gets a `conf.d` drop-in and no shared file is touched). `completion uninstall` removes both. Nothing runs at shell startup.
+- Reserved Arguments: `__complete`, `__explain` and `__clihelp` answer in *every* clihelp program, whether or not the author mounted `CompletionCommand()`. `<app> __clihelp` lists the verbs; `-H` prints the exact paths it would write.
+- Alt-H: `clihelp.GenKeyBindings(app, shell, w)` emits a snippet that expands the command line and prints its help. `clihelp.App.Explain` is the Go entry point.
+- Manual Pages: `clihelp.GenManPage(app, w)` writes roff; `clihelp.InstallManPage(app, force)` installs it under `$XDG_DATA_HOME/man`.
+- Shell Integration API: `clihelp.InstallShellIntegration(app, shell, keys)` / `UninstallShellIntegration` / `IntegrationPath`.
+- App.Name must be letters, digits, `-`, `_`, `.` or `+` for any of the above: it becomes a file name and a shell symbol.
 - XDG Auto-Install: `clihelp.InstallCompletion(app, shell)` (installs for `"bash"`, `"zsh"`, `"fish"`, or detects active shell if empty).
 - Generators: `clihelp.GenBashCompletion(app, w)`, `clihelp.GenZshCompletion(app, w)`, `clihelp.GenFishCompletion(app, w)`.
 - Dynamic Option Completion: attach `Complete: func(toComplete string) []string` to any `Option`.

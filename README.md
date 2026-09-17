@@ -23,7 +23,10 @@ It provides clean, structured usage messages with support for ANSI colors and cl
 - **Positional Argument Validation** — Built-in validators (`ExactArgs`, `RangeArgs`, `MinimumNArgs`, `NoArgs`) executed after flag extraction.
 - **Fuzzy Typo Suggestions** — Levenshtein-distance suggestions for mistyped commands (e.g. *Did you mean "build"?*).
 - **Prefix Command Matching** — Enable abbreviated commands (e.g. `podctl b` instead of `podctl build`).
-- **Shell Autocompletion & Auto-Installation** — Built-in `__complete` protocol with generators for Bash, Zsh, and Fish, zero-boilerplate `CompletionCommand()`, and one-command user XDG self-installation (`InstallCompletion`).
+- **Shell Integration in One Command** — `completion install` sets up tab completion for Bash, Zsh and Fish by writing **one generated file under `~/.config/<app>/`** and **one marked, reversible block in your shell's startup file** that sources it. Nothing runs at shell startup, and `completion uninstall` removes both. See [the guide](docs/completion.md).
+- **Alt-H: Expand and Explain** — an optional key binding that rewrites the abbreviated command names on the line to their full names and prints that command's help, capped at two thirds of the screen. Alt-H is already zsh's and fish's own key for explaining a command; clihelp fills it in for programs that ship no manual.
+- **Manual Pages** — `__clihelp manpage` writes a real roff page for `man(1)`; installing one also makes Alt-H answer natively in zsh and fish.
+- **Reachable Without Author Opt-In** — every clihelp program answers the reserved `__clihelp` argument, so a dotfiles script or a packager can set up a program whose author never mounted `CompletionCommand()`.
 - **Rich Terminal Styling** — Theme-driven ANSI colors, auto-detected terminal width with 70-column fallback, hanging indents for lists, and ANSI-aware word wrapping.
 - **Verbatim Text & Fenced Code Blocks (`Note.Raw`)** — Preserve ASCII diagrams, preformatted configs, and markdown fenced code blocks in notes without line reflow or whitespace collapsing.
 - **Inline Markdown & OSC 8 Hyperlinks** — Rich text formatting in descriptions: bold, italic, code, strikethrough, and clickable terminal hyperlinks.
@@ -228,7 +231,7 @@ Detailed technical guides and reference documentation are available in the [`doc
 |---|---|
 | 🔄 [**Execution Lifecycle & Routing**](docs/lifecycle-and-routing.md) | Execution pipeline, lifecycle hooks (`BeforeRun`, `PreRun`, `Run`, etc.), abort semantics, `clihelp.Context`, nested subcommands, typo suggestions, and argument validation. |
 | 🏷️ [**Flags & Options Reference**](docs/flags-and-options.md) | Flag spec syntax, constructor reference table (`String`, `Int`, `BoolToggle`, `Enum`, etc.), aliases, custom binders, and help collision safety. |
-| 💻 [**Shell Autocompletion & Installation**](docs/completion.md) | Setting up Bash, Zsh, and Fish completion, mounting `CompletionCommand()`, automatic XDG self-installation (`InstallCompletion`), dynamic callbacks, and live testing. |
+| 💻 [**Shell Integration**](docs/completion.md) | One-command setup and exactly which files it writes, the Alt-H key binding, manual pages, wrapper scripts, the reserved `__clihelp` verbs, dynamic callbacks, and live testing. |
 | 📄 [**Markdown Doc Generation**](docs/markdown-generation.md) | Generating navigable GitHub Markdown docs with `RenderMarkdown` and SHA-256 change-detection caching. |
 | 🍳 [**Recipes & Patterns**](docs/recipes-and-patterns.md) | Practical patterns for signal cancellation (`ExecuteContext`), unit testing commands, dynamic completion callbacks, command tree view (`RenderTree`), custom themes (`Theme`), and prefix abbreviations (`AbbrevCommands`). |
 | 🤖 [**AI Coding Agent Guidelines**](docs/ai-guidelines.md) | Best practices and prompt rules for LLM coding agents and pair programmers building CLIs with `clihelp`. |
