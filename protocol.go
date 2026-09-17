@@ -91,14 +91,22 @@ func (a *App) handleClihelpCommand(args []string) error {
 	case "install":
 		return a.clihelpInstall(rest)
 	case "uninstall":
-		res, err := UninstallShellIntegration(a, firstArg(rest))
+		shells, err := parseVerbArgs("uninstall", rest, nil, 1)
+		if err != nil {
+			return err
+		}
+		res, err := UninstallShellIntegration(a, firstArg(shells))
 		if err != nil {
 			return err
 		}
 		reportUninstall(a.stdout(), res)
 		return nil
 	case "keys":
-		return GenKeyBindings(a, firstArg(rest), a.stdout())
+		shells, err := parseVerbArgs("keys", rest, nil, 1)
+		if err != nil {
+			return err
+		}
+		return GenKeyBindings(a, firstArg(shells), a.stdout())
 	case "wrapper":
 		return a.clihelpWrapper(rest)
 	case "manpage":
@@ -118,6 +126,34 @@ func (a *App) printVerbHelp(w io.Writer, verb string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown %s verb %q (try %s with no arguments)", protoClihelp, verb, protoClihelp)
+}
+
+// parseVerbArgs splits a verb's arguments into the flags it accepts and its
+// positionals, in any order, and rejects anything it was not told about.
+//
+// Each verb used to parse for itself: install looked at args[0] only, manpage
+// looped over everything, and the rest silently discarded surplus positionals.
+// So "install bash --no-keys" installed the key binding the user had just
+// declined, and "uninstall bash zsh" said nothing about zsh. The visible
+// commands get this grammar from pflag; this is the same grammar for the hidden
+// spelling of the same verbs.
+func parseVerbArgs(verb string, args []string, flags map[string]*bool, maxPositional int) ([]string, error) {
+	var positional []string
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") {
+			seen, ok := flags[arg]
+			if !ok {
+				return nil, fmt.Errorf("unknown option %q for %s %s", arg, protoClihelp, verb)
+			}
+			*seen = true
+			continue
+		}
+		positional = append(positional, arg)
+	}
+	if len(positional) > maxPositional {
+		return nil, fmt.Errorf("%s %s accepts at most %d argument(s), got %q", protoClihelp, verb, maxPositional, strings.Join(positional, " "))
+	}
+	return positional, nil
 }
 
 func firstArg(args []string) string {
@@ -179,11 +215,12 @@ func (a *App) printClihelpDetail(w io.Writer) {
 // clihelpInstall writes the generated file's path to stdout, alone, so that a
 // script can capture it; everything for a human goes to stderr.
 func (a *App) clihelpInstall(args []string) error {
-	keys := true
-	if len(args) > 0 && args[0] == "--no-keys" {
-		keys, args = false, args[1:]
+	var noKeys bool
+	rest, err := parseVerbArgs("install", args, map[string]*bool{"--no-keys": &noKeys}, 1)
+	if err != nil {
+		return err
 	}
-	res, err := InstallShellIntegration(a, firstArg(args), keys)
+	res, err := InstallShellIntegration(a, firstArg(rest), !noKeys)
 	if err != nil {
 		return err
 	}
@@ -211,17 +248,10 @@ func (a *App) clihelpWrapper(args []string) error {
 // alone so a packager can redirect it into their build.
 func (a *App) clihelpManPage(args []string) error {
 	var install, uninstall, force bool
-	for _, arg := range args {
-		switch arg {
-		case "--install":
-			install = true
-		case "--uninstall":
-			uninstall = true
-		case "--force":
-			force = true
-		default:
-			return fmt.Errorf("unknown %s manpage option %q", protoClihelp, arg)
-		}
+	if _, err := parseVerbArgs("manpage", args, map[string]*bool{
+		"--install": &install, "--uninstall": &uninstall, "--force": &force,
+	}, 0); err != nil {
+		return err
 	}
 	return a.manPageAction(a.stdout(), a.stderr(), install, uninstall, force)
 }

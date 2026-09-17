@@ -298,3 +298,51 @@ func TestManPageCommandIsOptional(t *testing.T) {
 	// And the same thing is reachable without the author adding it.
 	runProto(t, bareApp(), "__clihelp", "manpage").AssertStdoutContains(t, ".TH BARE 1")
 }
+
+// A flag is a flag wherever it appears, an unknown token is an error, and a
+// surplus positional is an error — the same grammar the visible commands get
+// from pflag. "--no-keys" silently ignored after the shell name meant the user
+// declined a global key binding and got one anyway.
+func TestClihelpVerbsParseArgumentsInAnyOrder(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		args    []string
+		keys    bool
+		wantErr string
+	}{
+		{"flag first", []string{"--no-keys", "bash"}, false, ""},
+		{"shell first", []string{"bash", "--no-keys"}, false, ""},
+		{"no flag", []string{"bash"}, true, ""},
+		{"flag alone", []string{"--no-keys"}, false, ""},
+		{"unknown option", []string{"bash", "--nonesuch"}, false, "--nonesuch"},
+		{"two shells", []string{"bash", "zsh"}, false, "zsh"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			home := sandboxHome(t)
+			t.Setenv("SHELL", "/bin/bash")
+			res := runProto(t, bareApp(), append([]string{"__clihelp", "install"}, tt.args...)...)
+			if tt.wantErr != "" {
+				res.AssertErrorContains(t, tt.wantErr)
+				return
+			}
+			res.AssertNoError(t)
+			body, err := os.ReadFile(filepath.Join(home, ".config", "bare", "shell", "bash"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := strings.Contains(string(body), "_clihelp_explain"); got != tt.keys {
+				t.Errorf("key binding installed = %v, want %v", got, tt.keys)
+			}
+		})
+	}
+}
+
+func TestClihelpVerbsRejectContradictoryFlags(t *testing.T) {
+	sandboxHome(t)
+	runProto(t, bareApp(), "__clihelp", "manpage", "--install", "--uninstall").
+		AssertErrorContains(t, "mutually exclusive")
+	runProto(t, bareApp(), "__clihelp", "manpage", "--force").
+		AssertErrorContains(t, "--force")
+	runProto(t, bareApp(), "__clihelp", "uninstall", "bash", "zsh").
+		AssertErrorContains(t, "zsh")
+}

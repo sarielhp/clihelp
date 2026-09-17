@@ -447,6 +447,15 @@ func (a *App) refreshManPage() {
 // manPageAction is the behaviour behind both "__clihelp manpage" and the
 // optional visible command: print the page, or install or remove it.
 func (a *App) manPageAction(out, notes io.Writer, install, uninstall, force bool) error {
+	// The usage says "[--install|--uninstall]"; make the bar mean something
+	// rather than silently preferring one. --force applies to installing, so on
+	// its own it was accepted and ignored.
+	if install && uninstall {
+		return errors.New("--install and --uninstall are mutually exclusive")
+	}
+	if force && !install {
+		return errors.New("--force applies to --install")
+	}
 	switch {
 	case uninstall:
 		path, err := UninstallManPage(a)
