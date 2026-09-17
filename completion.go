@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/mattn/go-runewidth"
 )
 
 // SupportedShells lists available shell autocompletion formats.
@@ -37,7 +39,22 @@ func sanitizeCompletionField(s string) string {
 
 // emitCandidate writes one completion record: candidate, tab, description.
 func emitCandidate(w io.Writer, candidate, description string) {
-	fmt.Fprintf(w, "%s\t%s\n", sanitizeCompletionField(candidate), sanitizeCompletionField(description))
+	fmt.Fprintf(w, "%s\t%s\n", sanitizeCompletionField(candidate), completionDescription(description))
+}
+
+// completionDescriptionWidth caps a candidate's description. zsh and fish print
+// it beside the candidate in a menu that is as wide as the terminal; a
+// paragraph there pushes the candidates apart and wraps over several rows.
+const completionDescriptionWidth = 72
+
+// completionDescription reduces a Description to the one short line a shell menu
+// can show: inline markdown rendered away, whitespace collapsed, the first
+// sentence only, and a cap in display columns. Sending the field raw put
+// "**deep** — … [deep command](https://example.com/deep) …" into fish's menu,
+// markup and all.
+func completionDescription(s string) string {
+	flat := strings.Join(strings.Fields(stripANSI(inline(s))), " ")
+	return runewidth.Truncate(sanitizeCompletionField(firstSentence(flat)), completionDescriptionWidth, "…")
 }
 
 func (a *App) completeRootCommands(w io.Writer) {

@@ -1,10 +1,14 @@
 package clihelp
 
 import (
+	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/mattn/go-runewidth"
 )
 
 func TestDetectShellReportsWhatItFound(t *testing.T) {
@@ -120,5 +124,64 @@ func TestBashScriptUsesTheWordsBashCompletionComputed(t *testing.T) {
 	}
 	if strings.Contains(script, `"${COMP_WORDS[@]:1}"`) {
 		t.Errorf("bash script still sends the raw COMP_WORDS:\n%s", script)
+	}
+}
+
+func TestCompletionDescriptionsAreOneShortPlainLine(t *testing.T) {
+	long := "Compile, encode, and package raw audio into MP3 episodes. Supports configurable bitrate, loudness normalization, and embedded ID3 tags."
+	for _, tt := range []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"first sentence only", long, "Compile, encode, and package raw audio into MP3 episodes."},
+		{"markdown is rendered away", "**deep** — the [deep command](https://example.com/deep) here.", "deep — the deep command here."},
+		{"code spans", "Set the `--out` path.", "Set the --out path."},
+		{"newlines collapse", "First line\nsecond line", "First line second line"},
+		{"short text is untouched", "Run it", "Run it"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := completionDescription(tt.in); got != tt.want {
+				t.Errorf("completionDescription(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+
+	t.Run("width is capped", func(t *testing.T) {
+		wide := strings.Repeat("超", 80) // two display columns per rune
+		got := completionDescription(wide)
+		if w := runewidth.StringWidth(got); w > completionDescriptionWidth {
+			t.Errorf("description is %d columns wide, over the %d cap", w, completionDescriptionWidth)
+		}
+		if !strings.HasSuffix(got, "…") {
+			t.Errorf("a truncated description should say so: %q", got)
+		}
+	})
+}
+
+func TestCompletionProtocolEmitsShortDescriptions(t *testing.T) {
+	var out bytes.Buffer
+	app := &App{
+		Name:   "podcli",
+		Stdout: &out,
+		Commands: []Command{{
+			Name:        "build",
+			Description: "**Compile** audio into [MP3](https://example.com/mp3) episodes. Supports bitrate, normalization, and ID3 tags for distribution everywhere.",
+		}},
+	}
+	if err := app.ExecuteContext(context.Background(), []string{"__complete"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, record := range strings.Split(strings.TrimRight(out.String(), "\n"), "\n") {
+		_, desc, found := strings.Cut(record, "\t")
+		if !found {
+			t.Fatalf("record %q has no description field", record)
+		}
+		if strings.ContainsAny(desc, "*[]`") {
+			t.Errorf("markdown leaked into a completion description: %q", desc)
+		}
+		if runewidth.StringWidth(desc) > completionDescriptionWidth {
+			t.Errorf("description is %d columns wide: %q", runewidth.StringWidth(desc), desc)
+		}
 	}
 }
