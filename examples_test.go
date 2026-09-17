@@ -477,3 +477,87 @@ func TestExampleLinesAreRenderedVerbatim(t *testing.T) {
 		}
 	}
 }
+
+// TestValidationLeavesLiveValuesAlone covers findings D2/D3 of the 2026-09-17
+// review: the static validator bound every option for real and parsed the
+// example through it, so pflag wrote the declared defaults and then the
+// example's own values straight through the running program's pointers.
+func TestValidationLeavesLiveValuesAlone(t *testing.T) {
+	var (
+		verbose bool
+		name    string
+		count   int
+		tags    []string
+		level   string
+	)
+	app := &App{
+		Name: "app",
+		Commands: []Command{{
+			Name:        "deploy",
+			Description: "Deploy it",
+			Options: []Option{
+				Bool(&verbose, "-v, --verbose", false, "verbose"),
+				String(&name, "-n, --name <s>", "default", "name"),
+				Int(&count, "-c, --count <n>", 1, "count"),
+				StringSlice(&tags, "-t, --tag <t>", nil, "tags"),
+				Enum(&level, "-l, --level <l>", []string{"low", "high"}, "low", "level"),
+			},
+			Examples: []Example{
+				{Line: "app deploy --verbose --name other --count 99 --tag x --level high"},
+			},
+			Run: func(*Context) error { return nil },
+		}},
+	}
+
+	// A running program has parsed its flags; validation must not touch them.
+	reset := func() {
+		verbose, name, count, tags, level = true, "production", 42, []string{"live"}, "high"
+	}
+	assertUntouched := func(t *testing.T, after string) {
+		t.Helper()
+		if !verbose || name != "production" || count != 42 || len(tags) != 1 || tags[0] != "live" || level != "high" {
+			t.Errorf("%s overwrote live values: verbose=%v name=%q count=%d tags=%v level=%q",
+				after, verbose, name, count, tags, level)
+		}
+	}
+
+	reset()
+	if err := app.ValidateAllExamples(); err != nil {
+		t.Fatalf("ValidateAllExamples: %v", err)
+	}
+	assertUntouched(t, "ValidateAllExamples")
+
+	reset()
+	if err := Audit(app); err != nil {
+		t.Fatalf("Audit: %v", err)
+	}
+	assertUntouched(t, "Audit")
+}
+
+func TestValidateExampleAppliesRequiredFlags(t *testing.T) {
+	var format, region string
+	newApp := func(line string) *App {
+		return &App{
+			Name: "app",
+			Commands: []Command{{
+				Name:        "deploy",
+				Description: "Deploy it",
+				Options: []Option{
+					Required(String(&format, "--format <f>", "", "format")),
+					String(&region, "--region <r>", "", "region"),
+				},
+				Examples: []Example{{Line: line}},
+				Run:      func(*Context) error { return nil },
+			}},
+		}
+	}
+
+	err := newApp("app deploy --region eu").ValidateAllExamples()
+	if err == nil || !strings.Contains(err.Error(), "required flag") {
+		t.Errorf("ValidateAllExamples error = %v, want one about a required flag", err)
+	}
+
+	if err := newApp("app deploy --format json").ValidateAllExamples(); err != nil {
+		t.Errorf("an example supplying the required flag should validate: %v", err)
+	}
+}

@@ -27,6 +27,12 @@ func ColorizeExampleLine(line string, th Theme) string {
 
 // ColorizeExampleLineWithApp applies ANSI syntax colors to an example string using the application
 // command tree to accurately identify subcommands, flags, and arguments.
+//
+// The line comes back as it was written, only colored. It used to be returned
+// through the inline-markdown renderer, which rewrote the command itself: it
+// swallowed the backslashes of "--path C:\temp\x", turned the asterisks of
+// "'*.go'" into emphasis, and ate the escape in "echo a\ b". A description is
+// prose and gets its own inline() pass; a command line is not.
 func ColorizeExampleLineWithApp(app *App, cmd *Command, line string, th Theme) string {
 	if line == "" {
 		return ""
@@ -103,11 +109,6 @@ func ColorizeExampleLineWithApp(app *App, cmd *Command, line string, th Theme) s
 		b.WriteString(coloredSeg)
 	}
 
-	// The line is returned as written, only colored. Running it through the
-	// inline-markdown renderer rewrote the command itself: it swallowed the
-	// backslashes of "--path C:\temp\x", turned the asterisks of "'*.go'" into
-	// emphasis, and ate the escape in "echo a\ b". Descriptions get their own
-	// inline() call; a command line is not prose.
 	return b.String()
 }
 
@@ -418,18 +419,25 @@ func validateExampleTokens(app *App, targetCmd *Command, ancestors []*Command, r
 	fs.BoolVarP(&helpReq, "help", "h", false, "help")
 	_ = fs.MarkHidden("help")
 
-	_ = bindAndMark(fs, app.PersistentOptions)
-	_ = bindAndMark(fs, app.GlobalFlags)
-	for _, anc := range ancestors {
-		_ = bindAndMark(fs, anc.PersistentOptions)
-	}
-	if targetCmd != nil {
-		_ = bindAndMark(fs, targetCmd.PersistentOptions)
-		_ = bindAndMark(fs, targetCmd.Options)
+	allOptions := app.collectAllActiveOptions(targetCmd, ancestors)
+	// Scratch binding: validating an example must not write through the pointers
+	// the application runs on, and a bind error is a defect in the declarations,
+	// not in the example, so it is reported as itself instead of resurfacing as
+	// "unknown flag" on whichever example happens to come first.
+	if err := bindScratchAll(fs, allOptions); err != nil {
+		return fmt.Errorf("cannot validate example %q: %w", rawLine, err)
 	}
 
 	if parseErr := fs.Parse(remaining); parseErr != nil {
 		return fmt.Errorf("invalid flag in example %q: %w", rawLine, parseErr)
+	}
+
+	if missing := getMissingRequiredFlags(fs, allOptions); len(missing) > 0 {
+		var names []string
+		for _, m := range missing {
+			names = append(names, `"`+strings.TrimPrefix(m.Name, "flag-")+`"`)
+		}
+		return fmt.Errorf("required flag(s) %s not set in example %q", strings.Join(names, ", "), rawLine)
 	}
 
 	if targetCmd != nil && targetCmd.OptionsValidator != nil {

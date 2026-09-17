@@ -27,6 +27,14 @@ type Option struct {
 	// unknown and command resolution infers arity from the flag spec instead.
 	arity flagArity
 
+	// scratch binds the option to storage of its own, for the static example
+	// validator: pflag writes both the declared default and the parsed value
+	// through the caller's pointer, so validating an app's examples used to
+	// overwrite the running program's own variables. Only the typed constructors
+	// can allocate a target of the right type; an Option assembled by hand falls
+	// back to a stand-in derived from its flag spec.
+	scratch func(fs *pflag.FlagSet) error
+
 	// toggle marks an option built by BoolToggle. A spec written without the
 	// "--[no-]" marker looks like any other boolean to a reader of Flags, but it
 	// still needs a long name to derive its negative spelling from, and Audit has

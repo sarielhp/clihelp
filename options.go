@@ -267,6 +267,12 @@ func bindHelper(fs *pflag.FlagSet, spec flagSpec, fn func(long, short string)) e
 
 // String binds a string flag to target.
 func String(target *string, flags string, defaultVal string, usage string) Option {
+	opt := stringOption(target, flags, defaultVal, usage)
+	opt.scratch = stringOption(new(string), flags, defaultVal, usage).Binder
+	return opt
+}
+
+func stringOption(target *string, flags string, defaultVal string, usage string) Option {
 	*target = defaultVal
 	spec := parseFlagSpec(flags)
 	return Option{
@@ -290,6 +296,12 @@ func String(target *string, flags string, defaultVal string, usage string) Optio
 
 // Int binds an integer flag to target.
 func Int(target *int, flags string, defaultVal int, usage string) Option {
+	opt := intOption(target, flags, defaultVal, usage)
+	opt.scratch = intOption(new(int), flags, defaultVal, usage).Binder
+	return opt
+}
+
+func intOption(target *int, flags string, defaultVal int, usage string) Option {
 	*target = defaultVal
 	spec := parseFlagSpec(flags)
 	defaultText := ""
@@ -317,6 +329,12 @@ func Int(target *int, flags string, defaultVal int, usage string) Option {
 
 // Bool binds a boolean flag to target.
 func Bool(target *bool, flags string, defaultVal bool, usage string) Option {
+	opt := boolOption(target, flags, defaultVal, usage)
+	opt.scratch = boolOption(new(bool), flags, defaultVal, usage).Binder
+	return opt
+}
+
+func boolOption(target *bool, flags string, defaultVal bool, usage string) Option {
 	*target = defaultVal
 	spec := parseFlagSpec(flags)
 	defaultText := ""
@@ -380,6 +398,12 @@ func (t *toggleVal) IsBoolFlag() bool {
 
 // BoolToggle binds a boolean toggle pair (e.g. --[no-]check-new).
 func BoolToggle(target *bool, flags string, defaultVal bool, usage string) Option {
+	opt := boolToggleOption(target, flags, defaultVal, usage)
+	opt.scratch = boolToggleOption(new(bool), flags, defaultVal, usage).Binder
+	return opt
+}
+
+func boolToggleOption(target *bool, flags string, defaultVal bool, usage string) Option {
 	*target = defaultVal
 	spec := parseFlagSpec(flags)
 	return Option{
@@ -473,6 +497,12 @@ func bindToggleShorthands(fs *pflag.FlagSet, spec flagSpec, base string, primary
 
 // Duration binds a time.Duration flag to target.
 func Duration(target *time.Duration, flags string, defaultVal time.Duration, usage string) Option {
+	opt := durationOption(target, flags, defaultVal, usage)
+	opt.scratch = durationOption(new(time.Duration), flags, defaultVal, usage).Binder
+	return opt
+}
+
+func durationOption(target *time.Duration, flags string, defaultVal time.Duration, usage string) Option {
 	*target = defaultVal
 	spec := parseFlagSpec(flags)
 	defaultText := ""
@@ -500,6 +530,12 @@ func Duration(target *time.Duration, flags string, defaultVal time.Duration, usa
 
 // StringSlice binds a repeatable or comma-separated string slice flag to target.
 func StringSlice(target *[]string, flags string, defaultVal []string, usage string) Option {
+	opt := stringSliceOption(target, flags, defaultVal, usage)
+	opt.scratch = stringSliceOption(new([]string), flags, defaultVal, usage).Binder
+	return opt
+}
+
+func stringSliceOption(target *[]string, flags string, defaultVal []string, usage string) Option {
 	// Copy so the caller's slice backing array is not aliased by pflag.
 	*target = append([]string{}, defaultVal...)
 	spec := parseFlagSpec(flags)
@@ -555,6 +591,12 @@ func (e *enumVal) Type() string {
 
 // Enum restricts input to an enumerated list of valid strings.
 func Enum(target *string, flags string, allowed []string, defaultVal string, usage string) Option {
+	opt := enumOption(target, flags, allowed, defaultVal, usage)
+	opt.scratch = enumOption(new(string), flags, allowed, defaultVal, usage).Binder
+	return opt
+}
+
+func enumOption(target *string, flags string, allowed []string, defaultVal string, usage string) Option {
 	*target = defaultVal
 	spec := parseFlagSpec(flags)
 	return Option{
@@ -596,8 +638,16 @@ func Enum(target *string, flags string, allowed []string, defaultVal string, usa
 	}
 }
 
-// Var binds a custom user-defined pflag.Value interface.
+// Var binds a custom user-defined pflag.Value interface. Only the caller's value
+// can parse the flag, so example validation binds a permissive stand-in rather
+// than writing through it.
 func Var(target pflag.Value, flags string, usage string) Option {
+	opt := varOption(target, flags, usage)
+	opt.scratch = varOption(&scratchValue{}, flags, usage).Binder
+	return opt
+}
+
+func varOption(target pflag.Value, flags string, usage string) Option {
 	spec := parseFlagSpec(flags)
 	return Option{
 		arity:       arityValue,
@@ -615,4 +665,64 @@ func Var(target pflag.Value, flags string, usage string) Option {
 			})
 		},
 	}
+}
+
+// scratchValue stands in for an option's real value while an example line is
+// checked. It accepts anything, because what static validation asks of an
+// example is that its flags exist and are shaped right — and the alternative,
+// binding the option for real, writes both the declared default and the parsed
+// value straight through the consumer's own pointer.
+type scratchValue struct {
+	typeName string
+	val      string
+}
+
+func (s *scratchValue) String() string { return s.val }
+
+func (s *scratchValue) Set(v string) error {
+	s.val = v
+	return nil
+}
+
+func (s *scratchValue) Type() string {
+	if s.typeName == "" {
+		return "string"
+	}
+	return s.typeName
+}
+
+// bindScratch registers opt on fs without touching the memory the application
+// runs on. The typed constructors supply a binder over freshly allocated storage
+// of the right type, so their parsing and their value checks still apply; an
+// Option assembled by hand gets a stand-in derived from its flag spec, which
+// checks the names and the arity but not the values.
+func bindScratch(fs *pflag.FlagSet, opt Option) error {
+	if opt.scratch != nil {
+		return opt.scratch(fs)
+	}
+	if opt.Binder == nil {
+		return nil
+	}
+	spec := parseFlagSpec(opt.Flags)
+	takesValue := flagTakesValue(opt, spec)
+	return bindHelper(fs, spec, func(long, short string) {
+		name := long
+		if name == "" {
+			name = "flag-" + short
+		}
+		f := fs.VarPF(&scratchValue{}, name, short, opt.Description)
+		if !takesValue {
+			f.NoOptDefVal = "true"
+		}
+	})
+}
+
+// bindScratchAll binds every option in opts onto fs with bindScratch.
+func bindScratchAll(fs *pflag.FlagSet, opts []Option) error {
+	for _, opt := range opts {
+		if err := bindScratch(fs, opt); err != nil {
+			return err
+		}
+	}
+	return nil
 }
