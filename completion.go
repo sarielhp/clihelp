@@ -298,6 +298,7 @@ func GenZshCompletion(app *App, w io.Writer) error {
 	}
 	cleanName := strings.ReplaceAll(name, "-", "_")
 	tmpl := fmt.Sprintf(`#compdef %[1]s
+# clihelp-completion-version: %[3]d
 
 _%[2]s() {
     local -a completions
@@ -349,7 +350,7 @@ if type compdef >/dev/null 2>&1; then
 fi
 
 _%[2]s "$@"
-`, name, cleanName)
+`, name, cleanName, completionScriptVersion)
 	_, err := io.WriteString(w, tmpl)
 	return err
 }
@@ -362,6 +363,7 @@ func GenFishCompletion(app *App, w io.Writer) error {
 	}
 	cleanName := strings.ReplaceAll(name, "-", "_")
 	tmpl := fmt.Sprintf(`# fish completion for %[1]s
+# clihelp-completion-version: %[3]d
 function __fish_%[2]s_complete
     set -l cmd (commandline -opc) (commandline -ct)
     test (count $cmd) -gt 1; and set -e cmd[1]
@@ -369,7 +371,7 @@ function __fish_%[2]s_complete
 end
 
 complete -c %[1]s -f -a '(__fish_%[2]s_complete)'
-`, name, cleanName)
+`, name, cleanName, completionScriptVersion)
 	_, err := io.WriteString(w, tmpl)
 	return err
 }

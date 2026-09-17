@@ -3,6 +3,7 @@ package clihelp
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -183,5 +184,70 @@ func TestCompletionProtocolEmitsShortDescriptions(t *testing.T) {
 		if runewidth.StringWidth(desc) > completionDescriptionWidth {
 			t.Errorf("description is %d columns wide: %q", runewidth.StringWidth(desc), desc)
 		}
+	}
+}
+
+// A script that carries no version marker is always stale, so the auto-installer
+// rewrote it on every single invocation of the program. Only the bash template
+// had one.
+func TestEveryGeneratedScriptCarriesItsVersion(t *testing.T) {
+	app := &App{Name: "podcli"}
+	marker := fmt.Sprintf("clihelp-completion-version: %d", completionScriptVersion)
+	for _, shell := range SupportedShells {
+		t.Run(shell, func(t *testing.T) {
+			var b strings.Builder
+			var err error
+			switch shell {
+			case "bash":
+				err = GenBashCompletion(app, &b)
+			case "zsh":
+				err = GenZshCompletion(app, &b)
+			case "fish":
+				err = GenFishCompletion(app, &b)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			head := b.String()
+			if len(head) > 256 {
+				head = head[:256] // completionIsCurrent looks no further
+			}
+			if !strings.Contains(head, marker) {
+				t.Errorf("%s script has no version marker in its first 256 bytes:\n%s", shell, head)
+			}
+		})
+	}
+}
+
+func TestInstalledScriptIsRecognizedAsCurrent(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	app := &App{Name: "podcli"}
+	for _, shell := range SupportedShells {
+		t.Run(shell, func(t *testing.T) {
+			path, err := InstallCompletion(app, shell)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !completionIsCurrent(app, shell) {
+				t.Errorf("a freshly installed %s script is reported stale, so it would be rewritten on every run", shell)
+			}
+			before, err := os.Stat(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			// A second auto-install pass must leave the file alone.
+			if !IsCompletionInstalled(app, shell) || !completionIsCurrent(app, shell) {
+				t.Fatalf("%s script not recognized after installing", shell)
+			}
+			after, err := os.Stat(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !before.ModTime().Equal(after.ModTime()) {
+				t.Errorf("the %s script was rewritten by a check that should not write", shell)
+			}
+		})
 	}
 }
