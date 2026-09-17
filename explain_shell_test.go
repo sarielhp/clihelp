@@ -367,3 +367,95 @@ echo "CANDIDATES: ${COMPREPLY[*]}"
 		}
 	}
 }
+
+// Alt-H is an inspection key: the user presses it precisely because they have
+// not decided to run the line yet. The dispatcher matched the registry on the
+// *basename* of the first word and then executed the word as typed, so an
+// executable named after any installed clihelp program, sitting in a directory
+// the user had just cd'd into, ran on the keystroke.
+func TestLiveBashAltHRefusesAPathBearingCommand(t *testing.T) {
+	bashPath, err := exec.LookPath("bash")
+	if err != nil {
+		t.Skip("bash not found, skipping")
+	}
+
+	dir := t.TempDir()
+	marker := filepath.Join(dir, "EXECUTED")
+	// An executable named like a registered program, in the current directory.
+	local := filepath.Join(dir, "alpha")
+	stub := "#!/bin/sh\ntouch " + marker + "\necho 'alpha EXPANDED'\necho help\n"
+	if err := os.WriteFile(local, []byte(stub), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	var snippet strings.Builder
+	if err := GenKeyBindings(&App{Name: "alpha"}, "bash", &snippet); err != nil {
+		t.Fatal(err)
+	}
+	snippetPath := filepath.Join(dir, "keys.bash")
+	if err := os.WriteFile(snippetPath, []byte(snippet.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	script := fmt.Sprintf(`
+cd %q
+source %q 2>/dev/null
+READLINE_LINE="./alpha deploy"
+_clihelp_explain > /dev/null
+echo "LINE:$READLINE_LINE"
+`, dir, snippetPath)
+	cmd := exec.Command(bashPath, "--norc", "--noprofile", "-c", script)
+	cmd.Env = append(os.Environ(), "HOME="+dir, "PATH="+os.Getenv("PATH"))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bash failed: %v\n%s", err, out)
+	}
+	if _, err := os.Stat(marker); err == nil {
+		t.Errorf("Alt-H executed a file from the current directory:\n%s", out)
+	}
+	if !strings.Contains(string(out), "LINE:./alpha deploy") {
+		t.Errorf("the command line should be left untouched:\n%s", out)
+	}
+}
+
+// A leading space is deliberate for anyone using HISTCONTROL=ignorespace. The
+// first-word extraction yielded the empty string, which then *matched* the
+// space-padded registry, so the dispatcher tried to run an empty command, failed,
+// and swallowed the key without handing it back to the shell.
+func TestLiveBashAltHHandlesLeadingWhitespace(t *testing.T) {
+	bashPath, err := exec.LookPath("bash")
+	if err != nil {
+		t.Skip("bash not found, skipping")
+	}
+
+	dir := t.TempDir()
+	stub := "#!/bin/sh\necho \"$2 EXPANDED\"\necho \"help for alpha\"\n"
+	if err := os.WriteFile(filepath.Join(dir, "alpha"), []byte(stub), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	var snippet strings.Builder
+	if err := GenKeyBindings(&App{Name: "alpha"}, "bash", &snippet); err != nil {
+		t.Fatal(err)
+	}
+	snippetPath := filepath.Join(dir, "keys.bash")
+	if err := os.WriteFile(snippetPath, []byte(snippet.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	script := fmt.Sprintf(`
+source %q 2>/dev/null
+LINES=24; COLUMNS=78
+READLINE_LINE="  alpha build"
+_clihelp_explain > %q
+echo "LINE:[$READLINE_LINE]"
+`, snippetPath, filepath.Join(dir, "out"))
+	cmd := exec.Command(bashPath, "--norc", "--noprofile", "-c", script)
+	cmd.Env = append(os.Environ(), "HOME="+dir, "PATH="+dir+":"+os.Getenv("PATH"))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bash failed: %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "EXPANDED") {
+		t.Errorf("a line with leading whitespace was not explained:\n%s", out)
+	}
+}

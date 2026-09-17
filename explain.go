@@ -208,9 +208,21 @@ const bashKeysTemplate = `# clihelp key bindings for {{app}}
 if [ "${_clihelp_dispatcher_version:-0}" -lt {{dispatcher}} ]; then
     _clihelp_dispatcher_version={{dispatcher}}
     _clihelp_explain() {
-        local word=${READLINE_LINE%% *}
+        # Trim leading blanks before taking the first word: without this a line
+        # beginning with a space (deliberate under HISTCONTROL=ignorespace)
+        # yields an empty word, which then matches the space-padded registry, so
+        # the key was swallowed and nothing ran.
+        local line=$READLINE_LINE
+        while [ "${line#[[:space:]]}" != "$line" ]; do line=${line#[[:space:]]}; done
+        local word=${line%% *}
+        # A path is not a registered program. The registry holds bare names, and
+        # matching on the basename meant "./alpha" from whatever directory the
+        # user had cd'd into was authorized and then executed — on a key the user
+        # presses precisely because they have not decided to run the line.
+        case $word in */*) return ;; esac
+        [ -n "$word" ] || return
         case " ${_clihelp_apps:-} " in
-            *" ${word##*/} "*) ;;
+            *" $word "*) ;;
             *) return ;;
         esac
         local out
@@ -240,8 +252,11 @@ const zshKeysTemplate = `# clihelp key bindings for {{app}}
 if [[ ${_clihelp_dispatcher_version:-0} -lt {{dispatcher}} ]]; then
     typeset -g _clihelp_dispatcher_version={{dispatcher}}
     _clihelp_explain() {
-        local word=${BUFFER%% *}
-        if [[ " ${_clihelp_apps:-} " != *" ${word##*/} "* ]]; then
+        # ${(z)} is zsh's own shell-word splitter, so leading blanks and tabs are
+        # handled for us. A path-bearing word is not a registered program; see the
+        # bash snippet.
+        local word=${${(z)BUFFER}[1]}
+        if [[ -z $word || $word == */* || " ${_clihelp_apps:-} " != *" $word "* ]]; then
             zle run-help
             return
         fi
@@ -275,8 +290,9 @@ if not set -q _clihelp_dispatcher_version; or test $_clihelp_dispatcher_version 
     set -g _clihelp_dispatcher_version {{dispatcher}}
     function __clihelp_explain
         set -l line (commandline)
-        set -l word (string split -m 1 ' ' -- $line)[1]
-        if not contains -- (string replace -r '^.*/' '' -- $word) $_clihelp_apps
+        set -l word (string split -m 1 ' ' -- (string trim -l -- "$line"))[1]
+        # A path is not a registered program; see the bash snippet.
+        if test -z "$word"; or string match -q -- '*/*' $word; or not contains -- $word $_clihelp_apps
             __fish_man_page
             return
         end
@@ -298,7 +314,7 @@ contains -- {{app}} $_clihelp_apps; or set -g _clihelp_apps $_clihelp_apps {{app
 // snippet installs its dispatcher only when nothing newer is already in place,
 // so two programs shipping different clihelp versions cannot fight over the key:
 // the newer dispatcher wins, and it serves every program in the shared registry.
-const keyDispatcherVersion = 1
+const keyDispatcherVersion = 2
 
 // GenKeyBindings writes the shell snippet that binds Alt-H to "expand this
 // command line and explain it". The binding acts only on command lines that
