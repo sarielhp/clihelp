@@ -2,6 +2,13 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.10] - 2026-09-17
+
+### Fixed
+- **Shell Completion Executed Its Own Candidates** - `handleComplete` wrote candidates and descriptions into the line-oriented completion protocol without escaping, so a newline in a `Description` or in an `Option.Complete` result forged extra records, and the generated bash script passed the candidate list to `compgen -W`, which performs command substitution on its words. A candidate containing `$(...)` — the realistic source being a `Complete` callback that lists files or remote names — executed when the user pressed Tab, with nothing shown on screen. Records now go through a sanitizer and the bash template appends each candidate literally after a prefix test. The template carries a version marker so the auto-install path replaces scripts generated before this fix.
+- **Help Rendering Could Recurse Until the Process Died** - `resolveCommandPath` rendered help as a side effect of resolution, so an app with an example line such as `app help` re-entered the renderer through example colorization until it died with a stack overflow. Resolution now reports that help was requested and `ExecuteContext` performs the single dispatch, which also stops help text being emitted into the shell-completion stream and out of `ValidateExamples`/`Audit`.
+- **Resolution Reset the Application's Own Flag Variables** - the arity probe added in 0.3.9 ran every `Option.Binder`, and pflag writes each declared default through the caller's pointer, so resolving arguments — including the resolution done while rendering a command's examples — overwrote a running program's parsed flag values with defaults. Arity is now recorded on `Option` by the typed constructors and read back from the flag spec, leaving consumer memory untouched.
+
 ## [0.3.9] - 2026-09-17
 
 ### Fixed
