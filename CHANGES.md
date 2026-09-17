@@ -2,7 +2,9 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
-## [0.3.13] - 2026-09-17
+## [0.3.12] - 2026-09-17
+
+Completes the 2026-09-17 deep review — every finding in `review/findings-2026-09-17.md` is fixed — and adds the shell-integration work that came out of it.
 
 ### Added
 - **`__clihelp`: Setup in Every Program** - `ExecuteContext` serves `__complete` before it looks at the command tree, so every clihelp program could always complete — but only a program whose author added `clihelp.CompletionCommand()` could be asked to install that completion. The reserved `__clihelp` argument closes the gap with four verbs — `version`, `install [<shell>]`, `keys [<shell>]` and `wrapper <name> [<args>...]` — available in every clihelp program. Hidden from help and completion output, documented, and inert unless invoked; a dotfiles script or a packager can now set up any clihelp program uniformly. `install` prints the installed path alone on stdout so it can be captured.
@@ -14,12 +16,6 @@ All notable changes to `clihelp` will be documented in this file.
 - **Zsh and Fish Completion Scripts Were Rewritten on Every Run** - the staleness check looks for a `clihelp-completion-version` marker in the installed script, but only the Bash template carried one. For a zsh or fish user of an app with `AutoInstallCompletion`, the script was therefore always "stale" and reinstalled on *every single invocation* of the program. All three templates now carry the marker, so a current script is left alone.
 - **Shell Menus Showed Whole Paragraphs of Markdown** - the completion protocol sent `Description` fields verbatim, so zsh's and fish's menus printed entire descriptions, markup and all: `**deep** — This is the [deep command](https://example.com/deep) at the root…`. Descriptions now go out as one plain line — markdown rendered away, whitespace collapsed, first sentence only, capped at 72 display columns.
 - **`completion install` Promised a Key Nobody Bound** - the printed tip advertised "Alt-H for instant command help", which did nothing: bash has no default Alt-H binding, and zsh's `run-help` found no man page. It now points at `completion keys`, which makes the promise true.
-
-## [0.3.12] - 2026-09-17
-
-Completes the 2026-09-17 deep review: every remaining finding in `review/findings-2026-09-17.md` is fixed.
-
-### Fixed
 - **A Failing Pager Threw the Help Away** - `os/exec` drains an `io.Reader` stdin as soon as the child starts, so the buffer that was both the pager's input and the fallback copy was empty by the time a failing pager returned: `PAGER=false` printed a blank help screen, and for output past the pipe buffer the fallback printed only the tail. The pager reads from its own reader now, and the fallback fires only when nothing reached the user. `less`'s `-R` is also no longer detected by finding the letter "r" anywhere in the arguments, which found one in `--clear-screen`.
 - **Example Lines Were Rewritten Before Being Shown** - the colorizer returned its result through the inline-markdown renderer, which swallowed the backslashes of `--path C:\temp\x`, turned `'*.go'` into emphasis and ate the escape in `echo a\ b`; the renderer then word-wrapped long commands into two unpastable lines. Example lines are now colored and emitted exactly as written.
 - **Validating Examples Overwrote the Program's Variables** - `ValidateExample` (and `Audit`, which the README recommends for CI) bound every option for real and parsed the example through it, and pflag writes both the declared default and the parsed value through the caller's pointer. Validation now binds to storage of its own, while still parsing and still checking values. It also applies `Option.Required`, and reports a binding error as itself instead of resurfacing it as "unknown flag" on an innocent example.
@@ -293,7 +289,6 @@ n### Fixed
 - Added `VERSION` file (`0.1.0`) as single source of truth for versioning.
 - Added unit tests in `clihelp_test.go`.
 - Added `CHANGES.md` project changelog.
-
 
 ## [0.1.0] - 2026-08-10
 
