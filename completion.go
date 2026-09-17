@@ -1,7 +1,9 @@
 package clihelp
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -235,7 +237,9 @@ func GenBashCompletion(app *App, w io.Writer) error {
 _%[2]s_complete() {
     local cur prev words cword
     if declare -F _init_completion >/dev/null 2>&1; then
-        _init_completion -n : || return
+        # -n := keeps "--flag=value" and "host:port" as single words, which is
+        # what the completion protocol is given below.
+        _init_completion -n := || return
     else
         words=("${COMP_WORDS[@]}")
         cword=$COMP_CWORD
@@ -243,11 +247,11 @@ _%[2]s_complete() {
         prev="${words[cword-1]}"
     fi
 
+    # Send the words bash-completion computed, not the raw COMP_WORDS: those are
+    # split at every character of COMP_WORDBREAKS, so "--unit=" arrived as three
+    # words and a colon-bearing argument as three more.
     local out
-    out=$( "${COMP_WORDS[0]}" __complete "${COMP_WORDS[@]:1}" 2>/dev/null )
-    if [[ $? -ne 0 ]]; then
-        return
-    fi
+    out=$( "${words[0]}" __complete "${words[@]:1:cword-1}" "$cur" 2>/dev/null ) || return
 
     # Candidates are data: add them literally. compgen -W would expand them,
     # running any command substitution a candidate happens to contain.
@@ -258,6 +262,10 @@ _%[2]s_complete() {
         cand="${line%%%%	*}"
         [[ $cand == "$cur"* ]] && COMPREPLY+=("$cand")
     done <<< "$out"
+
+    if declare -F __ltrim_colon_completions >/dev/null 2>&1; then
+        __ltrim_colon_completions "$cur"
+    fi
 }
 complete -o default -F _%[2]s_complete %[1]s
 `, name, cleanName, completionScriptVersion)
@@ -351,10 +359,16 @@ complete -c %[1]s -f -a '(__fish_%[2]s_complete)'
 
 // CompletionPath returns the target installation path for the completion script.
 func CompletionPath(app *App, shell string) (string, error) {
+	if app == nil {
+		return "", errors.New("completion path: app is nil")
+	}
 	if shell == "" {
 		shell = detectShell()
 	}
 	shell = strings.ToLower(strings.TrimSpace(shell))
+	if shell == "" {
+		return "", errors.New("cannot detect the active shell: $SHELL is not set; name one of " + strings.Join(SupportedShells, ", "))
+	}
 
 	appName := appName(app)
 
@@ -418,6 +432,9 @@ func (a *App) maybeAutoInstallCompletion(args []string) {
 		return
 	}
 	sh := detectShell()
+	if !isSupportedShell(sh) {
+		return // no script exists for this shell; writing a bash one would be a lie
+	}
 	if !IsCompletionInstalled(a, sh) || !completionIsCurrent(a, sh) {
 		_, _ = InstallCompletion(a, sh)
 	}
@@ -455,40 +472,75 @@ func InstallCompletion(app *App, shell string) (string, error) {
 	}
 	shell = strings.ToLower(strings.TrimSpace(shell))
 
-	targetDir := filepath.Dir(targetPath)
-	if err = os.MkdirAll(targetDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create directory %q: %w", targetDir, err)
-	}
-
-	f, err := os.Create(targetPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to create completion file %q: %w", targetPath, err)
-	}
-	defer f.Close()
-
+	var script bytes.Buffer
 	switch shell {
 	case "bash":
-		err = GenBashCompletion(app, f)
+		err = GenBashCompletion(app, &script)
 	case "zsh":
-		err = GenZshCompletion(app, f)
+		err = GenZshCompletion(app, &script)
 	case "fish":
-		err = GenFishCompletion(app, f)
+		err = GenFishCompletion(app, &script)
 	}
 	if err != nil {
 		return "", fmt.Errorf("failed to generate %s completion: %w", shell, err)
 	}
 
+	targetDir := filepath.Dir(targetPath)
+	if err = os.MkdirAll(targetDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create directory %q: %w", targetDir, err)
+	}
+	if err = writeFileAtomically(targetPath, script.Bytes()); err != nil {
+		return "", fmt.Errorf("failed to write completion file %q: %w", targetPath, err)
+	}
+
 	return targetPath, nil
 }
 
+// writeFileAtomically writes data to a temporary file beside path and renames it
+// over path, so an interrupted or failing write cannot leave a half-written
+// script where a working one used to be. Close is checked, because it is where a
+// buffered write reports a full disk.
+func writeFileAtomically(path string, data []byte) error {
+	f, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp-*")
+	if err != nil {
+		return err
+	}
+	tmp := f.Name()
+	defer os.Remove(tmp) // no-op once the rename has succeeded
+
+	if _, err := f.Write(data); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tmp, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}
+
+// detectShell names the shell from $SHELL, or returns "" when $SHELL is unset.
+// It does not translate an unknown shell into "bash": a dash, ksh or nushell
+// user was silently given a bash script in their home directory, which their
+// shell cannot read and which nothing ever removes.
 func detectShell() string {
-	sh := filepath.Base(os.Getenv("SHELL"))
+	sh := os.Getenv("SHELL")
+	if strings.TrimSpace(sh) == "" {
+		return ""
+	}
+	return strings.ToLower(filepath.Base(sh))
+}
+
+// isSupportedShell reports whether a completion script exists for shell.
+func isSupportedShell(shell string) bool {
 	for _, s := range SupportedShells {
-		if sh == s {
-			return s
+		if s == shell {
+			return true
 		}
 	}
-	return "bash"
+	return false
 }
 
 // CompletionCommand returns a standard clihelp.Command providing 'bash', 'zsh', 'fish', and 'install' subcommands.
