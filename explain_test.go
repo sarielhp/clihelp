@@ -154,9 +154,9 @@ func TestKeyBindingSnippets(t *testing.T) {
 		shell string
 		want  []string
 	}{
-		{"bash", []string{`bind -x '"\eh": _pod_ctl_clihelp_explain'`, "$READLINE_LINE", "__explain", "CLIHELP_TERM_LINES"}},
-		{"zsh", []string{"bindkey '^[h'", "zle run-help", "$BUFFER", "__explain"}},
-		{"fish", []string{`bind \eh`, "commandline -r", "__explain", "repaint"}},
+		{"bash", []string{`bind -x '"\eh": _clihelp_explain'`, "$READLINE_LINE", "__explain", "CLIHELP_TERM_LINES", `_clihelp_apps="${_clihelp_apps:-} pod-ctl "`}},
+		{"zsh", []string{"bindkey '^[h' _clihelp_explain", "zle run-help", "$BUFFER", "__explain", "pod-ctl "}},
+		{"fish", []string{`bind \eh __clihelp_explain`, "__fish_man_page", "commandline -r", "__explain", "pod-ctl"}},
 	} {
 		t.Run(tt.shell, func(t *testing.T) {
 			var b strings.Builder
@@ -168,8 +168,10 @@ func TestKeyBindingSnippets(t *testing.T) {
 					t.Errorf("%s snippet is missing %q:\n%s", tt.shell, want, b.String())
 				}
 			}
-			if !strings.Contains(b.String(), "pod-ctl __explain") {
-				t.Errorf("%s snippet does not call the app:\n%s", tt.shell, b.String())
+			// The binding and the dispatcher are shared by every clihelp program,
+			// so neither may carry one program's name.
+			if strings.Contains(b.String(), "_pod_ctl_clihelp_explain") {
+				t.Errorf("%s snippet binds a per-program function:\n%s", tt.shell, b.String())
 			}
 		})
 	}

@@ -197,58 +197,100 @@ func (a *App) handleExplain(args []string) error {
 
 const bashKeysTemplate = `# clihelp key bindings for {{app}}
 # Add to ~/.bashrc:  eval "$({{app}} completion keys bash)"
-_{{fn}}_clihelp_explain() {
-    [[ $READLINE_LINE == {{app}}* ]] || return
-    local out
-    out=$( CLIHELP_TERM_LINES="${LINES:-}" CLIHELP_TERM_COLUMNS="${COLUMNS:-}" \
-           {{app}} __explain "$READLINE_LINE" 2>/dev/null ) || return
-    [[ -n $out ]] || return
-    READLINE_LINE="${out%%$'\n'*}"
-    READLINE_POINT=${#READLINE_LINE}
-    printf '\n'
-    [[ $out == *$'\n'* ]] && printf '%s\n' "${out#*$'\n'}"
-}
-bind -x '"\eh": _{{fn}}_clihelp_explain'
+
+# One dispatcher serves every clihelp program on the machine. A key binding is
+# global to the shell, so a per-program binding is replaced by the next program
+# that installs one — and that program's own name check then refuses every other
+# program's command line, leaving Alt-H silently dead for all but the last one
+# installed. The highest dispatcher version wins whatever order the snippets are
+# sourced in; the registry of program names is shared and its name never changes.
+if [ "${_clihelp_dispatcher_version:-0}" -lt {{dispatcher}} ]; then
+    _clihelp_dispatcher_version={{dispatcher}}
+    _clihelp_explain() {
+        local word=${READLINE_LINE%% *}
+        case " ${_clihelp_apps:-} " in
+            *" ${word##*/} "*) ;;
+            *) return ;;
+        esac
+        local out
+        out=$( CLIHELP_TERM_LINES="${LINES:-}" CLIHELP_TERM_COLUMNS="${COLUMNS:-}" \
+               "$word" __explain "$READLINE_LINE" 2>/dev/null ) || return
+        [ -n "$out" ] || return
+        READLINE_LINE="${out%%$'\n'*}"
+        READLINE_POINT=${#READLINE_LINE}
+        printf '\n'
+        case $out in *$'\n'*) printf '%s\n' "${out#*$'\n'}" ;; esac
+    }
+    bind -x '"\eh": _clihelp_explain' 2>/dev/null
+fi
+_clihelp_apps="${_clihelp_apps:-} {{app}} "
 `
 
 const zshKeysTemplate = `# clihelp key bindings for {{app}}
 # Add to ~/.zshrc:  eval "$({{app}} completion keys zsh)"
-_{{fn}}_clihelp_explain() {
-    if [[ $BUFFER != {{app}}* ]]; then
-        zle run-help
-        return
-    fi
-    local out
-    out=$(CLIHELP_TERM_LINES=$LINES CLIHELP_TERM_COLUMNS=$COLUMNS \
-          {{app}} __explain "$BUFFER" 2>/dev/null) || return
-    [[ -n $out ]] || return
-    BUFFER=${out%%$'\n'*}
-    CURSOR=${#BUFFER}
-    zle -I
-    print -r -- ""
-    [[ $out == *$'\n'* ]] && print -r -- "${out#*$'\n'}"
-    zle reset-prompt
-}
-zle -N _{{fn}}_clihelp_explain
-bindkey '^[h' _{{fn}}_clihelp_explain
+
+# See the bash snippet for why the dispatcher is shared rather than per program.
+# Alt-H is zsh's own run-help key, so a command line that belongs to no clihelp
+# program is handed straight back to it.
+if [[ ${_clihelp_dispatcher_version:-0} -lt {{dispatcher}} ]]; then
+    typeset -g _clihelp_dispatcher_version={{dispatcher}}
+    _clihelp_explain() {
+        local word=${BUFFER%% *}
+        if [[ " ${_clihelp_apps:-} " != *" ${word##*/} "* ]]; then
+            zle run-help
+            return
+        fi
+        local out
+        out=$(CLIHELP_TERM_LINES=$LINES CLIHELP_TERM_COLUMNS=$COLUMNS \
+              $word __explain "$BUFFER" 2>/dev/null) || return
+        [[ -n $out ]] || return
+        BUFFER=${out%%$'\n'*}
+        CURSOR=${#BUFFER}
+        zle -I
+        print -r -- ""
+        [[ $out == *$'\n'* ]] && print -r -- "${out#*$'\n'}"
+        zle reset-prompt
+    }
+    zle -N _clihelp_explain
+    bindkey '^[h' _clihelp_explain
+fi
+typeset -g _clihelp_apps="${_clihelp_apps:-} {{app}} "
 `
 
 const fishKeysTemplate = `# clihelp key bindings for {{app}}
 # Add to ~/.config/fish/config.fish:  {{app}} completion keys fish | source
-function __{{fn}}_clihelp_explain
-    set -l line (commandline)
-    string match -q -- '{{app}}*' $line; or return
-    set -lx CLIHELP_TERM_LINES $LINES
-    set -lx CLIHELP_TERM_COLUMNS $COLUMNS
-    set -l out ({{app}} __explain $line 2>/dev/null)
-    test (count $out) -gt 0; or return
-    commandline -r -- $out[1]
-    echo
-    test (count $out) -gt 1; and printf '%s\n' $out[2..-1]
-    commandline -f repaint
+
+# See the bash snippet for why the dispatcher is shared rather than per program.
+# alt-h is fish's own key for the man page of the command being typed, so a
+# command line that belongs to no clihelp program is handed straight back to it.
+if not set -q _clihelp_dispatcher_version; or test $_clihelp_dispatcher_version -lt {{dispatcher}}
+    set -g _clihelp_dispatcher_version {{dispatcher}}
+    function __clihelp_explain
+        set -l line (commandline)
+        set -l word (string split -m 1 ' ' -- $line)[1]
+        if not contains -- (string replace -r '^.*/' '' -- $word) $_clihelp_apps
+            __fish_man_page
+            return
+        end
+        set -lx CLIHELP_TERM_LINES $LINES
+        set -lx CLIHELP_TERM_COLUMNS $COLUMNS
+        set -l out ($word __explain $line 2>/dev/null)
+        test (count $out) -gt 0; or return
+        commandline -r -- $out[1]
+        echo
+        test (count $out) -gt 1; and printf '%s\n' $out[2..-1]
+        commandline -f repaint
+    end
+    bind \eh __clihelp_explain
 end
-bind \eh __{{fn}}_clihelp_explain
+contains -- {{app}} $_clihelp_apps; or set -g _clihelp_apps $_clihelp_apps {{app}}
 `
+
+// keyDispatcherVersion is raised whenever the shared dispatcher changes. A
+// snippet installs its dispatcher only when nothing newer is already in place,
+// so two programs shipping different clihelp versions cannot fight over the key:
+// the newer dispatcher wins, and it serves every program in the shared registry.
+const keyDispatcherVersion = 1
 
 // GenKeyBindings writes the shell snippet that binds Alt-H to "expand this
 // command line and explain it". The binding acts only on command lines that
@@ -280,7 +322,7 @@ func GenKeyBindings(app *App, shell string, w io.Writer) error {
 
 	script := strings.NewReplacer(
 		"{{app}}", name,
-		"{{fn}}", strings.ReplaceAll(name, "-", "_"),
+		"{{dispatcher}}", strconv.Itoa(keyDispatcherVersion),
 	).Replace(tmpl)
 	_, err := io.WriteString(w, script)
 	return err

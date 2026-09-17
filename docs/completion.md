@@ -121,7 +121,8 @@ This is deliberately **not** part of the completion script: every shell loads th
 
 ### What the binding touches
 
-- The binding acts only on command lines that begin with your application's name. In zsh, where Alt-H is `run-help` by default, anything else is handed straight back to `run-help`; in bash and fish, Alt-H is otherwise unbound.
+- **Alt-H is the shell's own convention for this.** zsh binds it to `run-help` and fish binds it (and F1) to `__fish_man_page` — both meaning "explain the command I am typing". clihelp fills that in for programs that ship no man page, and hands the key straight back to `run-help` / `__fish_man_page` for any command line that is not a clihelp program's. In bash, Alt-H is unbound by default.
+- **Several clihelp programs share one dispatcher.** A key binding is global to the shell, so each program registers its name in a shared list and the first snippet loaded installs the binding. Without that, the last program installed would own Alt-H and refuse every other program's command line. The dispatcher is versioned, so two programs built against different clihelp releases settle on the newer one rather than fighting.
 - The shell passes its own `$LINES` and `$COLUMNS` through `CLIHELP_TERM_LINES` / `CLIHELP_TERM_COLUMNS`, because the binding captures the program's stdout and a pipe has no size to measure.
 - The underlying protocol call is `<app> __explain "<command line>"`, whose first output line is always the expanded command line. `App.Explain` is exported if you want to drive it yourself.
 

@@ -68,7 +68,7 @@ LINES=24
 COLUMNS=78
 READLINE_LINE='podctl b'
 READLINE_POINT=${#READLINE_LINE}
-_podctl_clihelp_explain
+_clihelp_explain
 echo "EXPANDED:$READLINE_LINE"
 echo "POINT:$READLINE_POINT"
 `, snippet)
@@ -116,7 +116,7 @@ func TestLiveBashAltHIgnoresOtherCommands(t *testing.T) {
 source %q 2>/dev/null
 READLINE_LINE='git commit -m x'
 READLINE_POINT=${#READLINE_LINE}
-_podctl_clihelp_explain
+_clihelp_explain
 echo "LINE:$READLINE_LINE"
 `, snippet)
 
@@ -184,5 +184,70 @@ func TestCompletionScriptsAreSafeToSource(t *testing.T) {
 				t.Errorf("sourcing the %s script was not silent:\n%s", tt.shell, got)
 			}
 		})
+	}
+}
+
+// Alt-H is one key for the whole shell, so every clihelp program on the machine
+// has to share one dispatcher. A per-program binding was replaced by the next
+// program installed, and that program's name check then refused every other
+// program's command line: Alt-H went silently dead for all but the last one.
+func TestLiveBashAltHServesSeveralPrograms(t *testing.T) {
+	bashPath, err := exec.LookPath("bash")
+	if err != nil {
+		t.Skip("bash not found, skipping")
+	}
+
+	dir := t.TempDir()
+	// Stand-ins for two installed clihelp programs: all the dispatcher asks of
+	// them is the __explain protocol — an expanded command line, then the help.
+	for _, name := range []string{"alpha", "beta"} {
+		// $1 is "__explain", $2 the command line: echo it back expanded, then
+		// one line standing in for the help.
+		stub := "#!/bin/sh\necho \"$2 EXPANDED\"\necho \"help for " + name + "\"\n"
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(stub), 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var snippets []string
+	for _, name := range []string{"alpha", "beta"} {
+		var b strings.Builder
+		if err := GenKeyBindings(&App{Name: name}, "bash", &b); err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(dir, "keys."+name)
+		if err := os.WriteFile(path, []byte(b.String()), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		snippets = append(snippets, path)
+	}
+
+	// The dispatcher has to run in this shell, the way bind -x runs it: inside
+	// $( ) its rewrite of READLINE_LINE would die with the subshell.
+	script := fmt.Sprintf(`
+source %q 2>/dev/null
+source %q 2>/dev/null
+for line in "alpha build" "beta build" "git commit"; do
+    READLINE_LINE="$line"
+    _clihelp_explain > %q
+    printf '%%s => [%%s] %%s\n' "$line" "$READLINE_LINE" "$(grep -c . %q)"
+done
+`, snippets[0], snippets[1], filepath.Join(dir, "out"), filepath.Join(dir, "out"))
+
+	cmd := exec.Command(bashPath, "--norc", "--noprofile", "-c", script)
+	cmd.Env = append(os.Environ(), "PATH="+dir+":"+os.Getenv("PATH"))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("dispatcher failed: %v\n%s", err, out)
+	}
+
+	for _, want := range []string{
+		"alpha build => [alpha build EXPANDED] 1",
+		"beta build => [beta build EXPANDED] 1",
+		"git commit => [git commit] 0", // not ours: the line and the key are left alone
+	} {
+		if !strings.Contains(string(out), want) {
+			t.Errorf("expected %q in:\n%s", want, out)
+		}
 	}
 }
