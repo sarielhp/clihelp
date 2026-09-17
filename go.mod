@@ -16,3 +16,10 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 )
+
+// The generated zsh completion script passed the words the user had typed
+// through zsh's _call_program, whose body ends in `eval ... "$argv[2,-1]"` —
+// it re-parses its arguments as shell code. Pressing <Tab> on a command line
+// containing $(...) or backticks executed it, with nothing shown on screen.
+// Present from v0.2.2, when the zsh generator was added, and fixed in v0.3.15.
+retract [v0.2.2, v0.3.14]
