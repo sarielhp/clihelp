@@ -231,7 +231,7 @@ func buildApp() *clihelp.App {
 	return &clihelp.App{
 		Name:                      "podctl",
 		Description:               "[podctl](https://podctl.example.com) — A podcast distribution & audio processing tool.",
-		Version:                   "0.3.12",
+		Version:                   "0.3.13",
 		GlobalNote:                "Documentation & source: [https://github.com/sarielhp/clihelp](https://github.com/sarielhp/clihelp)",
 		AbbrevCommands:            true,
 		Pager:                     true,
