@@ -32,7 +32,7 @@ $ podctl __complete build --
 
 ## Zero-Boilerplate `CompletionCommand`
 
-The fastest way to expose completion in your CLI is using `clihelp.CompletionCommand()`. It creates a standard `Command` with `bash`, `zsh`, `fish`, and `install` subcommands:
+The fastest way to expose completion in your CLI is using `clihelp.CompletionCommand()`. It creates a standard `Command` with `bash`, `zsh`, `fish`, `keys`, `install` and `uninstall` subcommands:
 
 ```go
 app := &clihelp.App{
@@ -53,6 +53,11 @@ This immediately equips your CLI with:
 
 ---
 
+> **`App.Name` becomes a file name and a shell symbol.** Anything that installs or
+> generates shell integration requires it to be letters, digits, `-`, `_`, `.` or `+`.
+> A name with a space or a shell metacharacter is refused rather than turned into a
+> broken — or dangerous — script, and a program with no `Name` cannot install at all.
+
 ## Installation: One Command
 
 ```console
@@ -70,11 +75,11 @@ That is the whole setup. It writes **one generated file** and **one permanent li
 | :--- | :--- | :--- |
 | **bash** | `~/.config/<app>/shell/bash` | a marked block in `~/.bashrc` |
 | **zsh** | `~/.config/<app>/shell/zsh` | a marked block in `$ZDOTDIR/.zshrc` or `~/.zshrc` |
-| **fish** | `~/.config/<app>/shell/fish` | `~/.config/fish/conf.d/<app>.fish` — a drop-in, nothing shared is touched |
+| **fish** | `~/.config/<app>/shell/fish` | `~/.config/fish/conf.d/<app>.fish` — a drop-in directory, so no shared file is edited. The drop-in *file* is clihelp's; if something else already owns that name, installation refuses rather than overwriting it. |
 
 The generated file holds both halves — the completion registration *and* the Alt-H key binding — because a key binding has to exist before the key is pressed, while every shell loads a completion script lazily, on the first `<Tab>` for that command. Once a startup file has to source something anyway, there is no reason left for two artifacts, and one directory owned by the application means one uninstall and no zsh `$fpath` juggling.
 
-**Nothing runs at shell startup.** The startup line is a file test and a `source`; measured with a logging stand-in, sourcing the integration executes the program zero times. The line names a fixed path and never changes again — upgrades rewrite the file it points at, not your config.
+**Nothing runs at shell startup.** The startup line is a file test and a `source` — no command substitution, no `eval`, nothing that invokes the program. The line names a fixed path and never changes again; upgrades rewrite the file it points at, not your config.
 
 **Keeping it current.** The generated file carries a `clihelp-integration-version` marker. When the application is upgraded and its clihelp templates change, the next run of the program rewrites the file. `App.AutoInstallCompletion` refreshes an integration that is already installed, and *never* creates one or edits a startup file on its own — a key binding appearing because someone ran an unrelated command would be an overreach.
 
@@ -141,13 +146,14 @@ They are hidden, not secret: absent from help and completion output because nobo
 
 ```console
 $ myapp __clihelp                 # --help, -h and help do the same
-myapp __clihelp — shell integration for this program, built with clihelp 0.3.12
+myapp __clihelp — shell integration for this program, built with clihelp <version>
 
-  __clihelp version                        report the clihelp version this program was built with
-  __clihelp install [--no-keys] [<shell>]  set up the shell: tab completion and the Alt-H binding
-  __clihelp uninstall [<shell>]            remove what install wrote
-  __clihelp keys [<shell>]                 print the key bindings, for inspection or manual setup
-  __clihelp wrapper <name> [<args>...]     print a wrapper script for this program, with arguments
+  __clihelp version                                report the clihelp version this program was built with
+  __clihelp install [--no-keys] [<shell>]          set up the shell: tab completion and the Alt-H binding
+  __clihelp uninstall [<shell>]                    remove what install wrote
+  __clihelp keys [<shell>]                         print the key bindings, for inspection or manual setup
+  __clihelp wrapper <name> [<args>...]             print a wrapper script for this program, with arguments
+  __clihelp manpage [--install|--uninstall] [--force]  print a roff manual page, or install it for man(1)
 ```
 
 A verb given `--help` or `-h` prints its own usage rather than treating the flag as an argument, and `-H` — clihelp's extended-help flag — adds the reserved argument names and the exact paths `install` would write on this machine:
@@ -213,7 +219,7 @@ The script carries a `# clihelp-wraps: myapp deploy` marker in its second line �
 Two things worth knowing:
 
 - **The registration line is unavoidable.** No shell calls a completion function for a name it was never told about; git ships `__git_complete` for exactly this reason. In fish, `complete -c pd --wraps 'myapp deploy'` does the whole job on its own.
-- **Alt-H does not expand a wrapper.** The wrapper answers `__explain` with the line as typed, then the help for the wrapped command: rewriting `pd prod` into `myapp deploy prod` would replace something deliberately typed short.
+- **Alt-H does not expand a wrapper.** The wrapper answers `__explain` with the line as typed, then the help for the wrapped command: rewriting `pd prod` into `myapp deploy prod` would replace something deliberately typed short. For Alt-H to reach the wrapper at all, its name has to be in the dispatcher's registry — `__clihelp wrapper` prints that line next to the completion one.
 
 ---
 
@@ -233,7 +239,7 @@ podctl completion bash | sudo tee /etc/bash_completion.d/podctl
 
 ### Zsh (`clihelp.GenZshCompletion`)
 
-Writes a `#compdef` script compatible with Zsh's `compinit` completion system. The script works both ways: autoloaded from `$fpath`, where it *is* the completion function, and sourced from a startup file, where it registers itself with `compdef` instead. (Before 0.3.13 the sourced form printed `can only be called from completion function` at every shell start.)
+Writes a `#compdef` script compatible with Zsh's `compinit` completion system. The script works both ways: autoloaded from `$fpath`, where it *is* the completion function, and sourced from a startup file, where it registers itself with `compdef` instead. (Before 0.3.12 the sourced form printed `can only be called from completion function` at every shell start.)
 
 ```bash
 # Load in current session:

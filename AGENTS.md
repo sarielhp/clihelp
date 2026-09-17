@@ -169,13 +169,25 @@ Enforce sizing via `tools/audit_lines.rb` (`make audit`).
 | `pager.go` | Pager detection/execution (`$PAGER`, `less`), terminal height check, and paged output |
 | `completion.go` | Shell autocompletion script generation (Bash, Zsh, Fish), dynamic completion, and XDG auto-installation |
 | `explain.go` | Command-line expansion and the height-capped explanation behind Alt-H (`__explain`, `App.Explain`, `GenKeyBindings`) |
-| `protocol.go` | The reserved `__clihelp` setup verbs (version, install, keys, wrapper) and wrapper-script generation |
+| `protocol.go` | The reserved `__clihelp` setup verbs (version, install, uninstall, keys, wrapper, manpage), their shared argument parser, and wrapper-script generation |
+| `names.go` | `safeAppName` — the one gate for any name that becomes a file path, a shell symbol or an rc-file marker — plus the shell quoters |
+| `lock_unix.go`, `lock_other.go` | Advisory locking for the startup-file read-modify-write |
 | `install.go` | One-command shell integration: the generated per-shell file, the marked startup-file block, install/uninstall/refresh |
 | `man.go` | roff manual page generation (`GenManPage`), installation under `$XDG_DATA_HOME/man`, and `ManPageCommand` |
 | `completion_test.go` | Unit tests for shell completion protocol, installation, and shared completion helpers |
 | `completion_bash_test.go` | Live Bash tab-completion integration and dynamic callback tests |
 | `completion_zsh_test.go` | Live Zsh tab-completion integration and dynamic callback tests |
 | `completion_fish_test.go` | Live Fish tab-completion integration and dynamic callback tests |
+| `completion_install_test.go` | Shell detection, installation, script version markers, and completion descriptions |
+| `install_test.go` | Shell-integration install/uninstall, startup-file editing, refresh, and concurrency |
+| `ownership_test.go` | That nothing overwrites or deletes a file clihelp did not write |
+| `atomicwrite_test.go` | Symlinked dotfiles and the atomic-replace contract |
+| `autopath_test.go` | What an ordinary program run is and is not allowed to do |
+| `sandbox_test.go` | `TestMain`'s guard that the suite never writes to the real home directory |
+| `man_test.go` | roff generation, escaping, installation, and live `man` rendering |
+| `protocol_test.go` | The `__clihelp` verbs, their argument grammar, and wrapper generation |
+| `explain_test.go`, `explain_shell_test.go` | Command-line expansion, the height budget, and the live shell key bindings |
+| `shellquote_test.go` | Shell quoting of generated source and `App.Name` validation |
 | `doc/` | Subpackage for GitHub-friendly markdown documentation site generation (`doc.RenderMarkdown`) |
 | `tree/` | Subpackage for command hierarchy tree visualization (`tree.Render`) |
 | `examples.go` | Example command syntax colorizer, shell tokenizer, and static example validator (`ValidateExample`, `ValidateAllExamples`) |
