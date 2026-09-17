@@ -1,9 +1,11 @@
 package clihelp
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -224,5 +226,47 @@ func TestAutoInstallRefreshesButNeverCreates(t *testing.T) {
 	}
 	if !strings.Contains(string(body), "_clihelp_explain") {
 		t.Errorf("the refresh dropped the key bindings the user had installed")
+	}
+}
+
+// Two programs installing at once contend for one startup file. The write is
+// atomic, so the file is never torn — but a lock-free read-modify-write loses
+// whole blocks, and every caller reported success. Counting is the only evidence
+// that settles this; a clean -race run says nothing about a race through the
+// filesystem.
+func TestConcurrentInstallsKeepEveryBlock(t *testing.T) {
+	home := sandboxHome(t)
+	const n = 8
+
+	var wg sync.WaitGroup
+	errs := make([]error, n)
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			app := &App{
+				Name:     fmt.Sprintf("app%d", i),
+				Commands: []Command{{Name: "build", Description: "Build it", Run: func(*Context) error { return nil }}},
+			}
+			_, errs[i] = InstallShellIntegration(app, "bash", true)
+		}(i)
+	}
+	wg.Wait()
+
+	rc, err := os.ReadFile(filepath.Join(home, ".bashrc"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	missing := 0
+	for i := 0; i < n; i++ {
+		if errs[i] != nil {
+			t.Errorf("install %d failed: %v", i, errs[i])
+		}
+		if !strings.Contains(string(rc), fmt.Sprintf(">>> app%d shell integration", i)) {
+			missing++
+		}
+	}
+	if missing > 0 {
+		t.Errorf("%d of %d blocks were lost, and every install reported success:\n%s", missing, n, rc)
 	}
 }

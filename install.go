@@ -362,6 +362,14 @@ func installBootstrap(app *App, shell, target string) (string, bool, error) {
 		return path, false, fmt.Errorf("failed to create directory %q: %w", filepath.Dir(path), err)
 	}
 
+	// Hold the lock across the whole read-modify-write. The rename is atomic, so
+	// the file is never torn, but without serialization two programs installing
+	// at once both read the old contents and the second write discards the
+	// first's block — measured at 7 of 8 lost, with every caller reporting
+	// success.
+	unlock, _ := lockFile(path)
+	defer unlock()
+
 	existing, mode, err := readFileWithMode(path)
 	if err != nil {
 		return path, false, err
@@ -441,6 +449,9 @@ func UninstallShellIntegration(app *App, shell string) (InstallResult, error) {
 		res.StartupEdit = true
 		return res, nil
 	}
+
+	unlock, _ := lockFile(path)
+	defer unlock()
 
 	existing, mode, err := readFileWithMode(path)
 	if err != nil || existing == "" {
