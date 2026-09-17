@@ -2,6 +2,11 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- **`__clihelp` Took `--help` for an Argument** - `__clihelp --help`, `-h` and `help` were unknown verbs, and a verb's own `--help` was read as its first argument: `__clihelp wrapper --help` generated a wrapper script named `--help`, and `__clihelp install --help` tried to install for a shell of that name. All three spellings now print the verb list, and a verb given one prints its own usage.
+
 ## [0.3.12] - 2026-09-17
 
 Completes the 2026-09-17 deep review — every finding in `review/findings-2026-09-17.md` is fixed — and adds the shell-integration work that came out of it.

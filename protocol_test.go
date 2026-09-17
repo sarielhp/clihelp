@@ -177,3 +177,36 @@ func TestClihelpInstallWithoutKeys(t *testing.T) {
 		t.Errorf("--no-keys still installed the key binding")
 	}
 }
+
+// The spellings anyone reaches for first must not be taken for arguments:
+// "__clihelp wrapper --help" used to generate a wrapper script named "--help",
+// and "__clihelp install --help" tried to install for a shell of that name.
+func TestClihelpAcceptsTheUsualHelpSpellings(t *testing.T) {
+	for _, arg := range []string{"--help", "-h", "help"} {
+		t.Run("bare "+arg, func(t *testing.T) {
+			res := runProto(t, bareApp(), "__clihelp", arg)
+			res.AssertNoError(t)
+			for _, want := range []string{"version", "install", "uninstall", "keys", "wrapper"} {
+				res.AssertStdoutContains(t, want)
+			}
+		})
+	}
+
+	for _, verb := range []string{"version", "install", "uninstall", "keys", "wrapper"} {
+		t.Run(verb+" --help", func(t *testing.T) {
+			res := runProto(t, bareApp(), "__clihelp", verb, "--help")
+			res.AssertNoError(t)
+			res.AssertStdoutContains(t, "__clihelp "+verb)
+			if strings.Contains(res.Stdout, "#!/bin/sh") {
+				t.Errorf("%s --help generated something instead of explaining itself:\n%s", verb, res.Stdout)
+			}
+			if strings.Count(res.Stdout, "\n") > 2 {
+				t.Errorf("a verb's help should be its own usage, got:\n%s", res.Stdout)
+			}
+		})
+	}
+
+	t.Run("help for an unknown verb still errors", func(t *testing.T) {
+		runProto(t, bareApp(), "__clihelp", "nonesuch", "--help").AssertErrorContains(t, "nonesuch")
+	})
+}

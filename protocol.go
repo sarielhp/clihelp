@@ -34,17 +34,50 @@ const (
 	protoClihelp  = "__clihelp"
 )
 
+// clihelpVerb is one entry of the __clihelp surface. The list is the single
+// source for both the summary and a verb's own usage line.
+type clihelpVerb struct {
+	name  string
+	args  string
+	about string
+}
+
+func clihelpVerbs() []clihelpVerb {
+	return []clihelpVerb{
+		{"version", "", "report the clihelp version this program was built with"},
+		{"install", "[--no-keys] [<shell>]", "set up the shell: tab completion and the Alt-H binding"},
+		{"uninstall", "[<shell>]", "remove what install wrote"},
+		{"keys", "[<shell>]", "print the key bindings, for inspection or manual setup"},
+		{"wrapper", "<name> [<args>...]", "print a wrapper script for this program, with arguments"},
+	}
+}
+
+// isHelpRequest recognizes the spellings anyone reaches for first. Without it,
+// "__clihelp --help" was an unknown verb and "__clihelp wrapper --help"
+// cheerfully generated a wrapper script named "--help".
+func isHelpRequest(arg string) bool {
+	switch arg {
+	case "-h", "--help", "help":
+		return true
+	}
+	return false
+}
+
 // handleClihelpCommand serves "<app> __clihelp <verb> [args...]".
 func (a *App) handleClihelpCommand(args []string) error {
 	verb, rest := "", []string(nil)
 	if len(args) > 0 {
 		verb, rest = args[0], args[1:]
 	}
-
-	switch verb {
-	case "":
+	if verb == "" || isHelpRequest(verb) {
 		a.printClihelpVerbs(a.stdout())
 		return nil
+	}
+	if len(rest) > 0 && isHelpRequest(rest[0]) {
+		return a.printVerbHelp(a.stdout(), verb)
+	}
+
+	switch verb {
 	case "version":
 		fmt.Fprintf(a.stdout(), "clihelp %s\n", Version)
 		return nil
@@ -66,6 +99,18 @@ func (a *App) handleClihelpCommand(args []string) error {
 	}
 }
 
+// printVerbHelp prints one verb's usage line.
+func (a *App) printVerbHelp(w io.Writer, verb string) error {
+	for _, v := range clihelpVerbs() {
+		if v.name != verb {
+			continue
+		}
+		fmt.Fprintf(w, "%s %s %s %s\n    %s\n", appName(a), protoClihelp, v.name, v.args, v.about)
+		return nil
+	}
+	return fmt.Errorf("unknown %s verb %q (try %s with no arguments)", protoClihelp, verb, protoClihelp)
+}
+
 func firstArg(args []string) string {
 	if len(args) > 0 {
 		return args[0]
@@ -74,16 +119,15 @@ func firstArg(args []string) string {
 }
 
 func (a *App) printClihelpVerbs(w io.Writer) {
-	name := appName(a)
-	fmt.Fprintf(w, "%s %s — shell integration for this program, built with clihelp %s\n\n", name, protoClihelp, Version)
-	for _, line := range []string{
-		"version                     report the clihelp version this program was built with",
-		"install [--no-keys] [<shell>]  set up the shell, printing the generated file's path",
-		"uninstall [<shell>]         remove what install wrote",
-		"keys [<shell>]              print the key bindings to source from a shell startup file",
-		"wrapper <name> [<args>...]  print a wrapper script for this program, with arguments",
-	} {
-		fmt.Fprintf(w, "  %s %s\n", protoClihelp, line)
+	fmt.Fprintf(w, "%s %s — shell integration for this program, built with clihelp %s\n\n", appName(a), protoClihelp, Version)
+	width := 0
+	for _, v := range clihelpVerbs() {
+		if n := len(v.name) + len(v.args) + 1; n > width {
+			width = n
+		}
+	}
+	for _, v := range clihelpVerbs() {
+		fmt.Fprintf(w, "  %s %-*s  %s\n", protoClihelp, width, strings.TrimSpace(v.name+" "+v.args), v.about)
 	}
 	fmt.Fprintf(w, "\nSupported shells: %s\n", strings.Join(SupportedShells, ", "))
 }

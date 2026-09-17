@@ -140,14 +140,17 @@ This is deliberately **not** part of the completion script: every shell loads th
 They are hidden, not secret: absent from help and completion output because nobody needs them in the way, documented here, and none of them acts unless invoked.
 
 ```console
-$ myapp __clihelp
-myapp __clihelp — shell integration for this program, built with clihelp 0.3.11
+$ myapp __clihelp                 # --help, -h and help do the same
+myapp __clihelp — shell integration for this program, built with clihelp 0.3.12
 
-  __clihelp version                     report the clihelp version this program was built with
-  __clihelp install [<shell>]           install the completion script, printing its path
-  __clihelp keys [<shell>]              print the key bindings to source from a shell startup file
-  __clihelp wrapper <name> [<args>...]  print a wrapper script for this program, with arguments
+  __clihelp version                        report the clihelp version this program was built with
+  __clihelp install [--no-keys] [<shell>]  set up the shell: tab completion and the Alt-H binding
+  __clihelp uninstall [<shell>]            remove what install wrote
+  __clihelp keys [<shell>]                 print the key bindings, for inspection or manual setup
+  __clihelp wrapper <name> [<args>...]     print a wrapper script for this program, with arguments
 ```
+
+A verb given `--help` or `-h` prints its own usage rather than treating the flag as an argument.
 
 **Why this exists alongside the `completion` command.** `ExecuteContext` serves `__complete` before it ever looks at the command tree, so *every* clihelp program can complete — but only a program whose author added `clihelp.CompletionCommand()` could be *asked* to install that completion. `__clihelp` closes the gap, which matters most for the people who are not the author: a dotfiles script, or a packager, can set up any clihelp program uniformly:
 
