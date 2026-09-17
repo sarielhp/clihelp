@@ -47,14 +47,40 @@ func (a *App) pageOutput(o Options, fn func(w io.Writer)) {
 	}
 
 	parts := buildPagerArgs(os.Getenv("PAGER"))
-	if len(parts) == 0 {
-		_, _ = outWriter.Write(buf.Bytes())
-		return
+	data := buf.Bytes()
+	if len(parts) == 0 || !runPager(parts, data, outWriter) {
+		_, _ = outWriter.Write(data)
 	}
+}
+
+// countingWriter records how much of the pager's output reached the user, which
+// is what tells a pager that never ran apart from one that printed the help and
+// then exited non-zero.
+type countingWriter struct {
+	w io.Writer
+	n int
+}
+
+func (c *countingWriter) Write(p []byte) (int, error) {
+	n, err := c.w.Write(p)
+	c.n += n
+	return n, err
+}
+
+// runPager pipes data through the pager and reports whether the output reached
+// the user; when it returns false the caller must print data itself.
+//
+// The pager reads from its own reader over data rather than from the buffer the
+// help was rendered into: os/exec drains an io.Reader stdin in a copy goroutine
+// as soon as the child starts, so by the time a failing pager returned, the
+// buffer was empty and the fallback printed nothing at all. A pager that failed
+// after writing is not repeated, since its output is already on screen.
+func runPager(parts []string, data []byte, out io.Writer) bool {
+	counted := &countingWriter{w: out}
 
 	cmd := exec.Command(parts[0], parts[1:]...)
-	cmd.Stdin = &buf
-	cmd.Stdout = outWriter
+	cmd.Stdin = bytes.NewReader(data)
+	cmd.Stdout = counted
 	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
 	if os.Getenv("LESS") == "" {
@@ -62,8 +88,9 @@ func (a *App) pageOutput(o Options, fn func(w io.Writer)) {
 	}
 
 	if err := cmd.Run(); err != nil {
-		_, _ = outWriter.Write(buf.Bytes())
+		return counted.n > 0
 	}
+	return true
 }
 
 // buildPagerArgs parses the PAGER environment string into executable command parts,
@@ -79,18 +106,30 @@ func buildPagerArgs(pager string) []string {
 	}
 
 	binName := filepath.Base(parts[0])
-	if binName == "less" {
-		hasR := false
-		for _, arg := range parts[1:] {
-			if strings.Contains(arg, "R") || strings.Contains(arg, "r") {
-				hasR = true
-				break
-			}
-		}
-		if !hasR {
-			parts = append(parts, "-R")
-		}
+	if binName == "less" && !hasRawControlChars(parts[1:]) {
+		parts = append(parts, "-R")
 	}
 
 	return parts
+}
+
+// hasRawControlChars reports whether less is already told to pass ANSI sequences
+// through. Only option letters count: searching the whole argument for an "r"
+// found one in "--clear-screen" and left the colors to be printed as escapes.
+func hasRawControlChars(args []string) bool {
+	for _, arg := range args {
+		if !strings.HasPrefix(arg, "-") {
+			continue
+		}
+		if strings.HasPrefix(arg, "--") {
+			if strings.EqualFold(arg, "--raw-control-chars") {
+				return true
+			}
+			continue
+		}
+		if strings.ContainsAny(arg, "Rr") {
+			return true
+		}
+	}
+	return false
 }

@@ -151,3 +151,59 @@ func TestConcurrentRender(t *testing.T) {
 
 	wg.Wait()
 }
+
+// TestRunPagerFallbackKeepsOutput covers the failure the 2026-09-17 review
+// measured: os/exec drains an io.Reader stdin as soon as the child starts, so a
+// buffer that doubles as the fallback copy is empty by the time a failing pager
+// returns.
+func TestRunPagerFallbackKeepsOutput(t *testing.T) {
+	small := []byte(strings.Repeat("help line\n", 60))
+	large := []byte(strings.Repeat("help line\n", 20000)) // past the pipe buffer
+
+	for _, tt := range []struct {
+		name    string
+		pager   []string
+		data    []byte
+		want    bool
+		wantOut string
+	}{
+		{"pager fails immediately", []string{"false"}, small, false, ""},
+		{"pager fails on a large payload", []string{"false"}, large, false, ""},
+		{"pager succeeds", []string{"cat"}, small, true, string(small)},
+		{"pager writes then fails", []string{"sh", "-c", "head -c 9; exit 3"}, small, true, "help line"},
+		{"pager does not exist", []string{"no-such-pager-binary"}, small, false, ""},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			got := runPager(tt.pager, tt.data, &buf)
+			if got != tt.want {
+				t.Errorf("runPager = %v, want %v", got, tt.want)
+			}
+			if buf.String() != tt.wantOut {
+				t.Errorf("pager wrote %d bytes, want %d", buf.Len(), len(tt.wantOut))
+			}
+			if !got && buf.Len() != 0 {
+				t.Errorf("a failed pager must leave the fallback the whole output, wrote %d bytes", buf.Len())
+			}
+		})
+	}
+}
+
+func TestBuildPagerArgsRawDetection(t *testing.T) {
+	for _, tt := range []struct {
+		pagerEnv string
+		wantLast string
+	}{
+		{"less --clear-screen", "-R"},
+		{"less --raw-control-chars", "--raw-control-chars"},
+		{"less -RF", "-RF"},
+		{"less -N", "-R"},
+	} {
+		t.Run(tt.pagerEnv, func(t *testing.T) {
+			got := buildPagerArgs(tt.pagerEnv)
+			if last := got[len(got)-1]; last != tt.wantLast {
+				t.Errorf("buildPagerArgs(%q) = %v, want it to end in %q", tt.pagerEnv, got, tt.wantLast)
+			}
+		})
+	}
+}
