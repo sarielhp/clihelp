@@ -53,49 +53,48 @@ This immediately equips your CLI with:
 
 ---
 
-## Automatic Self-Installation (`InstallCompletion`)
+## Installation: One Command
 
-`clihelp.InstallCompletion(app, shell)` installs completion scripts into standard non-root XDG user directories:
+```console
+$ podctl completion install
+✓ bash shell integration installed
+    generated:  ~/.config/podctl/shell/bash
+    added the line that sources it to ~/.bashrc
+Restart your shell to activate it: <Tab> completes, Alt-H explains.
+Run 'podctl completion uninstall' to undo all of this.
+```
 
-| Shell | Target User Directory | Target Filename |
+That is the whole setup. It writes **one generated file** and **one permanent line**:
+
+| shell | generated file | startup file |
 | :--- | :--- | :--- |
-| **Bash** | `${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions` | `<app-name>` |
-| **Zsh** | `${XDG_DATA_HOME:-$HOME/.local/share}/zsh/site-functions` | `_<app-name>` |
-| **Fish** | `${XDG_CONFIG_HOME:-$HOME/.config}/fish/completions` | `<app-name>.fish` |
+| **bash** | `~/.config/<app>/shell/bash` | a marked block in `~/.bashrc` |
+| **zsh** | `~/.config/<app>/shell/zsh` | a marked block in `$ZDOTDIR/.zshrc` or `~/.zshrc` |
+| **fish** | `~/.config/<app>/shell/fish` | `~/.config/fish/conf.d/<app>.fish` — a drop-in, nothing shared is touched |
 
-### CLI Usage:
+The generated file holds both halves — the completion registration *and* the Alt-H key binding — because a key binding has to exist before the key is pressed, while every shell loads a completion script lazily, on the first `<Tab>` for that command. Once a startup file has to source something anyway, there is no reason left for two artifacts, and one directory owned by the application means one uninstall and no zsh `$fpath` juggling.
+
+**Nothing runs at shell startup.** The startup line is a file test and a `source`; measured with a logging stand-in, sourcing the integration executes the program zero times. The line names a fixed path and never changes again — upgrades rewrite the file it points at, not your config.
+
+**Keeping it current.** The generated file carries a `clihelp-integration-version` marker. When the application is upgraded and its clihelp templates change, the next run of the program rewrites the file. `App.AutoInstallCompletion` refreshes an integration that is already installed, and *never* creates one or edits a startup file on its own — a key binding appearing because someone ran an unrelated command would be an overreach.
+
+**Options.**
 
 ```bash
-# 1. Automatic detection (detects active shell from $SHELL):
-podctl completion install
-
-# 2. Explicit shell target:
-podctl completion install bash
-podctl completion install zsh
-podctl completion install fish
+podctl completion install --no-keys      # tab completion only, leave Alt-H alone
+podctl completion install zsh            # a shell other than the active one
+podctl completion uninstall              # remove the file and the block
 ```
 
-### Go API:
+The block is marked with `# >>> <app> shell integration (clihelp) >>>`, so `uninstall` removes exactly it and leaves the rest of your startup file byte for byte as it was.
 
-```go
-// Install for active shell (detected via $SHELL)
-installedPath, err := clihelp.InstallCompletion(app, "")
+**Superseded installs.** A completion script this library installed into the shell's own directory (`~/.local/share/bash-completion/completions/<app>` and friends) is removed when the integration is installed, so no shell loads two copies. A file clihelp never wrote is left alone.
 
-// Install for specific shell
-installedPath, err := clihelp.InstallCompletion(app, "zsh")
-```
+---
 
-### Shell Detection
+## Lower-Level Entry Points
 
-Detection reads `$SHELL` and names what it finds. A shell `clihelp` has no script
-for — dash, ksh, nushell — is reported as an error rather than treated as Bash,
-and `App.AutoInstallCompletion` installs nothing for it: a Bash script in a ksh
-user's home is one their shell cannot read and nothing ever removes. With `$SHELL`
-unset, pass the shell name explicitly.
-
-The script is generated in full before anything is written, and the file is
-renamed into place, so an interrupted install cannot replace a working script
-with half of one.
+`InstallCompletion(app, shell)` still installs just the completion script into the shell's standard directory, and `CompletionPath` reports where that is. They are unchanged, for callers that want the shell-discovered layout rather than the one-command setup above.
 
 ---
 

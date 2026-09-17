@@ -196,7 +196,8 @@ func (a *App) handleExplain(args []string) error {
 // They are printed for the user to source from their shell's rc file.
 
 const bashKeysTemplate = `# clihelp key bindings for {{app}}
-# Add to ~/.bashrc:  eval "$({{app}} completion keys bash)"
+# Printed for inspection or manual setup. "{{app}} completion install" writes
+# this into a file your shell sources, so nothing runs at shell start.
 
 # One dispatcher serves every clihelp program on the machine. A key binding is
 # global to the shell, so a per-program binding is replaced by the next program
@@ -230,7 +231,8 @@ esac
 `
 
 const zshKeysTemplate = `# clihelp key bindings for {{app}}
-# Add to ~/.zshrc:  eval "$({{app}} completion keys zsh)"
+# Printed for inspection or manual setup. "{{app}} completion install" writes
+# this into a file your shell sources, so nothing runs at shell start.
 
 # See the bash snippet for why the dispatcher is shared rather than per program.
 # Alt-H is zsh's own run-help key, so a command line that belongs to no clihelp
@@ -263,7 +265,8 @@ fi
 `
 
 const fishKeysTemplate = `# clihelp key bindings for {{app}}
-# Add to ~/.config/fish/config.fish:  {{app}} completion keys fish | source
+# Printed for inspection or manual setup. "{{app}} completion install" writes
+# this into a file your shell sources, so nothing runs at shell start.
 
 # See the bash snippet for why the dispatcher is shared rather than per program.
 # alt-h is fish's own key for the man page of the command being typed, so a

@@ -207,7 +207,7 @@ func TestCompletionCommand(t *testing.T) {
 	for i, sub := range cmd.Subcommands {
 		subNames[i] = sub.Name
 	}
-	expected := []string{"bash", "zsh", "fish", "keys", "install"}
+	expected := []string{"bash", "zsh", "fish", "keys", "install", "uninstall"}
 	if len(subNames) != len(expected) {
 		t.Fatalf("expected subcommands %v, got %v", expected, subNames)
 	}
@@ -240,7 +240,7 @@ func TestCompletionCommand(t *testing.T) {
 	if err := app.ExecuteContext(context.Background(), []string{"completion", "install", "bash"}); err != nil {
 		t.Fatalf("completion install bash failed: %v", err)
 	}
-	if !strings.Contains(outBuf.String(), "Autocompletion installed to:") {
+	if !strings.Contains(outBuf.String(), "shell integration installed") {
 		t.Errorf("expected installation confirmation, got: %s", outBuf.String())
 	}
 }

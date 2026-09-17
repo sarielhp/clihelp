@@ -68,8 +68,7 @@ func TestClihelpVerbsWithoutCompletionCommand(t *testing.T) {
 }
 
 func TestClihelpInstallPrintsOnlyThePath(t *testing.T) {
-	t.Setenv("XDG_DATA_HOME", t.TempDir())
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	sandboxHome(t)
 
 	res := runProto(t, bareApp(), "__clihelp", "install", "bash")
 	res.AssertNoError(t)
@@ -81,7 +80,7 @@ func TestClihelpInstallPrintsOnlyThePath(t *testing.T) {
 	if _, err := os.Stat(path); err != nil {
 		t.Errorf("the path on stdout is not a file: %v", err)
 	}
-	if !strings.Contains(res.Stderr, "restart the shell") {
+	if !strings.Contains(res.Stderr, "Restart your shell") {
 		t.Errorf("the human note belongs on stderr, got: %q", res.Stderr)
 	}
 }
@@ -150,5 +149,31 @@ func TestProtocolCallsDoNotAutoInstall(t *testing.T) {
 	}
 	if entries, _ := os.ReadDir(filepath.Join(dataHome, "bash-completion", "completions")); len(entries) > 0 {
 		t.Errorf("a protocol call installed a completion script: %v", entries)
+	}
+}
+
+func TestClihelpUninstall(t *testing.T) {
+	sandboxHome(t)
+
+	runProto(t, bareApp(), "__clihelp", "install", "bash").AssertNoError(t)
+	res := runProto(t, bareApp(), "__clihelp", "uninstall", "bash")
+	res.AssertNoError(t)
+	res.AssertStdoutContains(t, "removed")
+
+	again := runProto(t, bareApp(), "__clihelp", "uninstall", "bash")
+	again.AssertNoError(t)
+	again.AssertStdoutContains(t, "nothing to remove")
+}
+
+func TestClihelpInstallWithoutKeys(t *testing.T) {
+	home := sandboxHome(t)
+	runProto(t, bareApp(), "__clihelp", "install", "--no-keys", "bash").AssertNoError(t)
+
+	body, err := os.ReadFile(filepath.Join(home, ".config", "bare", "shell", "bash"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(body), "_clihelp_explain") {
+		t.Errorf("--no-keys still installed the key binding")
 	}
 }

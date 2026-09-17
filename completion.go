@@ -460,6 +460,18 @@ func (a *App) maybeAutoInstallCompletion(args []string) {
 	if !isSupportedShell(sh) {
 		return // no script exists for this shell; writing a bash one would be a lie
 	}
+	// A shell integration the user installed is kept current, and never created
+	// here: a key binding appearing in someone's shell because they happened to
+	// run an unrelated command would be an overreach, and editing a startup file
+	// unasked doubly so.
+	if path, err := IntegrationPath(a, sh); err == nil {
+		if _, statErr := os.Stat(path); statErr == nil {
+			if !integrationIsCurrent(path) {
+				_, _ = InstallShellIntegration(a, sh, integrationHasKeys(path))
+			}
+			return
+		}
+	}
 	if !IsCompletionInstalled(a, sh) || !completionIsCurrent(a, sh) {
 		_, _ = InstallCompletion(a, sh)
 	}
@@ -514,7 +526,7 @@ func InstallCompletion(app *App, shell string) (string, error) {
 	if err = os.MkdirAll(targetDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create directory %q: %w", targetDir, err)
 	}
-	if err = writeFileAtomically(targetPath, script.Bytes()); err != nil {
+	if err = writeFileAtomically(targetPath, script.Bytes(), 0o644); err != nil {
 		return "", fmt.Errorf("failed to write completion file %q: %w", targetPath, err)
 	}
 
@@ -525,7 +537,7 @@ func InstallCompletion(app *App, shell string) (string, error) {
 // over path, so an interrupted or failing write cannot leave a half-written
 // script where a working one used to be. Close is checked, because it is where a
 // buffered write reports a full disk.
-func writeFileAtomically(path string, data []byte) error {
+func writeFileAtomically(path string, data []byte, mode os.FileMode) error {
 	f, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp-*")
 	if err != nil {
 		return err
@@ -540,7 +552,7 @@ func writeFileAtomically(path string, data []byte) error {
 	if err := f.Close(); err != nil {
 		return err
 	}
-	if err := os.Chmod(tmp, 0o644); err != nil {
+	if err := os.Chmod(tmp, mode); err != nil {
 		return err
 	}
 	return os.Rename(tmp, path)
@@ -587,6 +599,7 @@ func CompletionCommand() Command {
 		Subcommands: append(completionGenerateSubcommands(),
 			completionKeysSubcommand(),
 			completionInstallSubcommand(),
+			completionUninstallSubcommand(),
 		),
 	}
 }
@@ -653,15 +666,51 @@ func completionKeysSubcommand() Command {
 	}
 }
 
-// completionInstallSubcommand installs the completion script for a shell.
+// completionInstallSubcommand sets up the shell integration for a shell.
 func completionInstallSubcommand() Command {
+	var noKeys bool
 	return Command{
 		Name:        "install",
-		Description: "Install tab-completion script to standard user directory",
-		UsageLine:   "completion install [<shell>]",
+		Description: "Install tab completion and the Alt-H key binding for a shell",
+		UsageLine:   "completion install [--no-keys] [<shell>]",
 		Examples: []Example{
-			{Line: "completion install zsh", Description: "Install completions to ~/.local/share/zsh/site-functions"},
+			{Line: "completion install", Description: "Set up the active shell"},
+			{Line: "completion install --no-keys zsh", Description: "Set up Zsh completion without the Alt-H binding"},
 		},
+		Parameters: []Param{
+			{Name: "[<shell>]", Description: "Shell type ('bash', 'zsh', or 'fish'; defaults to current shell)"},
+		},
+		Options: []Option{
+			Bool(&noKeys, "--no-keys", false, "Install tab completion only, leaving Alt-H alone"),
+		},
+		Notes: []Note{
+			{
+				Heading: "What It Writes",
+				Text:    "One generated file under this application's configuration directory, and one permanent line in the shell's startup file that sources it. The line never changes; the generated file is rewritten whenever the application is upgraded. On fish nothing shared is touched at all, because conf.d is a drop-in directory. Run 'completion uninstall' to remove both.",
+			},
+		},
+		Args: MaximumNArgs(1),
+		Run: func(ctx *Context) error {
+			shell := ""
+			if len(ctx.Args) > 0 {
+				shell = ctx.Args[0]
+			}
+			res, err := InstallShellIntegration(ctx.App, shell, !noKeys)
+			if err != nil {
+				return err
+			}
+			reportInstall(ctx.Stdout, ctx.App, res)
+			return nil
+		},
+	}
+}
+
+// completionUninstallSubcommand removes what install wrote.
+func completionUninstallSubcommand() Command {
+	return Command{
+		Name:        "uninstall",
+		Description: "Remove the installed tab completion and key binding",
+		UsageLine:   "completion uninstall [<shell>]",
 		Parameters: []Param{
 			{Name: "[<shell>]", Description: "Shell type ('bash', 'zsh', or 'fish'; defaults to current shell)"},
 		},
@@ -671,20 +720,44 @@ func completionInstallSubcommand() Command {
 			if len(ctx.Args) > 0 {
 				shell = ctx.Args[0]
 			}
-			path, err := InstallCompletion(ctx.App, shell)
+			res, err := UninstallShellIntegration(ctx.App, shell)
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(ctx.Stdout, "✓ Autocompletion installed to: %s\n", path)
-			if shell == "zsh" || (shell == "" && detectShell() == "zsh") {
-				fmt.Fprintln(ctx.Stdout, "Note: If not already configured, ensure the directory is in your Zsh $fpath in ~/.zshrc:")
-				fmt.Fprintln(ctx.Stdout, "    fpath=(~/.local/share/zsh/site-functions $fpath)")
-			}
-			fmt.Fprintf(ctx.Stdout, "Tip: <Tab> to complete, Ctrl-D to list choices.\n")
-			fmt.Fprintf(ctx.Stdout, "     For Alt-H (expand the command line and show its help), add this to your shell's rc file:\n")
-			fmt.Fprintf(ctx.Stdout, "         eval \"$(%s completion keys)\"\n", appName(ctx.App))
-			fmt.Fprintln(ctx.Stdout, "Restart your shell or open a new terminal session to activate.")
+			reportUninstall(ctx.Stdout, res)
 			return nil
 		},
+	}
+}
+
+// reportInstall names every file the installation touched.
+func reportInstall(w io.Writer, app *App, res InstallResult) {
+	fmt.Fprintf(w, "\u2713 %s shell integration installed\n", res.Shell)
+	fmt.Fprintf(w, "    generated:  %s\n", res.Integration)
+	if res.Startup != "" {
+		state := "already sourced by"
+		if res.StartupEdit {
+			state = "added the line that sources it to"
+		}
+		fmt.Fprintf(w, "    %s %s\n", state, res.Startup)
+	}
+	for _, path := range res.Removed {
+		fmt.Fprintf(w, "    superseded, removed: %s\n", path)
+	}
+	fmt.Fprintln(w, "Restart your shell to activate it: <Tab> completes, Alt-H explains.")
+	fmt.Fprintf(w, "Run '%s completion uninstall' to undo all of this.\n", appName(app))
+}
+
+func reportUninstall(w io.Writer, res InstallResult) {
+	if len(res.Removed) == 0 && !res.StartupEdit {
+		fmt.Fprintf(w, "nothing to remove for %s\n", res.Shell)
+		return
+	}
+	fmt.Fprintf(w, "\u2713 %s shell integration removed\n", res.Shell)
+	for _, path := range res.Removed {
+		fmt.Fprintf(w, "    removed: %s\n", path)
+	}
+	if res.StartupEdit && res.Startup != "" {
+		fmt.Fprintf(w, "    edited:  %s\n", res.Startup)
 	}
 }

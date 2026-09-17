@@ -50,6 +50,13 @@ func (a *App) handleClihelpCommand(args []string) error {
 		return nil
 	case "install":
 		return a.clihelpInstall(rest)
+	case "uninstall":
+		res, err := UninstallShellIntegration(a, firstArg(rest))
+		if err != nil {
+			return err
+		}
+		reportUninstall(a.stdout(), res)
+		return nil
 	case "keys":
 		return GenKeyBindings(a, firstArg(rest), a.stdout())
 	case "wrapper":
@@ -71,7 +78,8 @@ func (a *App) printClihelpVerbs(w io.Writer) {
 	fmt.Fprintf(w, "%s %s — shell integration for this program, built with clihelp %s\n\n", name, protoClihelp, Version)
 	for _, line := range []string{
 		"version                     report the clihelp version this program was built with",
-		"install [<shell>]           install the completion script, printing its path",
+		"install [--no-keys] [<shell>]  set up the shell, printing the generated file's path",
+		"uninstall [<shell>]         remove what install wrote",
 		"keys [<shell>]              print the key bindings to source from a shell startup file",
 		"wrapper <name> [<args>...]  print a wrapper script for this program, with arguments",
 	} {
@@ -80,19 +88,19 @@ func (a *App) printClihelpVerbs(w io.Writer) {
 	fmt.Fprintf(w, "\nSupported shells: %s\n", strings.Join(SupportedShells, ", "))
 }
 
-// clihelpInstall writes the installed path to stdout, alone, so that a script
-// can capture it; anything for a human goes to stderr.
+// clihelpInstall writes the generated file's path to stdout, alone, so that a
+// script can capture it; everything for a human goes to stderr.
 func (a *App) clihelpInstall(args []string) error {
-	shell := firstArg(args)
-	path, err := InstallCompletion(a, shell)
+	keys := true
+	if len(args) > 0 && args[0] == "--no-keys" {
+		keys, args = false, args[1:]
+	}
+	res, err := InstallShellIntegration(a, firstArg(args), keys)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(a.stdout(), path)
-	if shell == "" {
-		shell = detectShell()
-	}
-	fmt.Fprintf(a.stderr(), "installed the %s completion script; restart the shell to activate it\n", shell)
+	fmt.Fprintln(a.stdout(), res.Integration)
+	reportInstall(a.stderr(), a, res)
 	return nil
 }
 

@@ -321,3 +321,49 @@ func TestLiveBashWrapperScript(t *testing.T) {
 		}
 	})
 }
+
+// The whole point of the one-step install: after it, a shell that reads only its
+// own startup file has completion and Alt-H, and nothing ran at startup.
+func TestLiveBashOneStepInstall(t *testing.T) {
+	bashPath, err := exec.LookPath("bash")
+	if err != nil {
+		t.Skip("bash not found, skipping")
+	}
+
+	home := t.TempDir()
+	bin := filepath.Join(home, "podctl")
+	if out, err := exec.Command("go", "build", "-o", bin, "./example").CombinedOutput(); err != nil {
+		t.Fatalf("failed to build the example CLI: %v\n%s", err, out)
+	}
+	// A logging stand-in on PATH ahead of the real binary would change what runs,
+	// so instead the install is done first and the startup measured after.
+	install := exec.Command(bin, "completion", "install", "bash")
+	install.Env = append(os.Environ(), "HOME="+home, "XDG_CONFIG_HOME="+filepath.Join(home, ".config"),
+		"XDG_DATA_HOME="+filepath.Join(home, ".local", "share"), "CLIHELP_NO_AUTO_COMPLETION=1")
+	if out, err := install.CombinedOutput(); err != nil {
+		t.Fatalf("install failed: %v\n%s", err, out)
+	}
+
+	script := `
+source "$HOME/.bashrc"
+echo "COMPLETION: $(complete -p podctl 2>/dev/null | grep -c podctl)"
+echo "BINDING: $(declare -F _clihelp_explain >/dev/null && echo yes || echo no)"
+echo "REGISTERED: $_clihelp_apps"
+COMP_WORDS=(podctl 'buil'); COMP_CWORD=1
+_podctl_complete
+echo "CANDIDATES: ${COMPREPLY[*]}"
+`
+	cmd := exec.Command(bashPath, "--norc", "--noprofile", "-c", script)
+	cmd.Env = append(os.Environ(), "HOME="+home, "PATH="+home+":"+os.Getenv("PATH"))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("the installed startup file failed: %v\n%s", err, out)
+	}
+	text := string(out)
+
+	for _, want := range []string{"COMPLETION: 1", "BINDING: yes", "REGISTERED:  podctl", "CANDIDATES: build"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("expected %q after sourcing only the startup file:\n%s", want, text)
+		}
+	}
+}
