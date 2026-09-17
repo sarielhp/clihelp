@@ -222,6 +222,9 @@ func bindAlias(fs *pflag.FlagSet, primary *pflag.Flag, name, short string, hidde
 	if fs.Lookup(name) != nil {
 		return fmt.Errorf("flag %q conflicts with an alias of %q", "--"+name, "--"+primary.Name)
 	}
+	if short != "" && fs.ShorthandLookup(short) != nil {
+		return fmt.Errorf("shorthand %q is declared twice in the spec of %q", "-"+short, "--"+primary.Name)
+	}
 	f := fs.VarPF(primary.Value, name, short, primary.Usage)
 	f.NoOptDefVal = primary.NoOptDefVal
 	f.DefValue = primary.DefValue
