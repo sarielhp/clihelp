@@ -128,6 +128,63 @@ This is deliberately **not** part of the completion script: every shell loads th
 
 ---
 
+## `__clihelp`: Setup Without the Author's Opt-In
+
+`clihelp` reserves three argument names. The first two are the protocol the generated scripts call; the third is for setup:
+
+| Name | Called by | Purpose |
+|---|---|---|
+| `__complete` | the completion scripts | completion candidates |
+| `__explain` | the Alt-H key bindings | expanded command line, then its help |
+| `__clihelp` | a human or a setup script | the verbs below |
+
+They are hidden, not secret: absent from help and completion output because nobody needs them in the way, documented here, and none of them acts unless invoked.
+
+```console
+$ myapp __clihelp
+myapp __clihelp — shell integration for this program, built with clihelp 0.3.11
+
+  __clihelp version                     report the clihelp version this program was built with
+  __clihelp install [<shell>]           install the completion script, printing its path
+  __clihelp keys [<shell>]              print the key bindings to source from a shell startup file
+  __clihelp wrapper <name> [<args>...]  print a wrapper script for this program, with arguments
+```
+
+**Why this exists alongside the `completion` command.** `ExecuteContext` serves `__complete` before it ever looks at the command tree, so *every* clihelp program can complete — but only a program whose author added `clihelp.CompletionCommand()` could be *asked* to install that completion. `__clihelp` closes the gap, which matters most for the people who are not the author: a dotfiles script, or a packager, can set up any clihelp program uniformly:
+
+```bash
+for bin in ~/.local/bin/*; do
+    "$bin" __clihelp version >/dev/null 2>&1 && "$bin" __clihelp install
+done
+```
+
+`install` prints the installed path on stdout and nothing else, so it can be captured; notes for humans go to stderr.
+
+---
+
+## Wrapper Scripts and Aliases
+
+A wrapper script — `pd` running `myapp deploy "$@"` — is opaque to every shell, so completion for it has to be arranged. Shell *aliases* mostly do not: fish turns `alias pd='myapp deploy'` into a `--wraps` function and zsh expands aliases before completing, so both already work. Bash is the exception.
+
+`__clihelp wrapper` writes a wrapper that answers clihelp's protocol on behalf of the program it wraps, so completion and Alt-H keep working through it:
+
+```console
+$ myapp __clihelp wrapper pd deploy > ~/.local/bin/pd && chmod +x ~/.local/bin/pd
+
+# Put pd somewhere on your PATH, then register it with your shell,
+# after the completion script for myapp has been loaded:
+#   complete -F _myapp_complete pd
+```
+
+The script carries a `# clihelp-wraps: myapp deploy` marker in its second line — the convention pyenv and asdf use for their shims, so that a wrapper can be recognised and followed without being executed.
+
+Two things worth knowing:
+
+- **The registration line is unavoidable.** No shell calls a completion function for a name it was never told about; git ships `__git_complete` for exactly this reason. In fish, `complete -c pd --wraps 'myapp deploy'` does the whole job on its own.
+- **Alt-H does not expand a wrapper.** The wrapper answers `__explain` with the line as typed, then the help for the wrapped command: rewriting `pd prod` into `myapp deploy prod` would replace something deliberately typed short.
+
+---
+
 ## Manual Shell Script Generation
 
 ### Bash (`clihelp.GenBashCompletion`)

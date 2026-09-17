@@ -251,3 +251,73 @@ done
 		}
 	}
 }
+
+// A generated wrapper is only worth anything if the shell really completes and
+// explains through it, so this drives one with the real bash completion script.
+func TestLiveBashWrapperScript(t *testing.T) {
+	bashPath, err := exec.LookPath("bash")
+	if err != nil {
+		t.Skip("bash not found, skipping")
+	}
+
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "podctl")
+	if out, err := exec.Command("go", "build", "-o", bin, "./example").CombinedOutput(); err != nil {
+		t.Fatalf("failed to build the example CLI: %v\n%s", err, out)
+	}
+
+	// The wrapper, and the completion script, exactly as a user would get them.
+	wrapper := filepath.Join(dir, "pd")
+	script, err := exec.Command(bin, "__clihelp", "wrapper", "pd", "deploy").Output()
+	if err != nil {
+		t.Fatalf("generating the wrapper failed: %v", err)
+	}
+	if err := os.WriteFile(wrapper, script, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	completion, err := exec.Command(bin, "completion", "bash").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	completionPath := filepath.Join(dir, "completion.bash")
+	if err := os.WriteFile(completionPath, completion, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	run := func(t *testing.T, body string) string {
+		t.Helper()
+		cmd := exec.Command(bashPath, "--norc", "--noprofile", "-c",
+			"source "+completionPath+"\ncomplete -F _podctl_complete pd\n"+body)
+		cmd.Env = append(os.Environ(), "PATH="+dir+":"+os.Getenv("PATH"), "LINES=24", "COLUMNS=78")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("bash failed: %v\n%s", err, out)
+		}
+		return string(out)
+	}
+
+	t.Run("completion runs in the wrapped command's context", func(t *testing.T) {
+		out := run(t, `COMP_WORDS=(pd '--b'); COMP_CWORD=1; _podctl_complete; printf '%s\n' "${COMPREPLY[@]}"`)
+		if !strings.Contains(out, "--bucket") {
+			t.Errorf("completing 'pd --b' did not reach deploy's flags:\n%s", out)
+		}
+	})
+
+	t.Run("the wrapper answers __explain without rewriting the line", func(t *testing.T) {
+		out := run(t, `pd __explain "pd --bucket x"`)
+		lines := strings.Split(strings.TrimRight(out, "\n"), "\n")
+		if lines[0] != "pd --bucket x" {
+			t.Errorf("first line = %q, want the command line as typed", lines[0])
+		}
+		if !strings.Contains(out, "Usage:  podctl deploy") {
+			t.Errorf("the explanation is not for the wrapped command:\n%s", out)
+		}
+	})
+
+	t.Run("the wrapper still runs the program", func(t *testing.T) {
+		out := run(t, `pd --help | head -1`)
+		if !strings.Contains(out, "podctl deploy") {
+			t.Errorf("running the wrapper did not run the wrapped command:\n%s", out)
+		}
+	})
+}

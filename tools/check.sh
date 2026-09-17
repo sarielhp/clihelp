@@ -27,6 +27,11 @@ if [ "$want" != "$have" ]; then
     echo "ERROR: example/main.go Version=$have but VERSION says $want" >&2
     exit 1
 fi
+lib=$(grep -oP 'const Version = "\K[^"]+' clihelp.go || true)
+if [ "$want" != "$lib" ]; then
+    echo "ERROR: clihelp.go const Version=$lib but VERSION says $want" >&2
+    exit 1
+fi
 
 echo "=== Test ==="
 go test -timeout 30s ./...

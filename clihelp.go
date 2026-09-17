@@ -52,6 +52,13 @@ const (
 	arityValue                    // consumes the following argument
 )
 
+// Version is the version of the clihelp library itself, as distinct from
+// App.Version, which is the version of the program using it. "__clihelp version"
+// reports it, so a setup script can ask an unknown binary whether it is a clihelp
+// program and what it was built against. tools/check.sh keeps it in step with the
+// VERSION file.
+const Version = "0.3.11"
+
 // Required marks an Option as required.
 func Required(opt Option) Option {
 	opt.Required = true

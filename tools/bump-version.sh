@@ -9,10 +9,11 @@ new="$major.$minor.$patch"
 tag="v$new"
 echo "$new" > VERSION
 ruby -pi -e "sub(/Version:\s+\"[^\"]+\"/, %Q{Version:        \"$new\"})" example/main.go
+ruby -pi -e "sub(/const Version = \"[^\"]+\"/, %Q{const Version = \"$new\"})" clihelp.go
 
 bash tools/check.sh > /dev/null 2>&1
 
-git add VERSION example/main.go > /dev/null 2>&1
+git add VERSION example/main.go clihelp.go > /dev/null 2>&1
 git commit -m "chore: bump version to $new" > /dev/null 2>&1
 git tag -a "$tag" -m "Release $tag" > /dev/null 2>&1
 git push > /dev/null 2>&1

@@ -169,6 +169,7 @@ Enforce sizing via `tools/audit_lines.rb` (`make audit`).
 | `pager.go` | Pager detection/execution (`$PAGER`, `less`), terminal height check, and paged output |
 | `completion.go` | Shell autocompletion script generation (Bash, Zsh, Fish), dynamic completion, and XDG auto-installation |
 | `explain.go` | Command-line expansion and the height-capped explanation behind Alt-H (`__explain`, `App.Explain`, `GenKeyBindings`) |
+| `protocol.go` | The reserved `__clihelp` setup verbs (version, install, keys, wrapper) and wrapper-script generation |
 | `completion_test.go` | Unit tests for shell completion protocol, installation, and shared completion helpers |
 | `completion_bash_test.go` | Live Bash tab-completion integration and dynamic callback tests |
 | `completion_zsh_test.go` | Live Zsh tab-completion integration and dynamic callback tests |

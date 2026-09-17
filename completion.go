@@ -448,8 +448,9 @@ func (a *App) maybeAutoInstallCompletion(args []string) {
 	if a == nil || !a.AutoInstallCompletion {
 		return
 	}
-	// Never run during internal protocol calls, or in CI/non-interactive test runs
-	if len(args) > 0 && (args[0] == "__complete" || args[0] == "__explain") {
+	// Never run during an internal protocol call — a setup call must not have an
+	// install as a side effect — or in CI/non-interactive test runs.
+	if len(args) > 0 && strings.HasPrefix(args[0], "__") {
 		return
 	}
 	if os.Getenv("CI") != "" || os.Getenv("GITHUB_ACTIONS") != "" || os.Getenv("TERM") == "dumb" || os.Getenv("NO_AUTO_COMPLETION") != "" || os.Getenv("CLIHELP_NO_AUTO_COMPLETION") != "" {
