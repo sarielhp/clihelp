@@ -1,6 +1,7 @@
 package clihelp
 
 import (
+	"bytes"
 	"context"
 	"strings"
 	"testing"
@@ -338,7 +339,7 @@ func TestScanLeadingFlag(t *testing.T) {
 			Enum(&mode, "--mode <mode>", []string{"fast", "slow"}, "fast", "Mode"),
 		},
 	}
-	fs := app.leadingFlagSet(nil)
+	arity := app.leadingFlagArity(nil)
 
 	tests := []struct {
 		args      []string
@@ -371,7 +372,7 @@ func TestScanLeadingFlag(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		count, known := scanLeadingFlag(fs, tt.args)
+		count, known := scanLeadingFlag(arity, tt.args)
 		if count != tt.wantCount || known != tt.wantKnown {
 			t.Errorf("scanLeadingFlag(%q) = (%d, %v), want (%d, %v)",
 				tt.args, count, known, tt.wantCount, tt.wantKnown)
@@ -417,4 +418,58 @@ func TestLeadingFlagsUnknownCommandAfterGlobal(t *testing.T) {
 	if st.ran != "last" {
 		t.Errorf("ran %q, want %q", st.ran, "last")
 	}
+}
+
+// Resolution must not touch the consumer's option variables. Deriving flag arity
+// by binding the real options wrote every declared default through the caller's
+// pointers, so merely resolving arguments — or rendering help, which resolves
+// each example line — reset a running program's state.
+func TestResolutionDoesNotBindOptions(t *testing.T) {
+	newApp := func(st *leadingState) *App {
+		app := leadingTestApp(st)
+		app.Commands[0].Examples = []Example{{Line: "mail search invoice -n 2"}}
+		return app
+	}
+	live := func(st *leadingState) {
+		st.account, st.number, st.verbose = "USERVALUE", 99, true
+	}
+	assertLive := func(t *testing.T, st *leadingState, what string) {
+		t.Helper()
+		if st.account != "USERVALUE" || st.number != 99 || !st.verbose {
+			t.Errorf("%s overwrote live option values: account=%q number=%d verbose=%v",
+				what, st.account, st.number, st.verbose)
+		}
+	}
+
+	t.Run("resolveCommand", func(t *testing.T) {
+		var st leadingState
+		app := newApp(&st)
+		live(&st)
+		res, err := app.resolveCommand([]string{"-v", "-A", "work", "search"})
+		if err != nil {
+			t.Fatalf("resolveCommand: %v", err)
+		}
+		if strings.Join(res.path, " ") != "search" {
+			t.Errorf("path = %v, want [search]", res.path)
+		}
+		assertLive(t, &st, "resolveCommand")
+	})
+
+	t.Run("RenderCommand", func(t *testing.T) {
+		var st leadingState
+		app := newApp(&st)
+		var sink bytes.Buffer
+		app.Stdout = &sink
+		live(&st)
+		app.RenderCommand(Options{Writer: &sink, Width: 80}, "search")
+		assertLive(t, &st, "RenderCommand")
+	})
+
+	t.Run("completion", func(t *testing.T) {
+		var st leadingState
+		app := newApp(&st)
+		live(&st)
+		TestExecute(app, []string{"__complete", "search", ""}).AssertNoError(t)
+		assertLive(t, &st, "__complete")
+	})
 }

@@ -127,6 +127,7 @@ func String(target *string, flags string, defaultVal string, usage string) Optio
 	*target = defaultVal
 	spec := parseFlagSpec(flags)
 	return Option{
+		arity:       arityValue,
 		Flags:       flags,
 		Description: usage,
 		DefaultText: defaultVal,
@@ -153,6 +154,7 @@ func Int(target *int, flags string, defaultVal int, usage string) Option {
 		defaultText = strconv.Itoa(defaultVal)
 	}
 	return Option{
+		arity:       arityValue,
 		Flags:       flags,
 		Description: usage,
 		DefaultText: defaultText,
@@ -179,6 +181,7 @@ func Bool(target *bool, flags string, defaultVal bool, usage string) Option {
 		defaultText = "true"
 	}
 	return Option{
+		arity:       arityFlag,
 		Flags:       flags,
 		Description: usage,
 		DefaultText: defaultText,
@@ -242,6 +245,7 @@ func BoolToggle(target *bool, flags string, defaultVal bool, usage string) Optio
 	}
 
 	return Option{
+		arity:       arityFlag,
 		Flags:       flags,
 		Description: usage,
 		DefaultText: strconv.FormatBool(defaultVal),
@@ -299,6 +303,7 @@ func Duration(target *time.Duration, flags string, defaultVal time.Duration, usa
 		defaultText = defaultVal.String()
 	}
 	return Option{
+		arity:       arityValue,
 		Flags:       flags,
 		Description: usage,
 		DefaultText: defaultText,
@@ -326,6 +331,7 @@ func StringSlice(target *[]string, flags string, defaultVal []string, usage stri
 		defaultText = strings.Join(defaultVal, ",")
 	}
 	return Option{
+		arity:       arityValue,
 		Flags:       flags,
 		Description: usage,
 		DefaultText: defaultText,
@@ -375,6 +381,7 @@ func Enum(target *string, flags string, allowed []string, defaultVal string, usa
 	*target = defaultVal
 	spec := parseFlagSpec(flags)
 	return Option{
+		arity:       arityValue,
 		Flags:       flags,
 		Description: usage,
 		DefaultText: defaultVal,
@@ -416,6 +423,7 @@ func Enum(target *string, flags string, allowed []string, defaultVal string, usa
 func Var(target pflag.Value, flags string, usage string) Option {
 	spec := parseFlagSpec(flags)
 	return Option{
+		arity:       arityValue,
 		Flags:       flags,
 		Description: usage,
 		Binder: func(fs *pflag.FlagSet) error {

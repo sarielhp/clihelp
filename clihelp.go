@@ -21,7 +21,22 @@ type Option struct {
 	Required    bool                             // Required flag constraint
 	Complete    func(toComplete string) []string // Dynamic shell tab-completion callback
 	Binder      func(fs *pflag.FlagSet) error    // Registers the flag on fs; returns an error on duplicate/help-flag conflicts
+
+	// arity records whether this option consumes the argument that follows it.
+	// The typed constructors set it; an Option assembled by hand leaves it
+	// unknown and command resolution infers arity from the flag spec instead.
+	arity flagArity
 }
+
+// flagArity is what command resolution needs to know about an option before the
+// flags are bound: whether the token after it is its value or the next argument.
+type flagArity uint8
+
+const (
+	arityUnknown flagArity = iota // infer from the flag spec
+	arityFlag                     // takes no value
+	arityValue                    // consumes the following argument
+)
 
 // Required marks an Option as required.
 func Required(opt Option) Option {

@@ -53,9 +53,19 @@ func (h *helpFlags) requested() bool {
 	return h.concise || h.extended
 }
 
+// helpFlagNames lists the built-in help flags as they are written on the command
+// line. bindHelpFlags registers exactly these, and leadingFlagArity recognizes
+// exactly these, so the two stay in step.
+func (a *App) helpFlagNames() []string {
+	names := []string{"-h", "--help-concise", "--help"}
+	if a.ExtendedHelpFlag {
+		names = append(names, "-H")
+	}
+	return names
+}
+
 // bindHelpFlags registers the built-in help flags on fs and returns the targets
-// they write to. Both the parsing flag set and the resolution probe built by
-// leadingFlagSet use it, so the two always agree on which help flags exist.
+// they write to.
 func (a *App) bindHelpFlags(fs *pflag.FlagSet, cmdName string) *helpFlags {
 	var h helpFlags
 	fs.BoolVarP(&h.concise, "help-concise", "h", false, "Concise help for "+cmdName)
@@ -504,26 +514,59 @@ type resolution struct {
 	helpPath  []string   // for a help invocation, what help was asked for
 }
 
-// leadingFlagSet builds a throwaway flag set holding every flag that may legally
-// appear before the next command name: the app's persistent and global flags,
-// the built-in help flags, and the persistent flags of the commands resolved so
-// far. A command's own (non-persistent) options are deliberately left out, since
-// they cannot precede the command they belong to.
-//
-// The set is never parsed. resolveCommandPath consults it only to learn whether
-// a flag consumes the argument that follows it, which pflag records as
-// NoOptDefVal. Binding errors are ignored here because setupFlagSet reports the
-// same errors before anything is parsed.
-func (a *App) leadingFlagSet(resolved []*Command) *pflag.FlagSet {
-	fs := pflag.NewFlagSet(appName(a), pflag.ContinueOnError)
-	fs.SetOutput(io.Discard)
-	a.bindHelpFlags(fs, appName(a))
-	_ = bindAndMark(fs, a.PersistentOptions)
-	_ = bindAndMark(fs, a.GlobalFlags)
-	for _, cmd := range resolved {
-		_ = bindAndMark(fs, cmd.PersistentOptions)
+// flagTakesValue reports whether opt consumes the argument after it. The typed
+// constructors record this; for an Option assembled by hand the flag spec is the
+// only evidence, and a placeholder is what distinguishes "--out <file>" from a
+// switch.
+func flagTakesValue(opt Option, spec flagSpec) bool {
+	switch opt.arity {
+	case arityValue:
+		return true
+	case arityFlag:
+		return false
 	}
-	return fs
+	return spec.placeholder != "" && !spec.isToggle
+}
+
+// addFlagArity records every name under which opts can be written, mirroring the
+// names bindHelper registers.
+func addFlagArity(arity map[string]bool, opts []Option) {
+	for _, opt := range opts {
+		spec := parseFlagSpec(opt.Flags)
+		takesValue := flagTakesValue(opt, spec)
+		for _, long := range spec.longNames {
+			arity["--"+long] = takesValue
+		}
+		for _, short := range spec.shortNames {
+			arity["-"+short] = takesValue
+		}
+		if len(spec.longNames) == 0 && len(spec.shortNames) > 0 {
+			arity["--flag-"+spec.shortNames[0]] = takesValue
+		}
+	}
+}
+
+// leadingFlagArity maps every flag that may legally appear before the next
+// command name to whether it consumes the argument after it: the app's
+// persistent and global flags, the built-in help flags, and the persistent flags
+// of the commands resolved so far. A command's own options are deliberately
+// absent, since they cannot precede the command they belong to.
+//
+// The map is derived from the flag specs rather than from a bound pflag.FlagSet,
+// because binding writes each declared default through the consumer's own
+// pointer: a probe built by binding reset a running program's own variables
+// every time its arguments were resolved.
+func (a *App) leadingFlagArity(resolved []*Command) map[string]bool {
+	arity := make(map[string]bool)
+	for _, name := range a.helpFlagNames() {
+		arity[name] = false
+	}
+	addFlagArity(arity, a.PersistentOptions)
+	addFlagArity(arity, a.GlobalFlags)
+	for _, cmd := range resolved {
+		addFlagArity(arity, cmd.PersistentOptions)
+	}
+	return arity
 }
 
 // scanLeadingFlag reports how many arguments the flag at args[0] occupies and
@@ -532,23 +575,24 @@ func (a *App) leadingFlagSet(resolved []*Command) *pflag.FlagSet {
 // and "-f value" take two arguments, while "--flag=value", "-fvalue", "-f=value"
 // and flags that take no value take one. A flag whose value is missing entirely
 // is reported as one argument, leaving pflag to produce the error.
-func scanLeadingFlag(fs *pflag.FlagSet, args []string) (int, bool) {
+func scanLeadingFlag(arity map[string]bool, args []string) (int, bool) {
 	arg := args[0]
 	if len(arg) < 2 {
 		return 0, false // a bare "-" is a positional argument
 	}
 	if !strings.HasPrefix(arg, "--") {
-		return scanShorthandCluster(fs, args)
+		return scanShorthandCluster(arity, args)
 	}
 	name := arg[2:]
 	if eq := strings.IndexByte(name, '='); eq >= 0 {
-		return 1, fs.Lookup(name[:eq]) != nil
+		_, known := arity["--"+name[:eq]]
+		return 1, known
 	}
-	f := fs.Lookup(name) // an empty name, from "--", never resolves
-	if f == nil {
+	takesValue, known := arity["--"+name] // an empty name, from "--", is never known
+	if !known {
 		return 0, false
 	}
-	if f.NoOptDefVal != "" || len(args) == 1 {
+	if !takesValue || len(args) == 1 {
 		return 1, true
 	}
 	return 2, true
@@ -557,16 +601,16 @@ func scanLeadingFlag(fs *pflag.FlagSet, args []string) (int, bool) {
 // scanShorthandCluster scans a run of shorthand flags such as -v, -vAx or -A=x.
 // Valueless flags are consumed one letter at a time; the first flag that takes a
 // value ends the cluster, taking the rest of the token or the next argument.
-func scanShorthandCluster(fs *pflag.FlagSet, args []string) (int, bool) {
+func scanShorthandCluster(arity map[string]bool, args []string) (int, bool) {
 	for shorts := args[0][1:]; shorts != ""; shorts = shorts[1:] {
-		f := fs.ShorthandLookup(shorts[:1])
-		if f == nil {
+		takesValue, known := arity["-"+shorts[:1]]
+		if !known {
 			return 0, false
 		}
 		if len(shorts) > 2 && shorts[1] == '=' {
 			return 1, true // -f=value
 		}
-		if f.NoOptDefVal != "" {
+		if !takesValue {
 			continue // takes no value; the cluster may go on
 		}
 		if len(shorts) > 1 || len(args) == 1 {
@@ -600,7 +644,7 @@ func (a *App) resolveCommandPath(args []string, currentCommands []Command) (reso
 	var res resolution
 	var leading []string
 	var resolved []*Command
-	probe := a.leadingFlagSet(nil)
+	probe := a.leadingFlagArity(nil)
 	idx := 0
 
 	for idx < len(args) {
@@ -645,7 +689,7 @@ func (a *App) resolveCommandPath(args []string, currentCommands []Command) (reso
 		res.indices = append(res.indices, idx)
 		currentCommands = matched.Subcommands
 		resolved = append(resolved, matched)
-		probe = a.leadingFlagSet(resolved)
+		probe = a.leadingFlagArity(resolved)
 		idx++
 	}
 
