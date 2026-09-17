@@ -116,3 +116,52 @@ done
 		t.Errorf("expected the legitimate candidate in the reply, got: %s", out)
 	}
 }
+
+// zsh's _call_program ends in `eval $clocale $prefix "$argv[2,-1]"`, so anything
+// spliced into its arguments is re-parsed as shell code. $words holds the typed
+// command line verbatim, so an unquoted splice executes whatever the user has on
+// the line the moment they press Tab. This is the 2026-09-17 audit's E1 in the
+// shell that fix did not cover.
+func TestZshCompletionDoesNotEvaluateTheTypedLine(t *testing.T) {
+	zshPath, err := exec.LookPath("zsh")
+	if err != nil {
+		t.Skip("zsh not found, skipping")
+	}
+
+	dir := t.TempDir()
+	marker := filepath.Join(dir, "EXECUTED")
+
+	var script strings.Builder
+	if err := GenZshCompletion(&App{Name: "pd"}, &script); err != nil {
+		t.Fatal(err)
+	}
+	scriptPath := filepath.Join(dir, "_pd")
+	if err := os.WriteFile(scriptPath, []byte(script.String()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// A stand-in for the program: the completion protocol is not what is under
+	// test here, only whether the typed line reaches an eval.
+	stub := "#!/bin/sh\nprintf 'build\\tBuild\\n'\n"
+	if err := os.WriteFile(filepath.Join(dir, "pd"), []byte(stub), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	driver := fmt.Sprintf(`
+zmodload zsh/zpty
+zpty -b z zsh -f -i
+zpty -w z 'PATH=%[1]s:$PATH; autoload -Uz compinit; compinit -u -d %[1]s/zcompdump'
+zpty -w z 'bindkey "^I" complete-word'
+zpty -w z 'source %[2]s'
+zpty -n -w z 'pd $(touch %[3]s) '$'\t'
+sleep 2
+zpty -d z
+`, dir, scriptPath, marker)
+
+	cmd := exec.Command(zshPath, "-f", "-c", driver)
+	cmd.Env = append(os.Environ(), "HOME="+dir)
+	_ = cmd.Run() // the driver's own exit status is not the assertion
+
+	if _, err := os.Stat(marker); err == nil {
+		t.Errorf("pressing Tab executed a command substitution from the typed line")
+	}
+}

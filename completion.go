@@ -19,7 +19,7 @@ var SupportedShells = []string{"bash", "zsh", "fish"}
 // completionScriptVersion marks the generated scripts. It is raised whenever a
 // template changes in a way that already-installed scripts must pick up, so that
 // the auto-install path rewrites them instead of leaving an old script in place.
-const completionScriptVersion = 2
+const completionScriptVersion = 3
 
 // sanitizeCompletionField makes a string safe to put in one field of a
 // completion record. The protocol is line-oriented with a tab between candidate
@@ -317,7 +317,11 @@ _%[2]s() {
     local binary_cmd="${words[1]:-%[1]s}"
     local output
     if declare -f _call_program >/dev/null 2>&1; then
-        output=(${(f)"$(_call_program %[1]s ${binary_cmd} __complete "${words_to_pass[@]}")"})
+        # ${(q)...} is essential: _call_program ends in "eval ... $argv[2,-1]",
+        # so anything spliced in unquoted is re-parsed as shell code, and $words
+        # holds the command line the user has typed verbatim. Without the quoting
+        # flag, a line containing $(...) executes when Tab is pressed.
+        output=(${(f)"$(_call_program %[1]s ${(q)binary_cmd} __complete ${(q)words_to_pass[@]})"})
     else
         output=(${(f)"$(${binary_cmd} __complete "${words_to_pass[@]}")"})
     fi
