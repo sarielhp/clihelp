@@ -150,7 +150,17 @@ myapp __clihelp — shell integration for this program, built with clihelp 0.3.1
   __clihelp wrapper <name> [<args>...]     print a wrapper script for this program, with arguments
 ```
 
-A verb given `--help` or `-h` prints its own usage rather than treating the flag as an argument.
+A verb given `--help` or `-h` prints its own usage rather than treating the flag as an argument, and `-H` — clihelp's extended-help flag — adds the reserved argument names and the exact paths `install` would write on this machine:
+
+```console
+$ myapp __clihelp -H
+...
+What 'install' would write here, for bash:
+  generated:  ~/.config/myapp/shell/bash
+  sourced by: a marked block in ~/.bashrc
+Nothing runs at shell startup: the line is a file test and a source, and an
+upgrade rewrites the generated file rather than your configuration.
+```
 
 **Why this exists alongside the `completion` command.** `ExecuteContext` serves `__complete` before it ever looks at the command tree, so *every* clihelp program can complete — but only a program whose author added `clihelp.CompletionCommand()` could be *asked* to install that completion. `__clihelp` closes the gap, which matters most for the people who are not the author: a dotfiles script, or a packager, can set up any clihelp program uniformly:
 

@@ -5,7 +5,8 @@ All notable changes to `clihelp` will be documented in this file.
 ## [Unreleased]
 
 ### Fixed
-- **`__clihelp` Took `--help` for an Argument** - `__clihelp --help`, `-h` and `help` were unknown verbs, and a verb's own `--help` was read as its first argument: `__clihelp wrapper --help` generated a wrapper script named `--help`, and `__clihelp install --help` tried to install for a shell of that name. All three spellings now print the verb list, and a verb given one prints its own usage.
+- **`__clihelp -H`** - `-H` is clihelp's extended-help flag everywhere else, so it asks `__clihelp` for more as well: the reserved argument names, and the exact paths `install` would write on this machine. A hidden entry point cannot answer those through the ordinary help system. It is accepted whatever `App.ExtendedHelpFlag` says, since that field governs the application's flags and this is the library's own surface.
+- **`__clihelp` Took `--help` for an Argument** - `__clihelp --help`, `-h` and `help` were unknown verbs, and a verb's own `--help` was read as its first argument: `__clihelp wrapper --help` generated a wrapper script named `--help`, and `__clihelp install --help` tried to install for a shell of that name. All four spellings (`-h`, `--help`, `help`, `-H`) now print the verb list, and a verb given one prints its own usage.
 
 ## [0.3.12] - 2026-09-17
 

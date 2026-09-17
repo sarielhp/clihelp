@@ -182,7 +182,7 @@ func TestClihelpInstallWithoutKeys(t *testing.T) {
 // "__clihelp wrapper --help" used to generate a wrapper script named "--help",
 // and "__clihelp install --help" tried to install for a shell of that name.
 func TestClihelpAcceptsTheUsualHelpSpellings(t *testing.T) {
-	for _, arg := range []string{"--help", "-h", "help"} {
+	for _, arg := range []string{"--help", "-h", "help", "-H"} {
 		t.Run("bare "+arg, func(t *testing.T) {
 			res := runProto(t, bareApp(), "__clihelp", arg)
 			res.AssertNoError(t)
@@ -209,4 +209,43 @@ func TestClihelpAcceptsTheUsualHelpSpellings(t *testing.T) {
 	t.Run("help for an unknown verb still errors", func(t *testing.T) {
 		runProto(t, bareApp(), "__clihelp", "nonesuch", "--help").AssertErrorContains(t, "nonesuch")
 	})
+}
+
+// -H is clihelp's extended-help flag everywhere else, so it asks __clihelp for
+// more too: what install would write on this machine, and what is reserved.
+func TestClihelpExtendedHelp(t *testing.T) {
+	home := sandboxHome(t)
+	t.Setenv("SHELL", "/bin/bash")
+
+	concise := runProto(t, bareApp(), "__clihelp", "-h")
+	concise.AssertNoError(t)
+	extended := runProto(t, bareApp(), "__clihelp", "-H")
+	extended.AssertNoError(t)
+
+	if len(extended.Stdout) <= len(concise.Stdout) {
+		t.Errorf("-H should say more than -h")
+	}
+	concise.AssertStdoutContains(t, "-H")
+	for _, want := range []string{
+		"__complete", "__explain", "__clihelp",
+		filepath.Join(home, ".config", "bare", "shell", "bash"),
+		filepath.Join(home, ".bashrc"),
+		"Nothing runs at shell startup",
+	} {
+		extended.AssertStdoutContains(t, want)
+	}
+
+	// Nothing may be written by asking.
+	if _, err := os.Stat(filepath.Join(home, ".bashrc")); !os.IsNotExist(err) {
+		t.Errorf("asking for help wrote a startup file")
+	}
+}
+
+func TestClihelpExtendedHelpWithoutAShell(t *testing.T) {
+	sandboxHome(t)
+	t.Setenv("SHELL", "")
+
+	res := runProto(t, bareApp(), "__clihelp", "-H")
+	res.AssertNoError(t)
+	res.AssertStdoutContains(t, "no shell detected")
 }

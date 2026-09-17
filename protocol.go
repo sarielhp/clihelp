@@ -55,13 +55,20 @@ func clihelpVerbs() []clihelpVerb {
 // isHelpRequest recognizes the spellings anyone reaches for first. Without it,
 // "__clihelp --help" was an unknown verb and "__clihelp wrapper --help"
 // cheerfully generated a wrapper script named "--help".
+//
+// "-H" is clihelp's own extended-help flag and asks for more, as it does
+// everywhere else in the library. It is accepted whatever App.ExtendedHelpFlag
+// says, because that field governs the application's flags, and __clihelp is the
+// library's surface rather than the application's.
 func isHelpRequest(arg string) bool {
 	switch arg {
-	case "-h", "--help", "help":
+	case "-h", "--help", "help", "-H":
 		return true
 	}
 	return false
 }
+
+func isExtendedHelpRequest(arg string) bool { return arg == "-H" }
 
 // handleClihelpCommand serves "<app> __clihelp <verb> [args...]".
 func (a *App) handleClihelpCommand(args []string) error {
@@ -70,7 +77,7 @@ func (a *App) handleClihelpCommand(args []string) error {
 		verb, rest = args[0], args[1:]
 	}
 	if verb == "" || isHelpRequest(verb) {
-		a.printClihelpVerbs(a.stdout())
+		a.printClihelpVerbs(a.stdout(), isExtendedHelpRequest(verb))
 		return nil
 	}
 	if len(rest) > 0 && isHelpRequest(rest[0]) {
@@ -118,7 +125,7 @@ func firstArg(args []string) string {
 	return ""
 }
 
-func (a *App) printClihelpVerbs(w io.Writer) {
+func (a *App) printClihelpVerbs(w io.Writer, extended bool) {
 	fmt.Fprintf(w, "%s %s — shell integration for this program, built with clihelp %s\n\n", appName(a), protoClihelp, Version)
 	width := 0
 	for _, v := range clihelpVerbs() {
@@ -130,6 +137,41 @@ func (a *App) printClihelpVerbs(w io.Writer) {
 		fmt.Fprintf(w, "  %s %-*s  %s\n", protoClihelp, width, strings.TrimSpace(v.name+" "+v.args), v.about)
 	}
 	fmt.Fprintf(w, "\nSupported shells: %s\n", strings.Join(SupportedShells, ", "))
+	if !extended {
+		fmt.Fprintf(w, "Run '%s %s -H' for what install writes and which names are reserved.\n", appName(a), protoClihelp)
+		return
+	}
+	a.printClihelpDetail(w)
+}
+
+// printClihelpDetail answers the two questions a hidden command cannot answer
+// through the ordinary help system: what it would write on this machine, and
+// what it has reserved.
+func (a *App) printClihelpDetail(w io.Writer) {
+	fmt.Fprintf(w, "\nReserved argument names — an application must not declare commands with them:\n")
+	fmt.Fprintf(w, "  %-12s the completion protocol, called by the generated shell scripts\n", protoComplete)
+	fmt.Fprintf(w, "  %-12s the Alt-H protocol, called by the generated key bindings\n", protoExplain)
+	fmt.Fprintf(w, "  %-12s these verbs\n", protoClihelp)
+
+	shell := detectShell()
+	fmt.Fprintf(w, "\nWhat 'install' would write here")
+	if !isSupportedShell(shell) {
+		fmt.Fprintf(w, " (no shell detected; name one on the command line):\n")
+		return
+	}
+	fmt.Fprintf(w, ", for %s:\n", shell)
+	if path, err := IntegrationPath(a, shell); err == nil {
+		fmt.Fprintf(w, "  generated:  %s\n", path)
+	}
+	if path, owned, err := startupFile(a, shell); err == nil {
+		what := "a marked block in"
+		if owned {
+			what = "a drop-in file:"
+		}
+		fmt.Fprintf(w, "  sourced by: %s %s\n", what, path)
+	}
+	fmt.Fprintf(w, "Nothing runs at shell startup: the line is a file test and a source, and an\n")
+	fmt.Fprintf(w, "upgrade rewrites the generated file rather than your configuration.\n")
 }
 
 // clihelpInstall writes the generated file's path to stdout, alone, so that a
