@@ -200,13 +200,16 @@ func (a *App) runLifecycle(ctx context.Context, targetCmd *Command, path []strin
 			return err
 		}
 	} else {
+		// A command that only groups subcommands prints its help instead of
+		// running, but PostRun and AfterRun still owe their BeforeRun and PreRun
+		// whatever those acquired, so this path falls through rather than
+		// returning here.
 		o := Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager}
 		if len(path) == 0 {
 			a.RenderGlobal(o)
 		} else {
 			a.RenderCommand(o, path...)
 		}
-		return nil
 	}
 
 	if targetCmd != nil && targetCmd.PostRun != nil {
@@ -320,6 +323,9 @@ func filterCommandsByPrefix(cmds []Command, prefix string) []*Command {
 }
 
 func isHelpToken(arg string, cmds []Command, abbrev bool) bool {
+	if arg == "" {
+		return false // an empty argument is a prefix of everything, and names nothing
+	}
 	cmd, _ := findCommand(cmds, arg)
 	if cmd != nil {
 		return false
@@ -347,7 +353,7 @@ func (a *App) lookupCommandPath(path []string) (*Command, []string) {
 		if cmd == nil && idx == 0 && len(a.Shortcuts) > 0 {
 			cmd, _ = findCommand(a.Shortcuts, p)
 		}
-		if cmd == nil && a.AbbrevCommands {
+		if cmd == nil && a.AbbrevCommands && p != "" {
 			matches := filterCommandsByPrefix(currentSlice, p)
 			if len(matches) == 1 {
 				cmd = matches[0]
@@ -425,6 +431,9 @@ func (a *App) handleHelpInvocation(helpPath []string) (bool, error) {
 }
 
 func matchAbbrevCommand(currentCommands []Command, arg string) (*Command, error) {
+	if arg == "" {
+		return nil, nil // every name starts with it, so it abbreviates nothing
+	}
 	matches := filterCommandsByPrefix(currentCommands, arg)
 	if len(matches) == 1 {
 		return matches[0], nil
@@ -634,6 +643,23 @@ func (a *App) matchCommand(cmds []Command, arg string) (*Command, error) {
 	return nil, nil
 }
 
+// matchCommandOrShortcut matches arg against the commands available at this
+// depth and, at the root, against App.Shortcuts as well. Shortcuts are top-level
+// commands shown under their own heading; help lookup has always consulted them,
+// while resolution did not, so running one reported "unknown command".
+func (a *App) matchCommandOrShortcut(cmds []Command, arg string, atRoot bool) (*Command, error) {
+	matched, err := a.matchCommand(cmds, arg)
+	if matched != nil || !atRoot || len(a.Shortcuts) == 0 {
+		return matched, err
+	}
+	if shortcut, shortcutErr := a.matchCommand(a.Shortcuts, arg); shortcut != nil {
+		return shortcut, nil
+	} else if err == nil {
+		err = shortcutErr
+	}
+	return nil, err
+}
+
 // resolveCommandPath resolves a path of command names, using prefix matching when
 // AbbrevCommands is enabled and exact match fails. Global and persistent flags
 // may be interleaved with the command names: a recognized flag (and its value)
@@ -670,7 +696,7 @@ func (a *App) resolveCommandPath(args []string, currentCommands []Command) (reso
 			continue
 		}
 
-		matched, err := a.matchCommand(currentCommands, arg)
+		matched, err := a.matchCommandOrShortcut(currentCommands, arg, res.cmd == nil)
 		if err != nil {
 			return resolution{}, err
 		}
@@ -706,6 +732,9 @@ func suggestCommand(typed string, available []Command) string {
 	bestDist := 3
 	bestName := ""
 	for _, cmd := range available {
+		if cmd.Hidden {
+			continue // a hidden command is not one to suggest
+		}
 		d := levenshtein(typed, cmd.Name)
 		if d < bestDist {
 			bestDist = d

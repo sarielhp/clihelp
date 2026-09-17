@@ -220,8 +220,12 @@ func (a *App) LookupCommand(path ...string) *Command {
 	}
 	currentSlice := a.Commands
 	var found *Command
-	for _, p := range path {
+	for i, p := range path {
 		found, _ = findCommand(currentSlice, p)
+		if found == nil && i == 0 {
+			// Shortcuts are top-level commands listed under their own heading.
+			found, _ = findCommand(a.Shortcuts, p)
+		}
 		if found == nil {
 			return nil
 		}
