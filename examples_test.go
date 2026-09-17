@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/fatih/color"
 )
@@ -559,5 +560,92 @@ func TestValidateExampleAppliesRequiredFlags(t *testing.T) {
 
 	if err := newApp("app deploy --format json").ValidateAllExamples(); err != nil {
 		t.Errorf("an example supplying the required flag should validate: %v", err)
+	}
+}
+
+// TestColorizerCommentsStartAtTokenBoundaries covers the 2026-09-17 review
+// finding that "#" or "//" anywhere inside a token started a comment in the
+// colorizer — but not in the tokenizer — so the rest of a URL line was greyed
+// out as if the author had commented it.
+func TestColorizerCommentsStartAtTokenBoundaries(t *testing.T) {
+	had := color.NoColor
+	color.NoColor = false
+	defer func() { color.NoColor = had }()
+
+	th := defaultTheme()
+	for _, tt := range []struct {
+		name      string
+		line      string
+		comment   string
+		uncolored string
+	}{
+		{"url is not a comment", "myapp fetch http://host/path", "", "http://host/path"},
+		{"fragment is not a comment", "myapp open https://host/p#frag", "", "https://host/p#frag"},
+		{"trailing comment", "myapp run # do the thing", "# do the thing", ""},
+		{"comment after a url", "myapp fetch http://host/p # note", "# note", "http://host/p"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			out := ColorizeExampleLine(tt.line, th)
+			if tt.comment != "" && !strings.Contains(out, sprintColor(th.ExampleComment, tt.comment)) {
+				t.Errorf("%q was not colored as a comment in:\n%q", tt.comment, out)
+			}
+			if tt.uncolored != "" && strings.Contains(out, sprintColor(th.ExampleComment, tt.uncolored)) {
+				t.Errorf("%q was colored as a comment in:\n%q", tt.uncolored, out)
+			}
+			if strip(out) != tt.line {
+				t.Errorf("colorizing changed the text: %q, want %q", strip(out), tt.line)
+			}
+		})
+	}
+}
+
+func TestExampleTokenizerHandlesOperatorsAndRedirections(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		line string
+		want []string
+	}{
+		{"redirection", "app logs > out.txt", []string{"app", "logs"}},
+		{"appending redirection", "app logs >>out.txt", []string{"app", "logs"}},
+		{"file descriptor redirection", "app logs 2>/dev/null", []string{"app", "logs"}},
+		{"unspaced pipe", "app logs|grep x", []string{"app", "logs"}},
+		{"spaced pipe", "app logs | grep x", []string{"app", "logs"}},
+		{"and-and", "app build && app test", []string{"app", "build"}},
+		{"quoted operator is an argument", `app echo '>' done`, []string{"app", "echo", ">", "done"}},
+		{"plain line", "app run --flag value", []string{"app", "run", "--flag", "value"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := SplitExampleCommandLine(tt.line)
+			if err != nil {
+				t.Fatalf("SplitExampleCommandLine(%q): %v", tt.line, err)
+			}
+			if strings.Join(got, "|") != strings.Join(tt.want, "|") {
+				t.Errorf("tokens = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestMultiByteArgumentsSurviveTheColorizer(t *testing.T) {
+	// A byte-wise whitespace test read the 0xA0 continuation byte of "à" as a
+	// non-breaking space and split the token mid-rune.
+	had := color.NoColor
+	color.NoColor = false
+	defer func() { color.NoColor = had }()
+
+	for _, line := range []string{
+		"myapp run --name Fràncais",
+		"myapp run --tag naïve --tag café",
+		"myapp echo 日本語",
+	} {
+		out := ColorizeExampleLine(line, defaultTheme())
+		// A color run that starts or ends inside a rune leaves an escape between
+		// that rune's bytes, which is no longer valid UTF-8.
+		if !utf8.ValidString(out) {
+			t.Errorf("colorizing %q emitted invalid UTF-8", line)
+		}
+		if strip(out) != line {
+			t.Errorf("colorizing changed %q to %q", line, strip(out))
+		}
 	}
 }

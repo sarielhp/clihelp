@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"unicode"
 
 	"github.com/fatih/color"
 	"github.com/spf13/pflag"
@@ -17,6 +16,29 @@ func sprintColor(c *color.Color, text string) string {
 		return text
 	}
 	return c.Sprint(text)
+}
+
+// isSpaceByte reports whether b is shell whitespace. The scanners here walk
+// bytes, and unicode.IsSpace(rune(b)) read the 0xA0 continuation byte of a rune
+// such as "à" as a non-breaking space, splitting the token — and the color run
+// around it — in the middle of a character.
+func isSpaceByte(b byte) bool {
+	switch b {
+	case ' ', '\t', '\n', '\r', '\v', '\f':
+		return true
+	}
+	return false
+}
+
+// startsComment reports whether a comment begins at s[i]. A "#" or "//" only
+// starts one at the beginning of a token: inside "http://host/p#frag" they are
+// part of the argument, and treating them as a comment greyed out the rest of
+// the line.
+func startsComment(s string, i, tokenStart int) bool {
+	if i > tokenStart && i > 0 && !isSpaceByte(s[i-1]) {
+		return false
+	}
+	return s[i] == '#' || strings.HasPrefix(s[i:], "//")
 }
 
 // ColorizeExampleLine applies ANSI syntax colors to a command-line example string.
@@ -60,14 +82,14 @@ func ColorizeExampleLineWithApp(app *App, cmd *Command, line string, th Theme) s
 	i := 0
 	for i < len(trimmed) {
 		// Whitespace
-		if unicode.IsSpace(rune(trimmed[i])) {
+		if isSpaceByte(trimmed[i]) {
 			b.WriteByte(trimmed[i])
 			i++
 			continue
 		}
 
 		// Trailing inline comment (# ... or // ...)
-		if trimmed[i] == '#' || (i+1 < len(trimmed) && trimmed[i:i+2] == "//") {
+		if startsComment(trimmed, i, i) {
 			comment := trimmed[i:]
 			b.WriteString(sprintColor(th.ExampleComment, comment))
 			break
@@ -95,7 +117,7 @@ func ColorizeExampleLineWithApp(app *App, cmd *Command, line string, th Theme) s
 			} else if ch == inQuote && inQuote != 0 {
 				inQuote = 0
 			} else if inQuote == 0 {
-				if ch == '#' || (i+1 < len(trimmed) && trimmed[i:i+2] == "//") {
+				if startsComment(trimmed, i, segStart) {
 					break
 				}
 				if ch == '|' || ch == '&' || ch == ';' || ch == '>' || ch == '<' {
@@ -122,7 +144,7 @@ func extractSegmentTokens(seg string) []segToken {
 	var tokens []segToken
 	i := 0
 	for i < len(seg) {
-		if unicode.IsSpace(rune(seg[i])) {
+		if isSpaceByte(seg[i]) {
 			i++
 			continue
 		}
@@ -134,7 +156,7 @@ func extractSegmentTokens(seg string) []segToken {
 				inQuote = ch
 			} else if ch == inQuote && inQuote != 0 {
 				inQuote = 0
-			} else if inQuote == 0 && unicode.IsSpace(rune(ch)) {
+			} else if inQuote == 0 && isSpaceByte(ch) {
 				break
 			}
 			i++
@@ -288,10 +310,8 @@ func cleanExampleCommandLine(line string) string {
 	if strings.HasPrefix(trimmed, "$ ") || strings.HasPrefix(trimmed, "> ") || strings.HasPrefix(trimmed, "% ") {
 		trimmed = strings.TrimSpace(trimmed[2:])
 	}
-	for _, sep := range []string{" | ", " || ", " && ", " ; ", "\n"} {
-		if idx := strings.Index(trimmed, sep); idx != -1 {
-			trimmed = strings.TrimSpace(trimmed[:idx])
-		}
+	if idx := strings.IndexByte(trimmed, '\n'); idx != -1 {
+		trimmed = strings.TrimSpace(trimmed[:idx])
 	}
 	return trimmed
 }
@@ -311,6 +331,31 @@ func (s *exampleTokenState) pushToken() {
 		s.cur.Reset()
 		s.tokenStarted = false
 	}
+}
+
+// dropDescriptorPrefix discards the token in progress when it is the file
+// descriptor of the redirection that follows it, as the "2" of "2>/dev/null".
+func (s *exampleTokenState) dropDescriptorPrefix() {
+	if !s.tokenStarted {
+		return
+	}
+	for _, r := range s.cur.String() {
+		if r < '0' || r > '9' {
+			return
+		}
+	}
+	s.cur.Reset()
+	s.tokenStarted = false
+}
+
+// isShellOperatorByte reports whether b begins a shell operator: a pipe, a
+// redirection, or a list separator.
+func isShellOperatorByte(b byte) bool {
+	switch b {
+	case '|', '&', ';', '<', '>':
+		return true
+	}
+	return false
 }
 
 func tokenizeCommandLine(trimmed, line string) ([]string, error) {
@@ -351,7 +396,16 @@ func tokenizeCommandLine(trimmed, line string) ([]string, error) {
 			continue
 		}
 
-		if ch == '#' && (!s.tokenStarted || unicode.IsSpace(rune(trimmed[i-1]))) {
+		if ch == '#' && (!s.tokenStarted || isSpaceByte(trimmed[i-1])) {
+			break
+		}
+
+		if isShellOperatorByte(ch) {
+			// A pipe, a redirection or a list operator ends the command being
+			// validated. Unquoted, it is the shell's, not the program's — and
+			// "app logs > out.txt" used to be validated with "> out.txt" as two
+			// positional arguments.
+			s.dropDescriptorPrefix()
 			break
 		}
 
