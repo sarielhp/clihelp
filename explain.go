@@ -223,7 +223,10 @@ if [ "${_clihelp_dispatcher_version:-0}" -lt {{dispatcher}} ]; then
     }
     bind -x '"\eh": _clihelp_explain' 2>/dev/null
 fi
-_clihelp_apps="${_clihelp_apps:-} {{app}} "
+case " ${_clihelp_apps:-} " in
+    *" {{app}} "*) ;;
+    *) _clihelp_apps="${_clihelp_apps:-} {{app}} " ;;
+esac
 `
 
 const zshKeysTemplate = `# clihelp key bindings for {{app}}
@@ -254,7 +257,9 @@ if [[ ${_clihelp_dispatcher_version:-0} -lt {{dispatcher}} ]]; then
     zle -N _clihelp_explain
     bindkey '^[h' _clihelp_explain
 fi
-typeset -g _clihelp_apps="${_clihelp_apps:-} {{app}} "
+if [[ " ${_clihelp_apps:-} " != *" {{app}} "* ]]; then
+    typeset -g _clihelp_apps="${_clihelp_apps:-} {{app}} "
+fi
 `
 
 const fishKeysTemplate = `# clihelp key bindings for {{app}}
