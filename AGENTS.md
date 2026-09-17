@@ -157,7 +157,8 @@ Enforce sizing via `tools/audit_lines.rb` (`make audit`).
 | `render.go` | Terminal help rendering for global app, individual commands, and grouped commands |
 | `format.go` | Text layout, word-wrapping, hanging list indentation, ANSI stripping, and column indentation utilities |
 | `format_test.go` | Unit tests for word-wrapping, list hanging indents, visual string measurement, and column indent |
-| `execute.go` | Command lookup, flag parsing, command execution dispatch, alias handling, and error formatting |
+| `execute.go` | Flag-set construction, flag validation, execution dispatch, and the run lifecycle |
+| `resolve.go` | Command matching and resolution, leading-flag arity scanning, help-token and help-topic routing, and command suggestions |
 | `execute_test.go` | Unit tests for command execution, tiered help (`-h` vs `--help` / `-H`), and lifecycle hooks |
 | `options.go` | Option builder functions (`Bool`, `String`, `Int`, `Duration`, `Enum`, `StringSlice`) and flag binding |
 | `args.go` | Positional argument validators (`ExactArgs`, `RangeArgs`, `MinimumNArgs`, `NoArgs`) |

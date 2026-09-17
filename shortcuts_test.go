@@ -143,3 +143,39 @@ func TestCategoryCommandCompletesTheLifecycle(t *testing.T) {
 		t.Errorf("lifecycle events = %v, want before,pre,post,after", events)
 	}
 }
+
+func TestUnknownHelpTopicNamesTheWholePath(t *testing.T) {
+	app := &App{
+		Name: "app",
+		Commands: []Command{{
+			Name:        "db",
+			Description: "Database",
+			Subcommands: []Command{{Name: "migrate", Description: "Migrate", Run: func(*Context) error { return nil }}},
+		}},
+	}
+	res := TestExecute(app, []string{"help", "db", "nonesuch"})
+	if res.Error == nil {
+		t.Fatalf("expected an unknown-help-topic error")
+	}
+	if !strings.Contains(res.Error.Error(), "db nonesuch") {
+		t.Errorf("error = %v, want it to name the whole path", res.Error)
+	}
+}
+
+func TestFailingExampleKeepsItsCommandHighlighted(t *testing.T) {
+	app := &App{
+		Name: "app",
+		Commands: []Command{{
+			Name:        "db",
+			Description: "Database",
+			Subcommands: []Command{{Name: "migrate", Description: "Migrate", Run: func(*Context) error { return nil }}},
+		}},
+	}
+	res, err := app.resolveCommand([]string{"db", "nonesuch"})
+	if err == nil {
+		t.Fatalf("expected resolution to fail")
+	}
+	if res.cmd == nil || res.cmd.Name != "db" {
+		t.Errorf("a failed resolution discarded the part that did resolve: %+v", res.cmd)
+	}
+}
