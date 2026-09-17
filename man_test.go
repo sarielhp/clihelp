@@ -37,8 +37,8 @@ func TestGenManPageStructure(t *testing.T) {
 
 	for _, want := range []string{
 		".\\\" " + manMarker + ": ",
-		`.TH MANAPP 1 `,
-		`"manapp 2.1.0"`,
+		`.TH "MANAPP" 1 `,
+		`"manapp 2.1.0"`, // the version is a quoted .TH argument
 		".SH NAME\n",
 		".SH SYNOPSIS\n",
 		".SH DESCRIPTION\n",
@@ -267,4 +267,52 @@ func TestManPageRefreshedButNeverCreated(t *testing.T) {
 	if !manPageIsCurrent(path) {
 		t.Errorf("a stale generated page was not refreshed")
 	}
+}
+
+// .TH's arguments were formatted with Go's %q, which emits \" — roff's
+// comment-to-end-of-line. A version string carrying a quote therefore truncated
+// the footer and silently dropped the section argument, and man says nothing, so
+// the live test that asserts empty stderr passed on a corrupted page.
+func TestManPageHeaderSurvivesAHostileVersion(t *testing.T) {
+	manPath, err := exec.LookPath("man")
+	if err != nil {
+		t.Skip("man not found, skipping")
+	}
+	app := manApp()
+	app.Version = `1.0"beta\x`
+
+	var b strings.Builder
+	if err := GenManPage(app, &b); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	page := filepath.Join(dir, "manapp.1")
+	if err := os.WriteFile(page, []byte(b.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := exec.Command(manPath, page)
+	cmd.Env = append(os.Environ(), "MANPAGER=cat", "MANWIDTH=100")
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("man failed: %v\n%s", err, stderr.String())
+	}
+	if w := strings.TrimSpace(stderr.String()); w != "" {
+		t.Errorf("man warned:\n%s", w)
+	}
+	// The fifth .TH argument must survive: when it is eaten, groff falls back to
+	// its own default and the page silently loses its section title.
+	if !strings.Contains(string(out), "User Commands") {
+		t.Errorf("the .TH section argument was lost:\n%s", firstLines(string(out), 3))
+	}
+}
+
+func firstLines(s string, n int) string {
+	lines := strings.Split(s, "\n")
+	if len(lines) > n {
+		lines = lines[:n]
+	}
+	return strings.Join(lines, "\n")
 }

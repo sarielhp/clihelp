@@ -264,7 +264,7 @@ func TestClihelpManPageVerb(t *testing.T) {
 		if !strings.HasPrefix(res.Stdout, ".\\\" ") {
 			t.Errorf("stdout should be the page alone, so it can be redirected:\n%s", res.Stdout[:80])
 		}
-		res.AssertStdoutContains(t, ".TH BARE 1")
+		res.AssertStdoutContains(t, `.TH "BARE" 1`)
 	})
 
 	t.Run("install prints only the path", func(t *testing.T) {
@@ -298,10 +298,10 @@ func TestManPageCommandIsOptional(t *testing.T) {
 
 	res := TestExecute(app, []string{"manpage"})
 	res.AssertNoError(t)
-	res.AssertStdoutContains(t, ".TH BARE 1")
+	res.AssertStdoutContains(t, `.TH "BARE" 1`)
 
 	// And the same thing is reachable without the author adding it.
-	runProto(t, bareApp(), "__clihelp", "manpage").AssertStdoutContains(t, ".TH BARE 1")
+	runProto(t, bareApp(), "__clihelp", "manpage").AssertStdoutContains(t, `.TH "BARE" 1`)
 }
 
 // A flag is a flag wherever it appears, an unknown token is an error, and a
