@@ -53,15 +53,10 @@ func (h *helpFlags) requested() bool {
 	return h.concise || h.extended
 }
 
-func (a *App) setupFlagSet(targetCmd *Command, ancestors []*Command) (*pflag.FlagSet, *helpFlags, error) {
-	cmdName := a.Name
-	if targetCmd != nil {
-		cmdName = targetCmd.Name
-	}
-
-	fs := pflag.NewFlagSet(cmdName, pflag.ContinueOnError)
-	fs.SetOutput(a.stderr())
-
+// bindHelpFlags registers the built-in help flags on fs and returns the targets
+// they write to. Both the parsing flag set and the resolution probe built by
+// leadingFlagSet use it, so the two always agree on which help flags exist.
+func (a *App) bindHelpFlags(fs *pflag.FlagSet, cmdName string) *helpFlags {
 	var h helpFlags
 	fs.BoolVarP(&h.concise, "help-concise", "h", false, "Concise help for "+cmdName)
 	_ = fs.MarkHidden("help-concise")
@@ -72,6 +67,19 @@ func (a *App) setupFlagSet(targetCmd *Command, ancestors []*Command) (*pflag.Fla
 		fs.BoolVar(&h.extended, "help", false, "Extended help for "+cmdName)
 	}
 	_ = fs.MarkHidden("help")
+	return &h
+}
+
+func (a *App) setupFlagSet(targetCmd *Command, ancestors []*Command) (*pflag.FlagSet, *helpFlags, error) {
+	cmdName := a.Name
+	if targetCmd != nil {
+		cmdName = targetCmd.Name
+	}
+
+	fs := pflag.NewFlagSet(cmdName, pflag.ContinueOnError)
+	fs.SetOutput(a.stderr())
+
+	h := a.bindHelpFlags(fs, cmdName)
 
 	if err := bindAndMark(fs, a.PersistentOptions); err != nil {
 		return nil, nil, err
@@ -92,7 +100,7 @@ func (a *App) setupFlagSet(targetCmd *Command, ancestors []*Command) (*pflag.Fla
 			return nil, nil, err
 		}
 	}
-	return fs, &h, nil
+	return fs, h, nil
 }
 
 func (a *App) collectAllActiveOptions(targetCmd *Command, ancestors []*Command) []Option {
@@ -218,10 +226,11 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 		return err
 	}
 
-	targetCmd, ancestors, path, remaining, handled, err := a.resolveCommand(args)
-	if handled || err != nil {
+	res, err := a.resolveCommand(args)
+	if res.handled || err != nil {
 		return err
 	}
+	targetCmd, ancestors, path, remaining := res.cmd, res.ancestors, res.path, res.remaining
 
 	if targetCmd == nil && len(path) == 0 && len(remaining) == 0 && a.Run == nil {
 		a.RenderGlobal(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
@@ -479,67 +488,163 @@ func (a *App) checkUnknownCommand(currentCmd *Command, currentCommands []Command
 	return nil
 }
 
+// resolution is the outcome of matching an argument list against the command
+// tree.
+type resolution struct {
+	cmd       *Command   // deepest command matched, nil when none was
+	ancestors []*Command // commands matched above cmd, outermost first
+	path      []string   // names of the matched commands, in order
+	indices   []int      // position in args of each matched command token
+	remaining []string   // arguments left for pflag: skipped flags, then the rest
+	handled   bool       // a help invocation was recognized and already rendered
+}
+
+// leadingFlagSet builds a throwaway flag set holding every flag that may legally
+// appear before the next command name: the app's persistent and global flags,
+// the built-in help flags, and the persistent flags of the commands resolved so
+// far. A command's own (non-persistent) options are deliberately left out, since
+// they cannot precede the command they belong to.
+//
+// The set is never parsed. resolveCommandPath consults it only to learn whether
+// a flag consumes the argument that follows it, which pflag records as
+// NoOptDefVal. Binding errors are ignored here because setupFlagSet reports the
+// same errors before anything is parsed.
+func (a *App) leadingFlagSet(resolved []*Command) *pflag.FlagSet {
+	fs := pflag.NewFlagSet(appName(a), pflag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	a.bindHelpFlags(fs, appName(a))
+	_ = bindAndMark(fs, a.PersistentOptions)
+	_ = bindAndMark(fs, a.GlobalFlags)
+	for _, cmd := range resolved {
+		_ = bindAndMark(fs, cmd.PersistentOptions)
+	}
+	return fs
+}
+
+// scanLeadingFlag reports how many arguments the flag at args[0] occupies and
+// whether it is a flag known to fs. It mirrors pflag's own parsing rules so that
+// command resolution skips exactly what pflag will later consume: "--flag value"
+// and "-f value" take two arguments, while "--flag=value", "-fvalue", "-f=value"
+// and flags that take no value take one. A flag whose value is missing entirely
+// is reported as one argument, leaving pflag to produce the error.
+func scanLeadingFlag(fs *pflag.FlagSet, args []string) (int, bool) {
+	arg := args[0]
+	if len(arg) < 2 {
+		return 0, false // a bare "-" is a positional argument
+	}
+	if !strings.HasPrefix(arg, "--") {
+		return scanShorthandCluster(fs, args)
+	}
+	name := arg[2:]
+	if eq := strings.IndexByte(name, '='); eq >= 0 {
+		return 1, fs.Lookup(name[:eq]) != nil
+	}
+	f := fs.Lookup(name) // an empty name, from "--", never resolves
+	if f == nil {
+		return 0, false
+	}
+	if f.NoOptDefVal != "" || len(args) == 1 {
+		return 1, true
+	}
+	return 2, true
+}
+
+// scanShorthandCluster scans a run of shorthand flags such as -v, -vAx or -A=x.
+// Valueless flags are consumed one letter at a time; the first flag that takes a
+// value ends the cluster, taking the rest of the token or the next argument.
+func scanShorthandCluster(fs *pflag.FlagSet, args []string) (int, bool) {
+	for shorts := args[0][1:]; shorts != ""; shorts = shorts[1:] {
+		f := fs.ShorthandLookup(shorts[:1])
+		if f == nil {
+			return 0, false
+		}
+		if len(shorts) > 2 && shorts[1] == '=' {
+			return 1, true // -f=value
+		}
+		if f.NoOptDefVal != "" {
+			continue // takes no value; the cluster may go on
+		}
+		if len(shorts) > 1 || len(args) == 1 {
+			return 1, true // -fvalue, or a value that is missing
+		}
+		return 2, true // -f value
+	}
+	return 1, true
+}
+
+// matchCommand returns the command named by arg, using prefix matching when
+// AbbrevCommands is enabled and an exact match fails. A nil command and a nil
+// error mean arg names no command.
+func (a *App) matchCommand(cmds []Command, arg string) (*Command, error) {
+	if matched, _ := findCommand(cmds, arg); matched != nil {
+		return matched, nil
+	}
+	if a.AbbrevCommands {
+		return matchAbbrevCommand(cmds, arg)
+	}
+	return nil, nil
+}
+
 // resolveCommandPath resolves a path of command names, using prefix matching when
-// AbbrevCommands is enabled and exact match fails.
-func (a *App) resolveCommandPath(args []string, currentCommands []Command) (*Command, []*Command, []string, []string, bool, error) {
-	var currentCmd *Command
-	var ancestors []*Command
-	var path []string
+// AbbrevCommands is enabled and exact match fails. Global and persistent flags
+// may be interleaved with the command names: a recognized flag (and its value)
+// is skipped and handed back in remaining, so that "app --global cmd" resolves
+// cmd just as "app cmd --global" does. Anything else beginning with "-",
+// including "--" and an unrecognized flag, ends resolution.
+func (a *App) resolveCommandPath(args []string, currentCommands []Command) (resolution, error) {
+	var res resolution
+	var leading []string
+	var resolved []*Command
+	probe := a.leadingFlagSet(nil)
 	idx := 0
 
 	for idx < len(args) {
 		arg := args[idx]
 
 		if isHelpToken(arg, currentCommands, a.AbbrevCommands) {
-			helpPath := append(path, args[idx+1:]...)
+			helpPath := append(append([]string{}, res.path...), args[idx+1:]...)
 			handled, err := a.handleHelpInvocation(helpPath)
-			return nil, nil, nil, nil, handled, err
+			return resolution{handled: handled}, err
 		}
 
 		if strings.HasPrefix(arg, "-") {
-			break
-		}
-
-		matched, _ := findCommand(currentCommands, arg)
-		if matched != nil {
-			if currentCmd != nil {
-				ancestors = append(ancestors, currentCmd)
+			count, known := scanLeadingFlag(probe, args[idx:])
+			if !known {
+				break
 			}
-			currentCmd = matched
-			path = append(path, matched.Name)
-			currentCommands = matched.Subcommands
-			idx++
+			leading = append(leading, args[idx:idx+count]...)
+			idx += count
 			continue
 		}
 
-		if a.AbbrevCommands {
-			abbrevMatch, err := matchAbbrevCommand(currentCommands, arg)
-			if err != nil {
-				return nil, nil, nil, nil, false, err
+		matched, err := a.matchCommand(currentCommands, arg)
+		if err != nil {
+			return resolution{}, err
+		}
+		if matched == nil {
+			if err := a.checkUnknownCommand(res.cmd, currentCommands, arg); err != nil {
+				return resolution{}, err
 			}
-			if abbrevMatch != nil {
-				if currentCmd != nil {
-					ancestors = append(ancestors, currentCmd)
-				}
-				currentCmd = abbrevMatch
-				path = append(path, abbrevMatch.Name)
-				currentCommands = abbrevMatch.Subcommands
-				idx++
-				continue
-			}
+			break
 		}
 
-		if err := a.checkUnknownCommand(currentCmd, currentCommands, arg); err != nil {
-			return nil, nil, nil, nil, false, err
+		if res.cmd != nil {
+			res.ancestors = append(res.ancestors, res.cmd)
 		}
-
-		break
+		res.cmd = matched
+		res.path = append(res.path, matched.Name)
+		res.indices = append(res.indices, idx)
+		currentCommands = matched.Subcommands
+		resolved = append(resolved, matched)
+		probe = a.leadingFlagSet(resolved)
+		idx++
 	}
 
-	return currentCmd, ancestors, path, args[idx:], false, nil
+	res.remaining = append(leading, args[idx:]...)
+	return res, nil
 }
 
-func (a *App) resolveCommand(args []string) (*Command, []*Command, []string, []string, bool, error) {
+func (a *App) resolveCommand(args []string) (resolution, error) {
 	currentCommands := a.Commands
 	return a.resolveCommandPath(args, currentCommands)
 }

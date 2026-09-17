@@ -2,6 +2,15 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.9] - 2026-09-17
+
+### Fixed
+- **Global Flags Before a Subcommand** - Command resolution no longer stops at the first token beginning with `-`, so `app --global cmd args` resolves `cmd` and binds the command's own flags. Previously any global or persistent flag written before the subcommand left the command unresolved, which surfaced either as `unknown command "cmd"` or as the command's own flags being rejected (`unknown shorthand flag: 'n' in -n`) — while `cmd --help` still listed those flags, because help rendering never went through flag binding. Flag arity is read from pflag itself, so a flag's value is never mistaken for a command name: in `app -A last search`, `last` is the value of `-A` and `search` is the command. Unrecognized flags and `--` still end resolution, and a command's own non-persistent options still cannot precede it.
+
+### Changed
+- **Help Flags Before a Command** - `app --help cmd` and `app -h cmd` now render the help for `cmd` rather than the global help, matching `app cmd --help`.
+- **Completion and Examples After Global Flags** - Shell completion resolves the command when global flags precede it, and example colorization marks command tokens by their actual position instead of assuming they lead the line.
+
 ## [0.3.8] - 2026-09-15
 
 ### Fixed

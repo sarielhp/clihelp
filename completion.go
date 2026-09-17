@@ -172,12 +172,13 @@ func (a *App) handleComplete(_ context.Context, args []string) error {
 		prevWord = args[len(args)-2]
 	}
 
-	currentCmd, _, path, _, _, err := a.resolveCommand(args[:len(args)-1])
+	res, err := a.resolveCommand(args[:len(args)-1])
 	if err != nil {
 		return err
 	}
+	currentCmd := res.cmd
 
-	activeOptions := a.collectOptions(path, currentCmd)
+	activeOptions := a.collectOptions(res.path, currentCmd)
 
 	if completePrevFlagValue(w, activeOptions, prevWord, toComplete) {
 		return nil

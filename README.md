@@ -154,6 +154,28 @@ func main() {
 
 ---
 
+## Flag Placement
+
+Global and persistent flags may be written before the command, after it, or interleaved with a command path. All three forms are equivalent:
+
+```console
+mail --read-only search invoice -n 5
+mail search invoice -n 5 --read-only
+mail --account work db --db-url pg://localhost migrate
+```
+
+Resolution consults only the flags that are already known at each point — `App.PersistentOptions`, `App.GlobalFlags`, and the `PersistentOptions` of the commands matched so far — and takes each flag's arity from `pflag`, so a flag's value is never mistaken for a command name. In `mail --account last search invoice`, `last` is the value of `--account` and `search` is the command, even though `last` also names one.
+
+A command's own (non-persistent) options cannot precede the command they belong to, because nothing knows they exist yet:
+
+```console
+mail -n 5 search invoice      # Error: unknown shorthand flag: 'n' in -n
+```
+
+An unrecognized flag and `--` both end command resolution, so unknown flags are still reported and everything after `--` stays positional.
+
+---
+
 ## Options Validation & Interactive Fallback
 
 `clihelp` provides native, declarative options validation and interactive fallback hooks:

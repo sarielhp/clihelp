@@ -156,9 +156,11 @@ func identifySegmentTokens(app *App, cmd *Command, toks []segToken, rawStrings [
 			offset = 1
 		}
 
-		targetCmd, _, path, _, _, resolveErr := app.resolveCommand(tokensToResolve)
-		if resolveErr == nil || targetCmd != nil {
-			for idx := range path {
+		res, resolveErr := app.resolveCommand(tokensToResolve)
+		if resolveErr == nil || res.cmd != nil {
+			// indices are positions within tokensToResolve, which may hold
+			// global flags before and between the command names.
+			for _, idx := range res.indices {
 				if offset+idx < len(isCmd) {
 					isCmd[offset+idx] = true
 				}
@@ -371,18 +373,18 @@ func SplitExampleCommandLine(line string) ([]string, error) {
 }
 
 func resolveExampleCommand(app *App, cmd *Command, tokens []string, rawLine string) (*Command, []*Command, []string, bool, error) {
-	targetCmd, ancestors, _, remaining, handled, resolveErr := app.resolveCommand(tokens)
+	res, resolveErr := app.resolveCommand(tokens)
 	if resolveErr != nil {
 		if cmd != nil && (len(tokens) == 0 || tokens[0] != cmd.Name) {
 			tokensWithCmd := append([]string{cmd.Name}, tokens...)
-			t2, a2, _, r2, h2, err2 := app.resolveCommand(tokensWithCmd)
+			retry, err2 := app.resolveCommand(tokensWithCmd)
 			if err2 == nil {
-				return t2, a2, r2, h2, nil
+				return retry.cmd, retry.ancestors, retry.remaining, retry.handled, nil
 			}
 		}
 		return nil, nil, nil, false, fmt.Errorf("invalid command in example %q: %w", rawLine, resolveErr)
 	}
-	return targetCmd, ancestors, remaining, handled, nil
+	return res.cmd, res.ancestors, res.remaining, res.handled, nil
 }
 
 func validateExampleTokens(app *App, targetCmd *Command, ancestors []*Command, remaining []string, rawLine string) error {
