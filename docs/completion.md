@@ -143,7 +143,7 @@ podctl completion bash | sudo tee /etc/bash_completion.d/podctl
 
 ### Zsh (`clihelp.GenZshCompletion`)
 
-Writes a `#compdef` script compatible with Zsh's `compinit` completion system:
+Writes a `#compdef` script compatible with Zsh's `compinit` completion system. The script works both ways: autoloaded from `$fpath`, where it *is* the completion function, and sourced from a startup file, where it registers itself with `compdef` instead. (Before 0.3.13 the sourced form printed `can only be called from completion function` at every shell start.)
 
 ```bash
 # Load in current session:

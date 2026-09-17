@@ -71,7 +71,10 @@ compadd() {
 
 words=(%s)
 CURRENT=${#words[@]}
+# Sourcing only registers the function, the way a startup file does; zsh calls
+# it when completing, so the harness calls it here.
 source %q
+_podctl
 `, wordsArray, scriptPath)
 
 		cmd := exec.Command(zshPath, "-f", "-c", zshScript)
@@ -415,7 +418,9 @@ compadd() {
 }
 
 words=("dyncli" "play" "-p" "h")
+CURRENT=${#words[@]}
 source %q
+_dyncli
 `, scriptPath)
 
 	cmd := exec.Command(zshPath, "-f", "-c", zshScript)

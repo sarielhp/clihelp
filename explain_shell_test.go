@@ -130,3 +130,59 @@ echo "LINE:$READLINE_LINE"
 		t.Errorf("Alt-H touched a command line that is not ours: %q", got)
 	}
 }
+
+// Sourcing a completion script — "source <(myapp completion zsh)", or a startup
+// file that reads it — must be silent. The zsh script ended with the call that
+// an $fpath autoload needs, so sourcing it ran the completion function outside
+// any completion context and printed "can only be called from completion
+// function" at every shell start.
+func TestCompletionScriptsAreSafeToSource(t *testing.T) {
+	for _, tt := range []struct {
+		shell  string
+		script func(string, string) string
+	}{
+		{"bash", func(path, _ string) string {
+			return "source " + path + "\necho SOURCED\n"
+		}},
+		{"zsh", func(path, dir string) string {
+			return "autoload -Uz compinit && compinit -u -d " + dir + "/zcompdump\nsource " + path + "\necho SOURCED\n"
+		}},
+		{"fish", func(path, _ string) string {
+			return "source " + path + "\necho SOURCED\n"
+		}},
+	} {
+		t.Run(tt.shell, func(t *testing.T) {
+			shellPath, err := exec.LookPath(tt.shell)
+			if err != nil {
+				t.Skipf("%s not found, skipping", tt.shell)
+			}
+
+			dir := t.TempDir()
+			bin := filepath.Join(dir, "podctl")
+			if out, err := exec.Command("go", "build", "-o", bin, "./example").CombinedOutput(); err != nil {
+				t.Fatalf("failed to build the example CLI: %v\n%s", err, out)
+			}
+			script, err := exec.Command(bin, "completion", tt.shell).Output()
+			if err != nil {
+				t.Fatalf("failed to generate the %s script: %v", tt.shell, err)
+			}
+			scriptPath := filepath.Join(dir, "completion."+tt.shell)
+			if err := os.WriteFile(scriptPath, script, 0o600); err != nil {
+				t.Fatal(err)
+			}
+
+			cmd := exec.Command(shellPath, "-c", tt.script(scriptPath, dir))
+			if tt.shell != "fish" {
+				cmd = exec.Command(shellPath, "-f", "-c", tt.script(scriptPath, dir))
+			}
+			cmd.Env = append(os.Environ(), "PATH="+dir+":"+os.Getenv("PATH"))
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("%s failed to source its own completion script: %v\n%s", tt.shell, err, out)
+			}
+			if got := strings.TrimSpace(string(out)); got != "SOURCED" {
+				t.Errorf("sourcing the %s script was not silent:\n%s", tt.shell, got)
+			}
+		})
+	}
+}

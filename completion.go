@@ -345,11 +345,16 @@ _%[2]s() {
     fi
 }
 
-if type compdef >/dev/null 2>&1; then
+# Autoloaded from $fpath this file *is* the completion function and has to call
+# it; sourced from a startup file it must only register itself, because calling
+# the function outside a completion context prints "can only be called from
+# completion function" at every shell start. $funcstack[1] tells the two apart:
+# the function's name when autoloaded, this file's path when sourced.
+if [ "$funcstack[1]" = "_%[2]s" ]; then
+    _%[2]s "$@"
+elif type compdef >/dev/null 2>&1; then
     compdef _%[2]s %[1]s
 fi
-
-_%[2]s "$@"
 `, name, cleanName, completionScriptVersion)
 	_, err := io.WriteString(w, tmpl)
 	return err
