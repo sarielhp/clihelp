@@ -481,7 +481,7 @@ func (a *App) maybeAutoInstallCompletion(args []string) {
 			if !integrationIsCurrent(path) {
 				// Refresh only: an ordinary program run rewrites the generated
 				// file and never touches a startup file.
-				_ = refreshShellIntegration(a, sh, integrationHasKeys(path))
+				autoDebug(a, refreshShellIntegration(a, sh, integrationHasKeys(path)))
 			}
 			return
 		}
@@ -496,12 +496,28 @@ func (a *App) maybeAutoInstallCompletion(args []string) {
 		return
 	}
 	if _, statErr := os.Stat(path); errors.Is(statErr, os.ErrNotExist) {
-		_, _ = InstallCompletion(a, sh)
+		_, installErr := InstallCompletion(a, sh)
+		autoDebug(a, installErr)
 		return
 	}
 	if isGeneratedCompletionScript(path) && !completionIsCurrent(a, sh) {
-		_, _ = InstallCompletion(a, sh)
+		_, installErr := InstallCompletion(a, sh)
+		autoDebug(a, installErr)
 	}
+}
+
+// autoDebug surfaces an error the auto path would otherwise swallow, when
+// CLIHELP_DEBUG is set.
+//
+// Discarding these is the right default — the user ran a command of their own,
+// not an installer — but without an escape hatch a half-finished install is
+// undiagnosable: "completion stopped working after the upgrade", no error, no
+// log, and no way to ask.
+func autoDebug(a *App, err error) {
+	if err == nil || os.Getenv("CLIHELP_DEBUG") == "" {
+		return
+	}
+	fmt.Fprintf(a.stderr(), "clihelp: %v\n", err)
 }
 
 // isGeneratedCompletionScript reports whether this library wrote the script at
@@ -585,6 +601,10 @@ func InstallCompletion(app *App, shell string) (string, error) {
 // *not* preserved — a rename installs a new inode — and an interrupt between the
 // write and the rename can leave one .tmp-* sibling.
 func writeFileAtomically(path string, data []byte, mode os.FileMode) error {
+	if refuseForeignOwner(path) {
+		return fmt.Errorf("refusing to write %q as root: it belongs to another user", path)
+	}
+
 	// Write through a symlink rather than over it. rename(2) replaces the link
 	// itself, and ~/.zshrc is routinely a link into a dotfiles repo: replacing it
 	// detaches the repo without a word, and git status stays clean. Resolving
@@ -619,6 +639,7 @@ func writeFileAtomically(path string, data []byte, mode os.FileMode) error {
 	if err := os.Chmod(tmp, mode); err != nil {
 		return err
 	}
+	preserveOwner(path, tmp)
 	if err := os.Rename(tmp, path); err != nil {
 		return err
 	}

@@ -68,3 +68,32 @@ func TestWriteFileAtomicallyKeepsMode(t *testing.T) {
 		}
 	}
 }
+
+// An atomic replace installs a new inode, so anything carried across has to be
+// carried deliberately. Mode was; ownership was not, and the auto path runs
+// before command dispatch on every invocation, so `sudo -E myapp anything` was
+// enough to take a user's own startup file away from them.
+func TestWriteFileAtomicallyPreservesGroup(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "rc")
+	if err := os.WriteFile(path, []byte("original\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeUID, beforeGID := ownerOf(t, before)
+
+	if err := writeFileAtomically(path, []byte("replaced\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterUID, afterGID := ownerOf(t, after)
+	if beforeUID != afterUID || beforeGID != afterGID {
+		t.Errorf("ownership changed across the replace: %d:%d -> %d:%d", beforeUID, beforeGID, afterUID, afterGID)
+	}
+}
