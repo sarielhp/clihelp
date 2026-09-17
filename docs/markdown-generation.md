@@ -69,7 +69,8 @@ func main() {
 
 The generator computes a SHA-256 hash of your command hierarchy and writes a sidecar `.clihelp-hash` file in the output directory.
 
-- If the command tree has not changed, regeneration is skipped.
+- If the command tree has not changed *and every page it stands for is still on disk*, regeneration is skipped. Deleting a generated page brings it back on the next run.
+- The sidecar also records the names of the pages that were generated. Only those are pruned when they stop corresponding to a command: a file the generator never wrote is left alone, so pointing `Dir` at a directory that already holds documentation is safe.
 - The `.clihelp-hash` file is automatically added to `.gitignore` inside the output directory so it does not clutter git status.
 
 ---

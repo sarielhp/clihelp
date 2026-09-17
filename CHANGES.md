@@ -2,6 +2,31 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.12] - 2026-09-17
+
+Completes the 2026-09-17 deep review: every remaining finding in `review/findings-2026-09-17.md` is fixed.
+
+### Fixed
+- **A Failing Pager Threw the Help Away** - `os/exec` drains an `io.Reader` stdin as soon as the child starts, so the buffer that was both the pager's input and the fallback copy was empty by the time a failing pager returned: `PAGER=false` printed a blank help screen, and for output past the pipe buffer the fallback printed only the tail. The pager reads from its own reader now, and the fallback fires only when nothing reached the user. `less`'s `-R` is also no longer detected by finding the letter "r" anywhere in the arguments, which found one in `--clear-screen`.
+- **Example Lines Were Rewritten Before Being Shown** - the colorizer returned its result through the inline-markdown renderer, which swallowed the backslashes of `--path C:\temp\x`, turned `'*.go'` into emphasis and ate the escape in `echo a\ b`; the renderer then word-wrapped long commands into two unpastable lines. Example lines are now colored and emitted exactly as written.
+- **Validating Examples Overwrote the Program's Variables** - `ValidateExample` (and `Audit`, which the README recommends for CI) bound every option for real and parsed the example through it, and pflag writes both the declared default and the parsed value through the caller's pointer. Validation now binds to storage of its own, while still parsing and still checking values. It also applies `Option.Required`, and reports a binding error as itself instead of resurfacing it as "unknown flag" on an innocent example.
+- **Shortcut Commands Could Not Be Run** - `App.Shortcuts` were offered by completion and listed in help, but command resolution never consulted them: `app <shortcut>` was "unknown command" and `help <shortcut>` printed nothing.
+- **An Empty Argument Matched Everything** - an empty string is a prefix of every command name, so under `AbbrevCommands` `app ""` — what `app --filter $UNSET` expands to — ran the only command or was taken for a help request. It now names nothing and reaches the program as the argument it is.
+- **A Category Command Skipped Half Its Lifecycle** - a command that only groups subcommands returned right after printing its help, so `PostRun` and `AfterRun` never ran although `BeforeRun` and `PreRun` had.
+- **Help Layout Measured in Runes and Bytes** - two-column listings padded the first column by rune count while the column is measured in display width, so a wide (CJK) name pushed its description out of line; the command tree measured its indentation in bytes, and every box-drawing glyph it draws with is three bytes and one column, so descriptions were indented and wrapped as if the tree were two and a half times as wide as it is.
+- **Rows With No Description Disappeared** - a command whose description was empty or had no visible width (a `[](url)` link, a stray `**`, a zero-width space) vanished from `--help` entirely, name and all.
+- **`help flags` Suppressed Its Own Rows** - whether to synthesize `--help` and `--version` was decided by testing the raw flag spec for a substring, so a global `-v, --verbose` deleted the `--version` row and a `--host` deleted the `--help` row. A taken shorthand now narrows the synthesized row to its long name instead of removing it.
+- **Inline Emphasis Ate Asterisks** - an unterminated `**` was consumed as an empty italic span, and `2 * 3 * 4` rendered as `2  3  4`, because emphasis was allowed to open and close on whitespace.
+- **Example Scanners Disagreed With the Shell** - `#` or `//` anywhere inside a token started a comment in the colorizer, greying out the rest of a URL line; whitespace was tested byte-wise, so the 0xA0 continuation byte of `à` was read as a non-breaking space and split a token — and its color run — mid-character, emitting invalid UTF-8; and the validator cut the command at `" | "` and friends, ignoring redirections and unspaced operators, so `app logs > out.txt` was validated with `> out.txt` as two positional arguments.
+- **Generated Markdown Could Not Be Restored, and Deleted Files It Did Not Write** - the generation gate compared only hashes, so a page deleted by hand was never written again; pruning removed every `.md` the pass had not just written, destroying a directory that already held documentation on the first run. The sidecar now records the generated page names, only those are pruned, and a missing page forces regeneration. Table cells escape `|` everywhere, including inside code spans, and `mdCode` fences a backtick instead of trying to escape it with a backslash.
+- **Completion Installed for Shells That Have No Script** - `detectShell` turned any unknown or unset `$SHELL` into "bash", so a dash, ksh or nushell user got a Bash script written into their home. Installation is also atomic now, and `Close`'s error — where a full disk shows up — is no longer dropped. `CompletionPath` and `InstallCompletion` no longer panic on a nil `App`.
+- **Bash Completion Shredded `--flag=` and Colons** - the generated script discarded the `words`/`cword` that `_init_completion` computed and sent the raw `COMP_WORDS`, which bash splits at every character of `COMP_WORDBREAKS`.
+- **Smaller Corrections** - a resolution that failed part-way no longer discards the commands it did match, so a failing example keeps its command highlighted; `help db nonesuch` names the whole path rather than the word that resolved; hidden commands are no longer named in "Did you mean"; and `.gitignore` detection no longer reads the negated `!.clihelp-hash` as the rule it was about to add.
+
+### Changed
+- **`Audit` Is Stricter** - it now validates flag specs, inspects `App.PersistentOptions` and `App.GlobalFlags`, and reports collisions across the scopes that share one flag set. An app whose examples omit a required flag, or whose declarations collide, fails an audit that used to pass — and used to fail at runtime instead.
+- **Command Resolution Moved to `resolve.go`** - `execute.go` had grown past the project's file-length warning threshold; resolution is a self-contained half of it. No API change.
+
 ## [0.3.11] - 2026-09-17
 
 ### Fixed

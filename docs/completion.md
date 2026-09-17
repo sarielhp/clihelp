@@ -85,6 +85,18 @@ installedPath, err := clihelp.InstallCompletion(app, "")
 installedPath, err := clihelp.InstallCompletion(app, "zsh")
 ```
 
+### Shell Detection
+
+Detection reads `$SHELL` and names what it finds. A shell `clihelp` has no script
+for — dash, ksh, nushell — is reported as an error rather than treated as Bash,
+and `App.AutoInstallCompletion` installs nothing for it: a Bash script in a ksh
+user's home is one their shell cannot read and nothing ever removes. With `$SHELL`
+unset, pass the shell name explicitly.
+
+The script is generated in full before anything is written, and the file is
+renamed into place, so an interrupted install cannot replace a working script
+with half of one.
+
 ---
 
 ## Manual Shell Script Generation
