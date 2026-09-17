@@ -174,6 +174,26 @@ done
 
 ---
 
+## Manual Pages
+
+```console
+$ myapp __clihelp manpage > debian/myapp.1     # for a package to install
+$ myapp __clihelp manpage --install            # for this user
+~/.local/share/man/man1/myapp.1
+```
+
+`$XDG_DATA_HOME/man` is on man's default search path, so an installed page is found with no configuration. That matters beyond documentation: **zsh binds Alt-H to `run-help` and fish binds it to `__fish_man_page`, and both go to `man`** — so a generated page makes Alt-H answer natively in those shells, for a program that ships no manual of its own.
+
+It does not replace clihelp's own Alt-H binding, which answers a different question: `man myapp` is the whole manual, while the binding explains *the command line as typed*, expanding abbreviated command names and showing that subcommand's help within two thirds of the screen. And bash has no native help key at all.
+
+**Installation refuses to create a second page.** If a manual page for the program already exists — packaged by a distribution, say — `--install` stops and says where it is, because which of two pages `man` shows is not predictable and the one that loses is invisible. `--force` installs anyway. `--uninstall` removes only a page clihelp generated; a hand-written one at the same path is left alone.
+
+**The author decides how much of this is on offer.** `clihelp.ManPageCommand()` added to `App.Commands` gives a visible `myapp manpage`; without it, `__clihelp manpage` still works, because a packager is not the author. Nothing is ever installed unasked: `AutoInstallCompletion` refreshes a generated page when a clihelp upgrade changes the template, and never creates one.
+
+The generator is `clihelp.GenManPage(app, w)` if you want to drive it yourself.
+
+---
+
 ## Wrapper Scripts and Aliases
 
 A wrapper script — `pd` running `myapp deploy "$@"` — is opaque to every shell, so completion for it has to be arranged. Shell *aliases* mostly do not: fish turns `alias pd='myapp deploy'` into a `--wraps` function and zsh expands aliases before completing, so both already work. Bash is the exception.

@@ -456,6 +456,8 @@ func (a *App) maybeAutoInstallCompletion(args []string) {
 	if os.Getenv("CI") != "" || os.Getenv("GITHUB_ACTIONS") != "" || os.Getenv("TERM") == "dumb" || os.Getenv("NO_AUTO_COMPLETION") != "" || os.Getenv("CLIHELP_NO_AUTO_COMPLETION") != "" {
 		return
 	}
+	a.refreshManPage()
+
 	sh := detectShell()
 	if !isSupportedShell(sh) {
 		return // no script exists for this shell; writing a bash one would be a lie

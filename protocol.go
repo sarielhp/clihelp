@@ -49,6 +49,7 @@ func clihelpVerbs() []clihelpVerb {
 		{"uninstall", "[<shell>]", "remove what install wrote"},
 		{"keys", "[<shell>]", "print the key bindings, for inspection or manual setup"},
 		{"wrapper", "<name> [<args>...]", "print a wrapper script for this program, with arguments"},
+		{"manpage", "[--install|--uninstall] [--force]", "print a roff manual page, or install it for man(1)"},
 	}
 }
 
@@ -101,6 +102,8 @@ func (a *App) handleClihelpCommand(args []string) error {
 		return GenKeyBindings(a, firstArg(rest), a.stdout())
 	case "wrapper":
 		return a.clihelpWrapper(rest)
+	case "manpage":
+		return a.clihelpManPage(rest)
 	default:
 		return fmt.Errorf("unknown %s verb %q (try %s with no arguments)", protoClihelp, verb, protoClihelp)
 	}
@@ -203,6 +206,25 @@ func (a *App) clihelpWrapper(args []string) error {
 	}
 	printWrapperRegistration(a.stderr(), a, name, wrapped)
 	return nil
+}
+
+// clihelpManPage prints the manual page, or installs it. Printing goes to stdout
+// alone so a packager can redirect it into their build.
+func (a *App) clihelpManPage(args []string) error {
+	var install, uninstall, force bool
+	for _, arg := range args {
+		switch arg {
+		case "--install":
+			install = true
+		case "--uninstall":
+			uninstall = true
+		case "--force":
+			force = true
+		default:
+			return fmt.Errorf("unknown %s manpage option %q", protoClihelp, arg)
+		}
+	}
+	return a.manPageAction(a.stdout(), a.stderr(), install, uninstall, force)
 }
 
 const wrapperTemplate = `#!/bin/sh

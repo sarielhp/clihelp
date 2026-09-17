@@ -249,3 +249,52 @@ func TestClihelpExtendedHelpWithoutAShell(t *testing.T) {
 	res.AssertNoError(t)
 	res.AssertStdoutContains(t, "no shell detected")
 }
+
+func TestClihelpManPageVerb(t *testing.T) {
+	sandboxHome(t)
+
+	t.Run("prints roff to stdout", func(t *testing.T) {
+		res := runProto(t, bareApp(), "__clihelp", "manpage")
+		res.AssertNoError(t)
+		if !strings.HasPrefix(res.Stdout, ".\\\" ") {
+			t.Errorf("stdout should be the page alone, so it can be redirected:\n%s", res.Stdout[:80])
+		}
+		res.AssertStdoutContains(t, ".TH BARE 1")
+	})
+
+	t.Run("install prints only the path", func(t *testing.T) {
+		res := runProto(t, bareApp(), "__clihelp", "manpage", "--install")
+		res.AssertNoError(t)
+		if strings.Count(res.Stdout, "\n") != 1 {
+			t.Errorf("stdout should be the path alone:\n%s", res.Stdout)
+		}
+		if _, err := os.Stat(strings.TrimSpace(res.Stdout)); err != nil {
+			t.Errorf("the path on stdout is not a file: %v", err)
+		}
+		if !strings.Contains(res.Stderr, "Alt-H") {
+			t.Errorf("the note for a human belongs on stderr: %q", res.Stderr)
+		}
+	})
+
+	t.Run("uninstall", func(t *testing.T) {
+		runProto(t, bareApp(), "__clihelp", "manpage", "--uninstall").AssertStdoutContains(t, "removed")
+		runProto(t, bareApp(), "__clihelp", "manpage", "--uninstall").AssertStdoutContains(t, "no generated manual page")
+	})
+
+	t.Run("an unknown option is an error", func(t *testing.T) {
+		runProto(t, bareApp(), "__clihelp", "manpage", "--nonesuch").AssertErrorContains(t, "--nonesuch")
+	})
+}
+
+func TestManPageCommandIsOptional(t *testing.T) {
+	sandboxHome(t)
+	app := bareApp()
+	app.Commands = append(app.Commands, ManPageCommand())
+
+	res := TestExecute(app, []string{"manpage"})
+	res.AssertNoError(t)
+	res.AssertStdoutContains(t, ".TH BARE 1")
+
+	// And the same thing is reachable without the author adding it.
+	runProto(t, bareApp(), "__clihelp", "manpage").AssertStdoutContains(t, ".TH BARE 1")
+}

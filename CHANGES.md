@@ -2,6 +2,11 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Manual Page Generation** - `__clihelp manpage` writes a roff manual page for the program — one page with a subsection per command, options, examples and notes — and `--install` puts it under `$XDG_DATA_HOME/man`, which is on man's default search path. This is more than documentation: zsh binds Alt-H to `run-help` and fish binds it to `__fish_man_page`, both of which call `man`, so a generated page makes Alt-H answer natively in those shells for a program that ships no manual. It does not replace clihelp's own binding, which explains the command line *as typed* rather than showing the whole manual. Installation refuses when a manual page for the program already exists elsewhere — which of two pages `man` shows is not predictable, and the one that loses is invisible — unless `--force` is given; `--uninstall` removes only a page clihelp generated. `clihelp.ManPageCommand()` offers the same thing as a visible command for authors who want one, and `AutoInstallCompletion` refreshes an installed page without ever creating one. New: `GenManPage`, `ManPagePath`, `InstallManPage`, `UninstallManPage`, `ManPageCommand`.
+
 ## [0.3.13] - 2026-09-17
 
 ### Fixed
