@@ -1,7 +1,6 @@
 package clihelp
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -262,11 +261,14 @@ exec {{app}} {{args}} "$@"
 // after it was built, which is why it carries its own "clihelp-wraps:" marker
 // rather than the application declaring a list of wrappers it cannot know.
 func GenWrapperScript(app *App, name string, args []string, w io.Writer) error {
-	if app == nil {
-		return errors.New("wrapper: app is nil")
+	appN, err := safeAppName(app)
+	if err != nil {
+		return err
 	}
-	if strings.TrimSpace(name) == "" {
-		return errors.New("wrapper: a name is required")
+	// A wrapper name becomes a command name and a shell token in the registration
+	// line the user is told to paste, so it is held to the same rule.
+	if err := safeWrapperName(name); err != nil {
+		return err
 	}
 
 	quoted := make([]string, 0, len(args))
@@ -275,19 +277,19 @@ func GenWrapperScript(app *App, name string, args []string, w io.Writer) error {
 	}
 	joined := strings.Join(quoted, " ")
 
-	target := appName(app)
+	target := appN
 	if joined != "" {
 		target += " " + joined
 	}
 
 	script := strings.NewReplacer(
-		"{{app}}", appName(app),
+		"{{app}}", appN,
 		"{{name}}", name,
 		"{{args}}", joined,
 		"{{target}}", target,
 		"{{proto}}", protoClihelp,
 	).Replace(wrapperTemplate)
-	_, err := io.WriteString(w, script)
+	_, err = io.WriteString(w, script)
 	return err
 }
 

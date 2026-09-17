@@ -330,6 +330,10 @@ func ManPagePath(app *App) (string, error) {
 	if app == nil {
 		return "", errors.New("man page path: app is nil")
 	}
+	name, err := safeAppName(app)
+	if err != nil {
+		return "", err
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to locate user home directory: %w", err)
@@ -338,7 +342,7 @@ func ManPagePath(app *App) (string, error) {
 	if dataHome == "" {
 		dataHome = filepath.Join(home, ".local", "share")
 	}
-	return filepath.Join(dataHome, "man", "man1", appName(app)+".1"), nil
+	return filepath.Join(dataHome, "man", "man1", name+".1"), nil
 }
 
 // InstallManPage writes the generated page under the user's data directory and

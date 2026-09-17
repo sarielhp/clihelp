@@ -244,11 +244,11 @@ func (a *App) handleComplete(_ context.Context, args []string) error {
 
 // GenBashCompletion writes a Bash tab-completion script to w.
 func GenBashCompletion(app *App, w io.Writer) error {
-	name := app.Name
-	if name == "" {
-		name = "app"
+	name, err := safeAppName(app)
+	if err != nil {
+		return err
 	}
-	cleanName := strings.ReplaceAll(name, "-", "_")
+	cleanName := shellFuncName(name)
 	tmpl := fmt.Sprintf(`# bash completion for %[1]s
 # clihelp-completion-version: %[3]d
 _%[2]s_complete() {
@@ -286,17 +286,17 @@ _%[2]s_complete() {
 }
 complete -o default -F _%[2]s_complete %[1]s
 `, name, cleanName, completionScriptVersion)
-	_, err := io.WriteString(w, tmpl)
+	_, err = io.WriteString(w, tmpl)
 	return err
 }
 
 // GenZshCompletion writes a Zsh tab-completion script to w.
 func GenZshCompletion(app *App, w io.Writer) error {
-	name := app.Name
-	if name == "" {
-		name = "app"
+	name, err := safeAppName(app)
+	if err != nil {
+		return err
 	}
-	cleanName := strings.ReplaceAll(name, "-", "_")
+	cleanName := shellFuncName(name)
 	tmpl := fmt.Sprintf(`#compdef %[1]s
 # clihelp-completion-version: %[3]d
 
@@ -360,17 +360,17 @@ elif type compdef >/dev/null 2>&1; then
     compdef _%[2]s %[1]s
 fi
 `, name, cleanName, completionScriptVersion)
-	_, err := io.WriteString(w, tmpl)
+	_, err = io.WriteString(w, tmpl)
 	return err
 }
 
 // GenFishCompletion writes a Fish tab-completion script to w.
 func GenFishCompletion(app *App, w io.Writer) error {
-	name := app.Name
-	if name == "" {
-		name = "app"
+	name, err := safeAppName(app)
+	if err != nil {
+		return err
 	}
-	cleanName := strings.ReplaceAll(name, "-", "_")
+	cleanName := shellFuncName(name)
 	tmpl := fmt.Sprintf(`# fish completion for %[1]s
 # clihelp-completion-version: %[3]d
 function __fish_%[2]s_complete
@@ -381,7 +381,7 @@ end
 
 complete -c %[1]s -f -a '(__fish_%[2]s_complete)'
 `, name, cleanName, completionScriptVersion)
-	_, err := io.WriteString(w, tmpl)
+	_, err = io.WriteString(w, tmpl)
 	return err
 }
 
@@ -398,7 +398,10 @@ func CompletionPath(app *App, shell string) (string, error) {
 		return "", errors.New("cannot detect the active shell: $SHELL is not set; name one of " + strings.Join(SupportedShells, ", "))
 	}
 
-	appName := appName(app)
+	appName, err := safeAppName(app)
+	if err != nil {
+		return "", err
+	}
 
 	var targetDir, fileName string
 	home, err := os.UserHomeDir()

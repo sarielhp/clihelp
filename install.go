@@ -50,6 +50,10 @@ func IntegrationPath(app *App, shell string) (string, error) {
 		return "", fmt.Errorf("unsupported shell %q (supported: %s)", shell, strings.Join(SupportedShells, ", "))
 	}
 
+	name, err := safeAppName(app)
+	if err != nil {
+		return "", err
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to locate user home directory: %w", err)
@@ -58,7 +62,7 @@ func IntegrationPath(app *App, shell string) (string, error) {
 	if configHome == "" {
 		configHome = filepath.Join(home, ".config")
 	}
-	return filepath.Join(configHome, appName(app), integrationDirName, shell), nil
+	return filepath.Join(configHome, name, integrationDirName, shell), nil
 }
 
 // GenShellIntegration writes the whole of one shell's integration: a header
@@ -226,9 +230,13 @@ func bootstrapBlock(app *App, shell, target string) string {
 	if shell == "zsh" {
 		note = "# Keep this after compinit: the completion registers itself with compdef.\n"
 	}
-	source := fmt.Sprintf("[ -r %[1]q ] && . %[1]q\n", target)
+	// Shell-quote, not Go-quote: %q emits a Go literal in double quotes, where
+	// the shell still expands $( ), backticks and $VAR. Anything in the path —
+	// the application's name, $HOME, $XDG_CONFIG_HOME — used to become live code
+	// in the user's startup file, permanently.
+	source := fmt.Sprintf("if [ -r %[1]s ]; then . %[1]s; fi\n", escapeShellArg(target))
 	if shell == "fish" {
-		source = fmt.Sprintf("test -r %[1]q; and source %[1]q\n", target)
+		source = fmt.Sprintf("test -r %[1]s; and source %[1]s\n", escapeFishArg(target))
 		note = ""
 	}
 	return fmt.Sprintf(`%s

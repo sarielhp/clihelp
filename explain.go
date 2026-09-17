@@ -308,9 +308,9 @@ func GenKeyBindings(app *App, shell string, w io.Writer) error {
 	if app == nil {
 		return errors.New("key bindings: app is nil")
 	}
-	name := app.Name
-	if name == "" {
-		name = "app"
+	name, err := safeAppName(app)
+	if err != nil {
+		return err
 	}
 	if shell == "" {
 		shell = detectShell()
@@ -332,6 +332,6 @@ func GenKeyBindings(app *App, shell string, w io.Writer) error {
 		"{{app}}", name,
 		"{{dispatcher}}", strconv.Itoa(keyDispatcherVersion),
 	).Replace(tmpl)
-	_, err := io.WriteString(w, script)
+	_, err = io.WriteString(w, script)
 	return err
 }
