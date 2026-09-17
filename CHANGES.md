@@ -24,9 +24,12 @@ teeth were checked against the unfixed behaviour.
 - **`__clihelp` Verbs Disagreed About Their Own Grammar** - `install bash --no-keys` installed the key binding the user had just declined, `manpage --install --uninstall` silently preferred one, and surplus arguments were discarded. One parser now serves every verb.
 - **The Wrapper's Alt-H Branch Was Unreachable** - nothing ever registered a wrapper's name with the dispatcher, so documented behaviour could not occur. The printed registration now covers both the completion table and the registry.
 - **A Hostile `App.Version` Corrupted the Man Page Header** - `.TH`'s arguments were Go-quoted, and `\"` starts a roff comment, so a version containing a quote truncated the header and dropped the section title. `man` warns about none of it.
+- **A Replaced File Lost Its Owner** - the atomic replace installs a new inode, so a run under a different effective uid — `sudo -E myapp anything` is enough, since the auto path runs before command dispatch — took the user's own startup file away from them. Ownership is now carried across, and writing a file belonging to another user while running as root is refused. `CLIHELP_DEBUG` surfaces the errors the unattended path otherwise swallows.
 - **The Test Suite Wrote Into the Developer's Home Directory** - six sites ran the example binary with the inherited environment. All are sandboxed, and `TestMain` now fingerprints every path this library can write to and fails the suite if anything changed.
 
 ### Changed
+- **One Output-Stream Rule** - stdout carries what a script captures — a path, a generated script, a version, one per line — and stderr carries everything written for a person to read. The rule was asserted in three doc comments and broken by half the surface: `completion install` printed its report on stdout where its `__clihelp` twin printed a bare path, and `manpage --uninstall` printed an English sentence where a script expected a path. A visible command now behaves exactly like its `__clihelp` twin. Interactive users see no difference, since both streams reach the same terminal.
+- **The Quality Gate Runs the Race Detector** - `AGENTS.md` has always required it and nothing ran it; `make test` and `make check` now do.
 - **Names Are Validated** - an `App.Name` containing a space or a shell metacharacter, or no name at all, now produces an error from the generators and the install paths instead of a broken or dangerous script. Help rendering is unaffected.
 
 ## [0.3.14] - 2026-09-17
