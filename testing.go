@@ -134,53 +134,86 @@ func checkPathPermutation(allPaths []commandPathInfo, cmdPath []string, allowedP
 	return wordSetKey, nil
 }
 
-func checkCommandOptions(seenFlags map[string]bool, cmdName string, options []Option) error {
+// flagOwners records the scope that claimed each flag name, so a collision can
+// name both ends of it. The scopes it spans mirror what setupFlagSet binds into
+// one flag set: the app's persistent and global options, every ancestor's
+// persistent options, and the command's own options.
+type flagOwners map[string]string
+
+func (o flagOwners) clone() flagOwners {
+	c := make(flagOwners, len(o))
+	for name, scope := range o {
+		c[name] = scope
+	}
+	return c
+}
+
+// checkOptionScope validates each spec the way the binder will, then claims
+// every name it declares.
+func checkOptionScope(owners flagOwners, scope string, options []Option) error {
 	for _, opt := range options {
 		spec := parseFlagSpec(opt.Flags)
-		if len(spec.longNames) == 0 && len(spec.shortNames) == 0 {
-			return fmt.Errorf("option flags spec %q is invalid (missing flag names)", opt.Flags)
+		if err := validateOptionSpec(opt, spec); err != nil {
+			return fmt.Errorf("%s: %w", scope, err)
 		}
+		names := make([]string, 0, len(spec.longNames)+len(spec.shortNames))
 		for _, l := range spec.longNames {
-			key := "--" + l
-			if seenFlags[key] {
-				return fmt.Errorf("duplicate option --%s declared in command %q", l, cmdName)
-			}
-			seenFlags[key] = true
+			names = append(names, "--"+l)
 		}
-		for _, s := range spec.shortNames {
-			key := "-" + s
-			if seenFlags[key] {
-				return fmt.Errorf("duplicate option shorthand -%s declared in command %q", s, cmdName)
+		for _, sh := range spec.shortNames {
+			names = append(names, "-"+sh)
+		}
+		for _, name := range names {
+			if prev, taken := owners[name]; taken {
+				return fmt.Errorf("duplicate option %s declared in %s (already declared in %s)", name, scope, prev)
 			}
-			seenFlags[key] = true
+			owners[name] = scope
 		}
 	}
 	return nil
 }
 
-func auditCommandTree(cmds []Command, currentPath []string, allPaths *[]commandPathInfo, opts AuditOptions) error {
+func validateOptionSpec(opt Option, spec flagSpec) error {
+	if opt.toggle || spec.isToggle {
+		return spec.validateToggle()
+	}
+	return spec.validate()
+}
+
+func auditCommandOptions(inherited flagOwners, cmd Command) (flagOwners, error) {
+	scope := fmt.Sprintf("command %q", cmd.Name)
+	persistent := inherited.clone()
+	if err := checkOptionScope(persistent, scope, cmd.PersistentOptions); err != nil {
+		return nil, err
+	}
+	local := persistent.clone()
+	if err := checkOptionScope(local, scope, cmd.Options); err != nil {
+		return nil, err
+	}
+	// Only persistent options reach the subcommands.
+	return persistent, nil
+}
+
+func auditCommandTree(cmds []Command, currentPath []string, allPaths *[]commandPathInfo, inherited flagOwners, opts AuditOptions) error {
 	seenNames := make(map[string]bool)
 	for _, cmd := range cmds {
 		if err := auditCommandNameUniqueness(seenNames, cmd, currentPath); err != nil {
 			return err
 		}
 
-		cmdPath := append(currentPath, cmd.Name)
+		cmdPath := append(append([]string(nil), currentPath...), cmd.Name)
 		wordSetKey, err := checkPathPermutation(*allPaths, cmdPath, opts.AllowPathPermutations)
 		if err != nil {
 			return err
 		}
 		*allPaths = append(*allPaths, commandPathInfo{path: cmdPath, wordSet: wordSetKey})
 
-		seenFlags := make(map[string]bool)
-		if err := checkCommandOptions(seenFlags, cmd.Name, cmd.PersistentOptions); err != nil {
-			return err
-		}
-		if err := checkCommandOptions(seenFlags, cmd.Name, cmd.Options); err != nil {
+		persistent, err := auditCommandOptions(inherited, cmd)
+		if err != nil {
 			return err
 		}
 
-		if err := auditCommandTree(cmd.Subcommands, cmdPath, allPaths, opts); err != nil {
+		if err := auditCommandTree(cmd.Subcommands, cmdPath, allPaths, persistent, opts); err != nil {
 			return err
 		}
 	}
@@ -195,6 +228,14 @@ func AuditWithOptions(app *App, opts AuditOptions) error {
 		}
 	}
 
+	owners := make(flagOwners)
+	if err := checkOptionScope(owners, "the app's persistent options", app.PersistentOptions); err != nil {
+		return err
+	}
+	if err := checkOptionScope(owners, "the app's global flags", app.GlobalFlags); err != nil {
+		return err
+	}
+
 	var allPaths []commandPathInfo
-	return auditCommandTree(app.Commands, nil, &allPaths, opts)
+	return auditCommandTree(app.Commands, nil, &allPaths, owners, opts)
 }

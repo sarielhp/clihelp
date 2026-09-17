@@ -778,35 +778,23 @@ func bindAndMark(fs *pflag.FlagSet, opts []Option) error {
 	return nil
 }
 
+// checkDeprecatedFlags warns once per deprecated option that was used, under any
+// of its spellings. The flag the user wrote may be a hidden alias, so the notice
+// names the option's primary spelling.
 func checkDeprecatedFlags(fs *pflag.FlagSet, opts []Option, stderr io.Writer) {
+	warned := make(map[string]bool)
 	fs.Visit(func(f *pflag.Flag) {
+		group := optionGroup(f)
+		if warned[group] {
+			return
+		}
 		for _, opt := range opts {
-			if opt.Deprecated == "" {
+			if opt.Deprecated == "" || parseFlagSpec(opt.Flags).primaryFlagName() != group {
 				continue
 			}
-			spec := parseFlagSpec(opt.Flags)
-			matched := false
-			for _, l := range spec.longNames {
-				if l == f.Name {
-					matched = true
-					break
-				}
-			}
-			if !matched && len(spec.longNames) == 0 && len(spec.shortNames) > 0 {
-				if f.Name == "flag-"+spec.shortNames[0] {
-					matched = true
-				}
-			}
-			for i := 1; i < len(spec.shortNames); i++ {
-				aliasLong := fmt.Sprintf("%s-alias-%s", spec.longNames[0], spec.shortNames[i])
-				if f.Name == aliasLong {
-					matched = true
-					break
-				}
-			}
-			if matched {
-				fmt.Fprintf(stderr, "Warning: flag --%s is deprecated: %s\n", f.Name, opt.Deprecated)
-			}
+			warned[group] = true
+			fmt.Fprintf(stderr, "Warning: flag --%s is deprecated: %s\n", strings.TrimPrefix(group, "flag-"), opt.Deprecated)
+			return
 		}
 	})
 }

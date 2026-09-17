@@ -26,6 +26,12 @@ type Option struct {
 	// The typed constructors set it; an Option assembled by hand leaves it
 	// unknown and command resolution infers arity from the flag spec instead.
 	arity flagArity
+
+	// toggle marks an option built by BoolToggle. A spec written without the
+	// "--[no-]" marker looks like any other boolean to a reader of Flags, but it
+	// still needs a long name to derive its negative spelling from, and Audit has
+	// no other way to know that rule applies.
+	toggle bool
 }
 
 // flagArity is what command resolution needs to know about an option before the

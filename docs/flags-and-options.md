@@ -28,6 +28,12 @@ Option constructors parse a flag specification string that defines short names, 
 | Boolean Toggle | `"--[no-]cache"` | Registers `--cache` (`true`) and `--no-cache` (`false`). |
 | Value Placeholders | `<file>`, `PATH`, `[value]`, `NAME` | Uppercase or bracketed tokens set help placeholder text. |
 
+### Spec Rules
+
+- **Every name carries its own dashes.** `"out <F>"` declares no flag at all, and `"-out <F>"` declares a *shorthand* named `out`. Both are rejected when the flag is bound and reported by `clihelp.Audit`, rather than binding nothing or panicking inside `pflag`.
+- **A shorthand is exactly one ASCII character.** `-o` is a shorthand; `-out` and `-é` are errors.
+- **All spellings are one flag.** Aliases share a single value and a single "was it given?" bit, so `--tag a --tag b -T c` accumulates all three, `clihelp.Required` is satisfied by any spelling, a relational validator sees the option however it was written, and a deprecation notice is printed once.
+
 ---
 
 ## Option Constructors Reference
@@ -59,6 +65,8 @@ clihelp.BoolToggle(&normalize, "--[no-]normalize", true, "Apply LUFS audio norma
 - Users can pass `--normalize` to set `true`
 - Users can pass `--no-normalize` to set `false`
 - If neither is passed, `normalize` retains its default (`true`).
+- Extra long names get their own negative form: `"--[no-]color, --colour"` binds `--color`, `--no-color`, `--colour` and `--no-colour`.
+- A toggle needs a long name to derive its negative spelling from, so a short-only spec such as `"-c"` is an error.
 
 ---
 
@@ -195,6 +203,8 @@ clihelp.Command{
     ),
 }
 ```
+
+Constraint names may be written in any spelling the option declares — `"-a"` and `"--alpha"` name the same constraint — and a constraint is satisfied by whichever spelling the user typed. A name that no option on the command declares is reported as an error when the command runs: a constraint over a flag that does not exist can never fire, and nothing else would ever say so.
 
 ---
 

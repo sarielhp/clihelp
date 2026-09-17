@@ -9,25 +9,24 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// getMissingRequiredFlags returns all Option.Required flags that have not been set.
+// getMissingRequiredFlags returns all Option.Required flags that have not been
+// set. An option set through any of its spellings counts as set: pflag keeps a
+// Changed bit per flag, and an alias is a flag of its own.
 func getMissingRequiredFlags(fs *pflag.FlagSet, allOptions []Option) []*pflag.Flag {
 	var missing []*pflag.Flag
 	for _, opt := range allOptions {
-		if opt.Required {
-			spec := parseFlagSpec(opt.Flags)
-			name := ""
-			if len(spec.longNames) > 0 {
-				name = spec.longNames[0]
-			} else if len(spec.shortNames) > 0 {
-				name = "flag-" + spec.shortNames[0]
-			}
-			if name != "" {
-				flg := fs.Lookup(name)
-				if flg != nil && !fs.Changed(name) {
-					missing = append(missing, flg)
-				}
-			}
+		if !opt.Required {
+			continue
 		}
+		name := parseFlagSpec(opt.Flags).primaryFlagName()
+		if name == "" {
+			continue
+		}
+		flg := fs.Lookup(name)
+		if flg == nil || optionChanged(fs, name) {
+			continue
+		}
+		missing = append(missing, flg)
 	}
 	return missing
 }

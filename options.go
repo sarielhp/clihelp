@@ -18,13 +18,22 @@ type flagSpec struct {
 	baseToggle  string
 }
 
-func (fs flagSpec) hasHelpFlag() bool {
-	for _, l := range fs.longNames {
+// aliasGroupAnnotation labels every pflag flag that stands for one Option with
+// the name of that option's primary flag. pflag knows nothing about aliases: it
+// sees "--title" and "-t" as two flags with two Changed bits, which is how a
+// required option set through an alias came out missing and how a relation
+// validator lost sight of a constraint. The annotation travels with the flag
+// set, so code holding only the flag set can still ask which option a flag is a
+// spelling of.
+const aliasGroupAnnotation = "clihelp-option"
+
+func (spec flagSpec) hasHelpFlag() bool {
+	for _, l := range spec.longNames {
 		if l == "help" {
 			return true
 		}
 	}
-	for _, s := range fs.shortNames {
+	for _, s := range spec.shortNames {
 		if s == "h" {
 			return true
 		}
@@ -51,7 +60,9 @@ func parseFlagSpec(spec string) flagSpec {
 			fs.isToggle = true
 			base := strings.TrimPrefix(token, "--[no-]")
 			base = strings.TrimPrefix(base, "-[no-]")
-			fs.baseToggle = base
+			if fs.baseToggle == "" {
+				fs.baseToggle = base
+			}
 			fs.longNames = append(fs.longNames, base, "no-"+base)
 			continue
 		}
@@ -76,11 +87,120 @@ func parseFlagSpec(spec string) flagSpec {
 	return fs
 }
 
-func bindHelper(fs *pflag.FlagSet, spec flagSpec, fn func(long, short string)) error {
-	if spec.hasHelpFlag() {
-		return fmt.Errorf("flag spec %q: -h/--help flags are automatically managed by clihelp and must not be declared in Options", spec.raw)
+// validate reports the spec defects pflag cannot survive and the ones it cannot
+// see. A shorthand longer than one ASCII character panics inside
+// pflag.ShorthandLookup; a name written without its dashes is discarded by
+// parseFlagSpec, leaving an option that binds nothing and silently does not
+// exist.
+func (spec flagSpec) validate() error {
+	for _, s := range spec.shortNames {
+		if len(s) != 1 {
+			return fmt.Errorf("flag spec %q: shorthand %q must be a single ASCII character (write %q to declare a long name)", spec.raw, "-"+s, "--"+s)
+		}
 	}
+	for _, l := range spec.longNames {
+		if l == "" {
+			return fmt.Errorf("flag spec %q: empty long flag name", spec.raw)
+		}
+	}
+	if len(spec.longNames) == 0 && len(spec.shortNames) == 0 {
+		return fmt.Errorf("flag spec %q declares no flag names: every name needs its leading dashes, as in %q", spec.raw, "--out, -o <file>")
+	}
+	return nil
+}
 
+// validateToggle adds the one requirement a toggle has beyond a plain option: a
+// long name to derive the negative spelling from.
+func (spec flagSpec) validateToggle() error {
+	if err := spec.validate(); err != nil {
+		return err
+	}
+	if spec.toggleBase() == "" {
+		return fmt.Errorf("flag spec %q: a toggle needs a long name to derive its --no- form from, as in %q", spec.raw, "--[no-]color")
+	}
+	return nil
+}
+
+// toggleBase is the positive long name of a toggle: the name inside "--[no-]",
+// or the first long name when the spec is written without the marker.
+func (spec flagSpec) toggleBase() string {
+	if spec.baseToggle != "" {
+		return spec.baseToggle
+	}
+	if len(spec.longNames) > 0 {
+		return spec.longNames[0]
+	}
+	return ""
+}
+
+// primaryNames returns the long and short name the option is bound under. Either
+// may be empty; validate guarantees they are not both empty.
+func (spec flagSpec) primaryNames() (string, string) {
+	long, short := "", ""
+	if len(spec.longNames) > 0 {
+		long = spec.longNames[0]
+	}
+	if len(spec.shortNames) > 0 {
+		short = spec.shortNames[0]
+	}
+	return long, short
+}
+
+// primaryFlagName is the pflag name of the option's primary flag, which doubles
+// as the key its aliases are annotated with. A short-only option has no long
+// name of its own, so it is bound under the synthetic name pflag needs.
+func (spec flagSpec) primaryFlagName() string {
+	long, short := spec.primaryNames()
+	if long != "" {
+		return long
+	}
+	if short != "" {
+		return "flag-" + short
+	}
+	return ""
+}
+
+// aliasFlagName is the hidden long name an extra shorthand is registered under:
+// pflag offers no way to attach a second shorthand to an existing flag.
+func aliasFlagName(primaryLong, short string) string {
+	if primaryLong == "" {
+		return "alias-" + short
+	}
+	return primaryLong + "-alias-" + short
+}
+
+// optionGroup names the option a flag is a spelling of: the primary flag name it
+// was annotated with, or its own name for flags registered outside the option
+// machinery, such as the built-in help flags.
+func optionGroup(f *pflag.Flag) string {
+	if g := f.Annotations[aliasGroupAnnotation]; len(g) > 0 {
+		return g[0]
+	}
+	return f.Name
+}
+
+// optionChanged reports whether any spelling of the option identified by
+// primaryName appeared on the command line.
+func optionChanged(fs *pflag.FlagSet, primaryName string) bool {
+	changed := false
+	fs.VisitAll(func(f *pflag.Flag) {
+		if f.Changed && optionGroup(f) == primaryName {
+			changed = true
+		}
+	})
+	return changed
+}
+
+func tagOptionFlag(f *pflag.Flag, primaryName string) {
+	if f.Annotations == nil {
+		f.Annotations = make(map[string][]string)
+	}
+	f.Annotations[aliasGroupAnnotation] = []string{primaryName}
+}
+
+// checkSpecAvailable reports a name that is already taken, which pflag would
+// otherwise answer with a panic.
+func checkSpecAvailable(fs *pflag.FlagSet, spec flagSpec) error {
 	for _, l := range spec.longNames {
 		if fs.Lookup(l) != nil {
 			return fmt.Errorf("flag %q in spec %q is already registered in %s flagset", "--"+l, spec.raw, fs.Name())
@@ -91,33 +211,53 @@ func bindHelper(fs *pflag.FlagSet, spec flagSpec, fn func(long, short string)) e
 			return fmt.Errorf("shorthand %q in spec %q is already registered in %s flagset", "-"+s, spec.raw, fs.Name())
 		}
 	}
+	return nil
+}
 
-	primaryLong := ""
-	if len(spec.longNames) > 0 {
-		primaryLong = spec.longNames[0]
+// bindAlias registers one more spelling of an option that is already bound. The
+// alias shares the primary flag's pflag.Value rather than binding a second value
+// to the same target: two values mean two "already set" states, which is how
+// "--tag a --tag b -T c" used to keep only "c".
+func bindAlias(fs *pflag.FlagSet, primary *pflag.Flag, name, short string, hidden bool) error {
+	if fs.Lookup(name) != nil {
+		return fmt.Errorf("flag %q conflicts with an alias of %q", "--"+name, "--"+primary.Name)
 	}
-	primaryShort := ""
-	if len(spec.shortNames) > 0 {
-		primaryShort = spec.shortNames[0]
+	f := fs.VarPF(primary.Value, name, short, primary.Usage)
+	f.NoOptDefVal = primary.NoOptDefVal
+	f.DefValue = primary.DefValue
+	f.Hidden = hidden
+	tagOptionFlag(f, optionGroup(primary))
+	return nil
+}
+
+func bindHelper(fs *pflag.FlagSet, spec flagSpec, fn func(long, short string)) error {
+	if spec.hasHelpFlag() {
+		return fmt.Errorf("flag spec %q: -h/--help flags are automatically managed by clihelp and must not be declared in Options", spec.raw)
+	}
+	if err := spec.validate(); err != nil {
+		return err
+	}
+	if err := checkSpecAvailable(fs, spec); err != nil {
+		return err
 	}
 
-	if primaryLong != "" || primaryShort != "" {
-		fn(primaryLong, primaryShort)
+	primaryLong, primaryShort := spec.primaryNames()
+	fn(primaryLong, primaryShort)
+	primary := fs.Lookup(spec.primaryFlagName())
+	if primary == nil {
+		return fmt.Errorf("flag spec %q: no flag was registered for %q", spec.raw, spec.primaryFlagName())
 	}
+	tagOptionFlag(primary, primary.Name)
 
-	// Register additional long names
 	for i := 1; i < len(spec.longNames); i++ {
-		fn(spec.longNames[i], "")
-	}
-	// Register additional short names with alias names
-	for i := 1; i < len(spec.shortNames); i++ {
-		short := spec.shortNames[i]
-		aliasLong := fmt.Sprintf("%s-alias-%s", primaryLong, short)
-		if primaryLong == "" {
-			aliasLong = "alias-" + short
+		if err := bindAlias(fs, primary, spec.longNames[i], "", false); err != nil {
+			return err
 		}
-		fn(aliasLong, short)
-		_ = fs.MarkHidden(aliasLong)
+	}
+	for i := 1; i < len(spec.shortNames); i++ {
+		if err := bindAlias(fs, primary, aliasFlagName(primaryLong, spec.shortNames[i]), spec.shortNames[i], true); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -239,59 +379,93 @@ func (t *toggleVal) IsBoolFlag() bool {
 func BoolToggle(target *bool, flags string, defaultVal bool, usage string) Option {
 	*target = defaultVal
 	spec := parseFlagSpec(flags)
-	base := spec.baseToggle
-	if base == "" && len(spec.longNames) > 0 {
-		base = spec.longNames[0]
-	}
-
 	return Option{
 		arity:       arityFlag,
+		toggle:      true,
 		Flags:       flags,
 		Description: usage,
 		DefaultText: strconv.FormatBool(defaultVal),
 		Binder: func(fs *pflag.FlagSet) error {
-			if spec.hasHelpFlag() {
-				return fmt.Errorf("flag spec %q: -h/--help flags are automatically managed by clihelp and must not be declared in Options", flags)
-			}
-
-			// Check for duplicate flags (similar to bindHelper)
-			for _, l := range spec.longNames {
-				if fs.Lookup(l) != nil {
-					return fmt.Errorf("flag %q in spec %q is already registered in %s flagset", "--"+l, spec.raw, fs.Name())
-				}
-			}
-			for _, s := range spec.shortNames {
-				if fs.ShorthandLookup(s) != nil {
-					return fmt.Errorf("shorthand %q in spec %q is already registered in %s flagset", "-"+s, spec.raw, fs.Name())
-				}
-			}
-
-			pos := &toggleVal{target: target, positive: true}
-			neg := &toggleVal{target: target, positive: false}
-
-			primaryShort := ""
-			if len(spec.shortNames) > 0 {
-				primaryShort = spec.shortNames[0]
-			}
-
-			if primaryShort != "" {
-				fs.VarP(pos, base, primaryShort, usage)
-			} else {
-				fs.Var(pos, base, usage)
-			}
-			if f := fs.Lookup(base); f != nil {
-				f.NoOptDefVal = "true"
-			}
-
-			noFlag := "no-" + base
-			fs.Var(neg, noFlag, "Disable "+usage)
-			if f := fs.Lookup(noFlag); f != nil {
-				f.NoOptDefVal = "true"
-			}
-			_ = fs.MarkHidden(noFlag)
-			return nil
+			return bindToggle(fs, spec, target, usage)
 		},
 	}
+}
+
+// bindToggle registers a toggle under every spelling its spec declares: the base
+// name, the negative counterpart of each positive long name, any further long
+// name, and any further shorthand. All of them are tagged with the base name, so
+// the option counts as set whichever spelling the user wrote.
+func bindToggle(fs *pflag.FlagSet, spec flagSpec, target *bool, usage string) error {
+	if spec.hasHelpFlag() {
+		return fmt.Errorf("flag spec %q: -h/--help flags are automatically managed by clihelp and must not be declared in Options", spec.raw)
+	}
+	if err := spec.validateToggle(); err != nil {
+		return err
+	}
+	if err := checkSpecAvailable(fs, spec); err != nil {
+		return err
+	}
+
+	base := spec.toggleBase()
+	_, primaryShort := spec.primaryNames()
+	primary := fs.VarPF(&toggleVal{target: target, positive: true}, base, primaryShort, usage)
+	primary.NoOptDefVal = "true"
+	tagOptionFlag(primary, base)
+
+	if err := bindToggleLongNames(fs, spec, target, usage); err != nil {
+		return err
+	}
+	return bindToggleShorthands(fs, spec, base, primary)
+}
+
+// bindToggleLongNames binds the negative form of the base name, every further
+// long name the spec declares, and the negative form of each of those. A name
+// reachable two ways is bound once.
+func bindToggleLongNames(fs *pflag.FlagSet, spec flagSpec, target *bool, usage string) error {
+	base := spec.toggleBase()
+	bound := map[string]bool{base: true}
+	names := append([]string{"no-" + base}, spec.longNames...)
+	for _, name := range names {
+		if bound[name] {
+			continue
+		}
+		bound[name] = true
+		positive := !strings.HasPrefix(name, "no-")
+		if err := bindToggleName(fs, name, base, target, usage, positive); err != nil {
+			return err
+		}
+		if counter := "no-" + name; positive && !bound[counter] {
+			bound[counter] = true
+			if err := bindToggleName(fs, counter, base, target, usage, false); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func bindToggleName(fs *pflag.FlagSet, name, base string, target *bool, usage string, positive bool) error {
+	if fs.Lookup(name) != nil {
+		return fmt.Errorf("flag %q conflicts with an alias of %q", "--"+name, "--"+base)
+	}
+	text := usage
+	if !positive {
+		text = "Disable " + usage
+	}
+	f := fs.VarPF(&toggleVal{target: target, positive: positive}, name, "", text)
+	f.NoOptDefVal = "true"
+	f.Hidden = !positive
+	tagOptionFlag(f, base)
+	return nil
+}
+
+func bindToggleShorthands(fs *pflag.FlagSet, spec flagSpec, base string, primary *pflag.Flag) error {
+	for i := 1; i < len(spec.shortNames); i++ {
+		if err := bindAlias(fs, primary, aliasFlagName(base, spec.shortNames[i]), spec.shortNames[i], true); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Duration binds a time.Duration flag to target.
