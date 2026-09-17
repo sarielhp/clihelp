@@ -3,6 +3,8 @@ package clihelp
 import (
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 )
 
@@ -73,3 +75,30 @@ func safeWrapperName(name string) error {
 	}
 	return nil
 }
+
+// fileHasMarker reports whether the first limit bytes of the file at path
+// contain marker.
+//
+// Five near-identical copies of this read a fixed-size head with the error
+// discarded, so a short read — possible on NFS or FUSE, or when interrupted —
+// was indistinguishable from an absent marker. For the ownership checks that
+// means "not ours", which is the safe direction; for the staleness checks it
+// means an endless rewrite. Reading through io.LimitReader removes the guess,
+// and a limit generous enough that a long header cannot push the marker out of
+// the window.
+func fileHasMarker(path, marker string, limit int64) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	head, err := io.ReadAll(io.LimitReader(f, limit))
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(head), marker)
+}
+
+// markerWindow is how far into a generated file a marker may sit. Every header
+// this library writes is far shorter; the slack is for a long application name.
+const markerWindow = 4096

@@ -33,8 +33,8 @@ if [ "$want" != "$lib" ]; then
     exit 1
 fi
 
-echo "=== Test ==="
-go test -timeout 30s ./...
+echo "=== Test (race) ==="
+go test -race -timeout 120s ./...
 
 echo "=== Build Example ==="
 go build -o /dev/null ./example
