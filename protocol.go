@@ -263,24 +263,31 @@ const wrapperTemplate = `#!/bin/sh
 # Shell completion and the Alt-H explanation work through it because it answers
 # clihelp's protocol calls on behalf of the program it wraps.
 
+# Quoted once, here, so that nothing below interpolates shell text into a
+# context where it would be re-parsed.
+__clihelp_app={{app_q}}
+__clihelp_target={{target_q}}
+
 case $1 in
     __complete)
         shift
-        exec {{app}} __complete {{args}} "$@"
+        exec "$__clihelp_app" __complete {{args}} "$@"
         ;;
     __explain)
         # The first line of the answer is the command line to put back on the
         # prompt, and it is echoed back unchanged: rewriting "{{name}} ..." to
-        # "{{target}} ..." would replace what was deliberately typed short.
+        # the wrapped form would replace what was deliberately typed short.
         printf '%s\n' "$2"
-        rest=${2#* }
-        [ "$rest" = "$2" ] && rest=
-        {{app}} __explain "{{target}} $rest" | tail -n +2
+        line=$2
+        while [ "${line#[[:space:]]}" != "$line" ]; do line=${line#[[:space:]]}; done
+        rest=${line#* }
+        [ "$rest" = "$line" ] && rest=
+        "$__clihelp_app" __explain "$__clihelp_target${rest:+ }$rest" | tail -n +2
         exit 0
         ;;
 esac
 
-exec {{app}} {{args}} "$@"
+exec "$__clihelp_app" {{args}} "$@"
 `
 
 // GenWrapperScript writes a wrapper script that invokes the application with
@@ -314,9 +321,11 @@ func GenWrapperScript(app *App, name string, args []string, w io.Writer) error {
 
 	script := strings.NewReplacer(
 		"{{app}}", appN,
+		"{{app_q}}", escapeShellArg(appN),
 		"{{name}}", name,
 		"{{args}}", joined,
 		"{{target}}", target,
+		"{{target_q}}", escapeShellArg(target),
 		"{{proto}}", protoClihelp,
 	).Replace(wrapperTemplate)
 	_, err = io.WriteString(w, script)
@@ -334,10 +343,14 @@ func printWrapperRegistration(w io.Writer, app *App, name string, args []string)
 		target += " " + strings.Join(args, " ")
 	}
 
+	// Two registrations, because there are two mechanisms: the shell's completion
+	// table, and the Alt-H dispatcher's registry. Without the second the wrapper's
+	// own __explain branch is unreachable from a keystroke, which is what made the
+	// documented behaviour impossible.
 	lines := map[string]string{
-		"bash": fmt.Sprintf("complete -F _%s_complete %s", fn, name),
-		"zsh":  fmt.Sprintf("compdef _%s %s", fn, name),
-		"fish": fmt.Sprintf("complete -c %s --wraps %s", name, escapeShellArg(target)),
+		"bash": fmt.Sprintf("complete -F _%s_complete %s\n#   _clihelp_apps=\"${_clihelp_apps:-} %s \"", fn, name, name),
+		"zsh":  fmt.Sprintf("compdef _%s %s\n#   _clihelp_apps=\"${_clihelp_apps:-} %s \"", fn, name, name),
+		"fish": fmt.Sprintf("complete -c %s --wraps %s\n#   contains -- %s $_clihelp_apps; or set -g _clihelp_apps $_clihelp_apps %s", name, escapeShellArg(target), name, name),
 	}
 
 	fmt.Fprintf(w, "\n# Put %s somewhere on your PATH, then register it with your shell,\n", name)

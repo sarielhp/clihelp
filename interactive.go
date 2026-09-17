@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/pflag"
@@ -100,16 +101,21 @@ func promptForMissing(fs *pflag.FlagSet, missing []*pflag.Flag, stdin io.Reader,
 	return nil
 }
 
-// escapeShellArg single-quotes a string to make it shell-safe.
+// escapeShellArg quotes a string as a single POSIX shell word.
+//
+// The test is an allow-list, not a deny-list. A deny-list has to be complete to
+// be correct, and this one was not: it missed the glob characters, so an
+// argument like "a[1]" was emitted bare and matched a file in whatever directory
+// the script ran from, and it missed the backslash.
 func escapeShellArg(arg string) string {
-	if arg == "" {
-		return "''"
+	if arg != "" && shellSafeArg.MatchString(arg) {
+		return arg
 	}
-	if strings.ContainsAny(arg, " \t\n\r&;`'\"|*?~<>^()!$") {
-		return "'" + strings.ReplaceAll(arg, "'", "'\\''") + "'"
-	}
-	return arg
+	return "'" + strings.ReplaceAll(arg, "'", `'\''`) + "'"
 }
+
+// shellSafeArg matches the characters that need no quoting in any POSIX shell.
+var shellSafeArg = regexp.MustCompile(`^[A-Za-z0-9_@%+=:,./-]+$`)
 
 // constructCommand builds the equivalent full CLI command for presentation.
 func constructCommand(a *App, path []string, fs *pflag.FlagSet, positionalArgs []string) string {

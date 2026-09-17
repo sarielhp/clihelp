@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -95,8 +96,12 @@ func TestGenWrapperScript(t *testing.T) {
 	for _, want := range []string{
 		"#!/bin/sh",
 		"# clihelp-wraps: pod-ctl deploy --bucket 'my bucket'",
-		`exec pod-ctl __complete deploy --bucket 'my bucket' "$@"`,
-		`exec pod-ctl deploy --bucket 'my bucket' "$@"`,
+		// The program and the wrapped command line are quoted once, into shell
+		// variables, so that nothing below re-parses them.
+		"__clihelp_app=pod-ctl",
+		"__clihelp_target=",
+		`exec "$__clihelp_app" __complete deploy --bucket 'my bucket' "$@"`,
+		`exec "$__clihelp_app" deploy --bucket 'my bucket' "$@"`,
 	} {
 		if !strings.Contains(script, want) {
 			t.Errorf("wrapper script is missing %q:\n%s", want, script)
@@ -345,4 +350,82 @@ func TestClihelpVerbsRejectContradictoryFlags(t *testing.T) {
 		AssertErrorContains(t, "--force")
 	runProto(t, bareApp(), "__clihelp", "uninstall", "bash", "zsh").
 		AssertErrorContains(t, "zsh")
+}
+
+// A wrapper is put on $PATH and forgotten, so it must pass its arguments through
+// unchanged. escapeShellArg's single quotes were being interpolated into a
+// double-quoted string, where they are inert and $( ) still runs; and its
+// deny-list missed the glob characters, so "a[1]" matched a file in the cwd.
+func TestGeneratedWrapperPassesArgumentsThrough(t *testing.T) {
+	shPath, err := exec.LookPath("sh")
+	if err != nil {
+		t.Skip("sh not found")
+	}
+	dir := t.TempDir()
+	marker := filepath.Join(dir, "EXECUTED")
+	// A file that a glob would match, in the directory the wrapper runs from.
+	if err := os.WriteFile(filepath.Join(dir, "a1"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The wrapped program: report exactly what it received.
+	stub := "#!/bin/sh\nfor a in \"$@\"; do printf 'ARG[%s]\\n' \"$a\"; done\n"
+	if err := os.WriteFile(filepath.Join(dir, "pod"), []byte(stub), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	args := []string{"deploy", "--msg=$(touch " + marker + ")", "a[1]", "it's", "a b"}
+	var script strings.Builder
+	if err := GenWrapperScript(&App{Name: "pod"}, "pd", args, &script); err != nil {
+		t.Fatal(err)
+	}
+	wrapper := filepath.Join(dir, "pd")
+	if err := os.WriteFile(wrapper, []byte(script.String()), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	if out, err := exec.Command(shPath, "-n", wrapper).CombinedOutput(); err != nil {
+		t.Fatalf("the generated wrapper is not valid sh: %v\n%s", err, out)
+	}
+
+	cmd := exec.Command(wrapper, "extra")
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "PATH="+dir+":"+os.Getenv("PATH"))
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("running the wrapper failed: %v", err)
+	}
+	got := string(out)
+	for _, want := range args {
+		if !strings.Contains(got, "ARG["+want+"]") {
+			t.Errorf("argument %q did not survive:\n%s", want, got)
+		}
+	}
+	if _, err := os.Stat(marker); err == nil {
+		t.Errorf("the wrapper executed a command substitution from its own arguments")
+	}
+}
+
+// The wrapper's __explain branch answers the Alt-H protocol, but nothing ever
+// added the wrapper's name to the dispatcher's registry — so the branch was
+// unreachable from a keystroke, and the documentation described behaviour that
+// could not occur.
+func TestWrapperRegistrationRegistersWithTheDispatcher(t *testing.T) {
+	t.Setenv("SHELL", "/bin/bash")
+	res := runProto(t, bareApp(), "__clihelp", "wrapper", "pd", "build")
+	res.AssertNoError(t)
+	if !strings.Contains(res.Stderr, "_clihelp_apps") {
+		t.Errorf("the registration advice does not add the wrapper to the Alt-H registry:\n%s", res.Stderr)
+	}
+	if !strings.Contains(res.Stderr, "complete -F") {
+		t.Errorf("the completion registration went missing:\n%s", res.Stderr)
+	}
+}
+
+func TestWrapperRejectsANameItCannotSafelyEmit(t *testing.T) {
+	for _, name := range []string{"", "-w", "a/b", "..", "w;id", "w$(id)", "w\nid"} {
+		var b strings.Builder
+		if err := GenWrapperScript(&App{Name: "pod"}, name, nil, &b); err == nil {
+			t.Errorf("GenWrapperScript accepted the name %q", name)
+		}
+	}
 }
