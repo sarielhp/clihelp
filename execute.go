@@ -231,6 +231,9 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 	if len(args) > 0 && args[0] == "__complete" {
 		return a.handleComplete(ctx, args[1:])
 	}
+	if len(args) > 0 && args[0] == "__explain" {
+		return a.handleExplain(args[1:])
+	}
 
 	a.maybeAutoInstallCompletion(args)
 

@@ -99,6 +99,34 @@ with half of one.
 
 ---
 
+## Alt-H: Expand and Explain (`completion keys`)
+
+`completion keys [<shell>]` prints a snippet that binds **Alt-H**. Pressing it does two things:
+
+1. **Expands the command line.** With `App.AbbrevCommands`, `podctl b d` becomes `podctl build deploy` on the prompt — abbreviated command names are replaced by their full names, and everything else (flags, arguments, quoting, spacing, pipes, redirections) is left exactly as typed. An ambiguous abbreviation stops the expansion there rather than guessing.
+2. **Prints the help for the command it names**, capped at **two thirds of the terminal height** so the command being explained stays on screen. What does not fit is replaced by one line saying how much was cut and which `help` command prints the rest.
+
+```bash
+# ~/.bashrc
+eval "$(podctl completion keys bash)"
+
+# ~/.zshrc
+eval "$(podctl completion keys zsh)"
+
+# ~/.config/fish/config.fish
+podctl completion keys fish | source
+```
+
+This is deliberately **not** part of the completion script: every shell loads that lazily, on the first completion of the command, so a binding written there would not exist until `<Tab>` had already been pressed once.
+
+### What the binding touches
+
+- The binding acts only on command lines that begin with your application's name. In zsh, where Alt-H is `run-help` by default, anything else is handed straight back to `run-help`; in bash and fish, Alt-H is otherwise unbound.
+- The shell passes its own `$LINES` and `$COLUMNS` through `CLIHELP_TERM_LINES` / `CLIHELP_TERM_COLUMNS`, because the binding captures the program's stdout and a pipe has no size to measure.
+- The underlying protocol call is `<app> __explain "<command line>"`, whose first output line is always the expanded command line. `App.Explain` is exported if you want to drive it yourself.
+
+---
+
 ## Manual Shell Script Generation
 
 ### Bash (`clihelp.GenBashCompletion`)

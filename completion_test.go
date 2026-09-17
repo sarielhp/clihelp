@@ -207,7 +207,7 @@ func TestCompletionCommand(t *testing.T) {
 	for i, sub := range cmd.Subcommands {
 		subNames[i] = sub.Name
 	}
-	expected := []string{"bash", "zsh", "fish", "install"}
+	expected := []string{"bash", "zsh", "fish", "keys", "install"}
 	if len(subNames) != len(expected) {
 		t.Fatalf("expected subcommands %v, got %v", expected, subNames)
 	}

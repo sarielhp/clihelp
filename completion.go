@@ -441,8 +441,8 @@ func (a *App) maybeAutoInstallCompletion(args []string) {
 	if a == nil || !a.AutoInstallCompletion {
 		return
 	}
-	// Never run during internal completion calls, or in CI/non-interactive test runs
-	if len(args) > 0 && args[0] == "__complete" {
+	// Never run during internal protocol calls, or in CI/non-interactive test runs
+	if len(args) > 0 && (args[0] == "__complete" || args[0] == "__explain") {
 		return
 	}
 	if os.Getenv("CI") != "" || os.Getenv("GITHUB_ACTIONS") != "" || os.Getenv("TERM") == "dumb" || os.Getenv("NO_AUTO_COMPLETION") != "" || os.Getenv("CLIHELP_NO_AUTO_COMPLETION") != "" {
@@ -573,67 +573,110 @@ func CompletionCommand() Command {
 		Notes: []Note{
 			{
 				Heading: "Shell Tip",
-				Text:    "Tip: <Tab> to complete, Ctrl-D to list choices, Alt-H for instant command help.",
+				Text:    "Tip: <Tab> to complete, Ctrl-D to list choices. Run 'completion keys' and source the result from your shell's rc file to bind Alt-H, which expands the command line and shows the help for the command it names.",
 			},
 		},
-		Subcommands: []Command{
-			{
-				Name:        "bash",
-				Description: "Generate Bash tab-completion script",
-				UsageLine:   "completion bash",
-				Args:        NoArgs,
-				Run: func(ctx *Context) error {
-					return GenBashCompletion(ctx.App, ctx.Stdout)
-				},
+		Subcommands: append(completionGenerateSubcommands(),
+			completionKeysSubcommand(),
+			completionInstallSubcommand(),
+		),
+	}
+}
+
+// completionGenerateSubcommands returns the per-shell script generators.
+func completionGenerateSubcommands() []Command {
+	return []Command{
+		{
+			Name:        "bash",
+			Description: "Generate Bash tab-completion script",
+			UsageLine:   "completion bash",
+			Args:        NoArgs,
+			Run: func(ctx *Context) error {
+				return GenBashCompletion(ctx.App, ctx.Stdout)
 			},
-			{
-				Name:        "zsh",
-				Description: "Generate Zsh tab-completion script",
-				UsageLine:   "completion zsh",
-				Args:        NoArgs,
-				Run: func(ctx *Context) error {
-					return GenZshCompletion(ctx.App, ctx.Stdout)
-				},
+		},
+		{
+			Name:        "zsh",
+			Description: "Generate Zsh tab-completion script",
+			UsageLine:   "completion zsh",
+			Args:        NoArgs,
+			Run: func(ctx *Context) error {
+				return GenZshCompletion(ctx.App, ctx.Stdout)
 			},
-			{
-				Name:        "fish",
-				Description: "Generate Fish tab-completion script",
-				UsageLine:   "completion fish",
-				Args:        NoArgs,
-				Run: func(ctx *Context) error {
-					return GenFishCompletion(ctx.App, ctx.Stdout)
-				},
+		},
+		{
+			Name:        "fish",
+			Description: "Generate Fish tab-completion script",
+			UsageLine:   "completion fish",
+			Args:        NoArgs,
+			Run: func(ctx *Context) error {
+				return GenFishCompletion(ctx.App, ctx.Stdout)
 			},
+		},
+	}
+}
+
+// completionKeysSubcommand prints the shell snippet that binds Alt-H.
+func completionKeysSubcommand() Command {
+	return Command{
+		Name:        "keys",
+		Description: "Print shell key bindings (Alt-H expands the command line and explains it)",
+		UsageLine:   "completion keys [<shell>]",
+		Examples: []Example{
+			{Line: "completion keys bash", Description: "Print the Bash key bindings"},
+		},
+		Parameters: []Param{
+			{Name: "[<shell>]", Description: "Shell type ('bash', 'zsh', or 'fish'; defaults to current shell)"},
+		},
+		Notes: []Note{
 			{
-				Name:        "install",
-				Description: "Install tab-completion script to standard user directory",
-				UsageLine:   "completion install [<shell>]",
-				Examples: []Example{
-					{Line: "completion install zsh", Description: "Install completions to ~/.local/share/zsh/site-functions"},
-				},
-				Parameters: []Param{
-					{Name: "[<shell>]", Description: "Shell type ('bash', 'zsh', or 'fish'; defaults to current shell)"},
-				},
-				Args: MaximumNArgs(1),
-				Run: func(ctx *Context) error {
-					shell := ""
-					if len(ctx.Args) > 0 {
-						shell = ctx.Args[0]
-					}
-					path, err := InstallCompletion(ctx.App, shell)
-					if err != nil {
-						return err
-					}
-					fmt.Fprintf(ctx.Stdout, "✓ Autocompletion installed to: %s\n", path)
-					if shell == "zsh" || (shell == "" && detectShell() == "zsh") {
-						fmt.Fprintln(ctx.Stdout, "Note: If not already configured, ensure the directory is in your Zsh $fpath in ~/.zshrc:")
-						fmt.Fprintln(ctx.Stdout, "    fpath=(~/.local/share/zsh/site-functions $fpath)")
-					}
-					fmt.Fprintln(ctx.Stdout, "Tip: <Tab> to complete, Ctrl-D to list choices, Alt-H for instant command help.")
-					fmt.Fprintln(ctx.Stdout, "Restart your shell or open a new terminal session to activate.")
-					return nil
-				},
+				Heading: "Why This Is Separate",
+				Text:    "Every shell loads a completion script lazily, on the first completion of the command, so a key binding written there would not exist until <Tab> had already been pressed once. Source this from your shell's rc file instead; the first line of the output says how.",
 			},
+		},
+		Args: MaximumNArgs(1),
+		Run: func(ctx *Context) error {
+			shell := ""
+			if len(ctx.Args) > 0 {
+				shell = ctx.Args[0]
+			}
+			return GenKeyBindings(ctx.App, shell, ctx.Stdout)
+		},
+	}
+}
+
+// completionInstallSubcommand installs the completion script for a shell.
+func completionInstallSubcommand() Command {
+	return Command{
+		Name:        "install",
+		Description: "Install tab-completion script to standard user directory",
+		UsageLine:   "completion install [<shell>]",
+		Examples: []Example{
+			{Line: "completion install zsh", Description: "Install completions to ~/.local/share/zsh/site-functions"},
+		},
+		Parameters: []Param{
+			{Name: "[<shell>]", Description: "Shell type ('bash', 'zsh', or 'fish'; defaults to current shell)"},
+		},
+		Args: MaximumNArgs(1),
+		Run: func(ctx *Context) error {
+			shell := ""
+			if len(ctx.Args) > 0 {
+				shell = ctx.Args[0]
+			}
+			path, err := InstallCompletion(ctx.App, shell)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(ctx.Stdout, "✓ Autocompletion installed to: %s\n", path)
+			if shell == "zsh" || (shell == "" && detectShell() == "zsh") {
+				fmt.Fprintln(ctx.Stdout, "Note: If not already configured, ensure the directory is in your Zsh $fpath in ~/.zshrc:")
+				fmt.Fprintln(ctx.Stdout, "    fpath=(~/.local/share/zsh/site-functions $fpath)")
+			}
+			fmt.Fprintf(ctx.Stdout, "Tip: <Tab> to complete, Ctrl-D to list choices.\n")
+			fmt.Fprintf(ctx.Stdout, "     For Alt-H (expand the command line and show its help), add this to your shell's rc file:\n")
+			fmt.Fprintf(ctx.Stdout, "         eval \"$(%s completion keys)\"\n", appName(ctx.App))
+			fmt.Fprintln(ctx.Stdout, "Restart your shell or open a new terminal session to activate.")
+			return nil
 		},
 	}
 }

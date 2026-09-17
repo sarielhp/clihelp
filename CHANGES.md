@@ -2,6 +2,15 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.13] - 2026-09-17
+
+### Added
+- **Alt-H: Expand and Explain** - `completion keys [<shell>]` prints a shell snippet that binds Alt-H to two actions: it rewrites the abbreviated command names on the line to their full names (`podctl b d` becomes `podctl build deploy`, leaving flags, arguments, quoting and redirections exactly as typed), and it prints the help for the command that line names, capped at two thirds of the terminal height with a note saying how much was cut and where to read it. The binding acts only on command lines that begin with the application's own name; in zsh, where Alt-H is `run-help` by default, everything else is handed back to `run-help`. It is a separate snippet rather than part of the completion script because every shell loads completion scripts lazily, on the first `<Tab>` for that command. New: `App.Explain`, `GenKeyBindings`, and the `__explain` protocol call.
+
+### Fixed
+- **Shell Menus Showed Whole Paragraphs of Markdown** - the completion protocol sent `Description` fields verbatim, so zsh's and fish's menus printed entire descriptions, markup and all: `**deep** — This is the [deep command](https://example.com/deep) at the root…`. Descriptions now go out as one plain line — markdown rendered away, whitespace collapsed, first sentence only, capped at 72 display columns.
+- **`completion install` Promised a Key Nobody Bound** - the printed tip advertised "Alt-H for instant command help", which did nothing: bash has no default Alt-H binding, and zsh's `run-help` found no man page. It now points at `completion keys`, which makes the promise true.
+
 ## [0.3.12] - 2026-09-17
 
 Completes the 2026-09-17 deep review: every remaining finding in `review/findings-2026-09-17.md` is fixed.
