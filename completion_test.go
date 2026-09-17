@@ -222,10 +222,11 @@ func TestCompletionCommand(t *testing.T) {
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("XDG_DATA_HOME", filepath.Join(tmpHome, "data"))
 
-	var outBuf bytes.Buffer
+	var outBuf, errBuf bytes.Buffer
 	app := &App{
 		Name:     "myapp",
 		Stdout:   &outBuf,
+		Stderr:   &errBuf,
 		Commands: []Command{cmd},
 	}
 
@@ -240,8 +241,13 @@ func TestCompletionCommand(t *testing.T) {
 	if err := app.ExecuteContext(context.Background(), []string{"completion", "install", "bash"}); err != nil {
 		t.Fatalf("completion install bash failed: %v", err)
 	}
-	if !strings.Contains(outBuf.String(), "shell integration installed") {
-		t.Errorf("expected installation confirmation, got: %s", outBuf.String())
+	// The human report goes to stderr; stdout carries the generated file's path
+	// so a script can capture it.
+	if !strings.Contains(errBuf.String(), "shell integration installed") {
+		t.Errorf("expected the installation report on stderr, got: %s", errBuf.String())
+	}
+	if !strings.Contains(outBuf.String(), "shell") {
+		t.Errorf("expected the generated path on stdout, got: %s", outBuf.String())
 	}
 }
 

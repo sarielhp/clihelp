@@ -770,7 +770,10 @@ func completionInstallSubcommand() Command {
 			if err != nil {
 				return err
 			}
-			reportInstall(ctx.Stdout, ctx.App, res)
+			// The same stream rule as the __clihelp twin: the generated file's
+			// path is the machine-readable answer, the report is for a human.
+			fmt.Fprintln(ctx.Stdout, res.Integration)
+			reportInstall(ctx.Stderr, ctx.App, res)
 			return nil
 		},
 	}
@@ -795,7 +798,10 @@ func completionUninstallSubcommand() Command {
 			if err != nil {
 				return err
 			}
-			reportUninstall(ctx.Stdout, res)
+			for _, path := range res.Removed {
+				fmt.Fprintln(ctx.Stdout, path)
+			}
+			reportUninstall(ctx.Stderr, res)
 			return nil
 		},
 	}

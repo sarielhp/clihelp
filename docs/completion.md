@@ -176,7 +176,7 @@ for bin in ~/.local/bin/*; do
 done
 ```
 
-`install` prints the installed path on stdout and nothing else, so it can be captured; notes for humans go to stderr.
+`install` prints the installed path on stdout and nothing else, so it can be captured; notes for humans go to stderr. That rule holds for every verb and for the visible `completion` commands too: stdout carries paths, generated scripts and versions, one per line; stderr carries everything written for a person to read.
 
 ---
 

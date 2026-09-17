@@ -163,11 +163,15 @@ func TestClihelpUninstall(t *testing.T) {
 	runProto(t, bareApp(), "__clihelp", "install", "bash").AssertNoError(t)
 	res := runProto(t, bareApp(), "__clihelp", "uninstall", "bash")
 	res.AssertNoError(t)
-	res.AssertStdoutContains(t, "removed")
+	res.AssertStderrContains(t, "removed") // the report is for a human
+	res.AssertStdoutContains(t, "/")       // the paths are for a script
 
 	again := runProto(t, bareApp(), "__clihelp", "uninstall", "bash")
 	again.AssertNoError(t)
-	again.AssertStdoutContains(t, "nothing to remove")
+	again.AssertStderrContains(t, "nothing to remove")
+	if strings.TrimSpace(again.Stdout) != "" {
+		t.Errorf("nothing was removed, so stdout should be empty: %q", again.Stdout)
+	}
 }
 
 func TestClihelpInstallWithoutKeys(t *testing.T) {
@@ -282,8 +286,10 @@ func TestClihelpManPageVerb(t *testing.T) {
 	})
 
 	t.Run("uninstall", func(t *testing.T) {
-		runProto(t, bareApp(), "__clihelp", "manpage", "--uninstall").AssertStdoutContains(t, "removed")
-		runProto(t, bareApp(), "__clihelp", "manpage", "--uninstall").AssertStdoutContains(t, "no generated manual page")
+		first := runProto(t, bareApp(), "__clihelp", "manpage", "--uninstall")
+		first.AssertStdoutContains(t, "/") // the removed path, for a script
+		first.AssertStderrContains(t, "removed")
+		runProto(t, bareApp(), "__clihelp", "manpage", "--uninstall").AssertStderrContains(t, "no generated manual page")
 	})
 
 	t.Run("an unknown option is an error", func(t *testing.T) {
@@ -427,5 +433,45 @@ func TestWrapperRejectsANameItCannotSafelyEmit(t *testing.T) {
 		if err := GenWrapperScript(&App{Name: "pod"}, name, nil, &b); err == nil {
 			t.Errorf("GenWrapperScript accepted the name %q", name)
 		}
+	}
+}
+
+// Stdout is what a script captures: a path, a generated script, a version — one
+// item per line, nothing else. Everything addressed to a human goes to stderr,
+// and a visible command obeys the same rule as its __clihelp twin. Half the
+// surface broke this, so a packager could not tell which half they were on.
+func TestStdoutCarriesOnlyMachineReadableOutput(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		args []string
+	}{
+		{"install", []string{"__clihelp", "install", "bash"}},
+		{"uninstall", []string{"__clihelp", "uninstall", "bash"}},
+		{"manpage --install", []string{"__clihelp", "manpage", "--install"}},
+		{"manpage --uninstall", []string{"__clihelp", "manpage", "--uninstall"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			sandboxHome(t)
+			t.Setenv("SHELL", "/bin/bash")
+			// Install first so the uninstall cases have something to remove.
+			if strings.Contains(tt.name, "uninstall") {
+				pre := []string{"__clihelp", "install", "bash"}
+				if strings.Contains(tt.name, "manpage") {
+					pre = []string{"__clihelp", "manpage", "--install"}
+				}
+				runProto(t, bareApp(), pre...).AssertNoError(t)
+			}
+
+			res := runProto(t, bareApp(), tt.args...)
+			res.AssertNoError(t)
+			for _, line := range strings.Split(strings.TrimSpace(res.Stdout), "\n") {
+				if line == "" {
+					continue
+				}
+				if !filepath.IsAbs(line) {
+					t.Errorf("stdout carries something a script cannot use: %q", line)
+				}
+			}
+		})
 	}
 }

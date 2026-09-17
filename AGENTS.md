@@ -100,6 +100,20 @@ File length is a *comfort* metric, not a correctness one. Keep functions under t
 When a file grows past the warning threshold, **decompose its long functions in place** into named helpers rather than cutting the file underneath an oversized function. Never split a file across a function body.
 Enforce sizing via `tools/audit_lines.rb` (`make audit`).
 
+## Output Streams
+
+One rule, for every command and for every `__clihelp` verb:
+
+- **stdout is what a script captures** — a path, a generated script, a version — one item
+  per line and nothing else. A command that produces no machine-readable answer writes
+  nothing to stdout.
+- **stderr is everything addressed to a human** — reports, tips, "restart your shell".
+- **A visible command obeys the same rule as its `__clihelp` twin**, so the two are
+  interchangeable in a script.
+
+For an interactive user this is invisible, since both streams reach the same terminal. Only
+a redirecting caller sees it, and that caller wants it.
+
 ## Hard Constraints & Code Hygiene
 
 - **Error Handling & Exit Hygiene**:

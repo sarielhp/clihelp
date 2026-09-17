@@ -99,7 +99,11 @@ func (a *App) handleClihelpCommand(args []string) error {
 		if err != nil {
 			return err
 		}
-		reportUninstall(a.stdout(), res)
+		// Paths to stdout, prose to stderr: see the stream rule in AGENTS.md.
+		for _, path := range res.Removed {
+			fmt.Fprintln(a.stdout(), path)
+		}
+		reportUninstall(a.stderr(), res)
 		return nil
 	case "keys":
 		shells, err := parseVerbArgs("keys", rest, nil, 1)

@@ -475,10 +475,12 @@ func (a *App) manPageAction(out, notes io.Writer, install, uninstall, force bool
 			return err
 		}
 		if path == "" {
-			fmt.Fprintln(out, "no generated manual page to remove")
+			fmt.Fprintln(notes, "no generated manual page to remove")
 			return nil
 		}
-		fmt.Fprintf(out, "removed %s\n", path)
+		// The path alone on stdout, so it can be captured; the sentence on stderr.
+		fmt.Fprintln(out, path)
+		fmt.Fprintf(notes, "removed %s\n", path)
 		return nil
 	case install:
 		path, err := InstallManPage(a, force)
