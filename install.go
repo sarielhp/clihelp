@@ -247,16 +247,44 @@ func bootstrapBlock(app *App, shell, target string) string {
 `, begin, name, name, name, note, source, end)
 }
 
+// blockBounds locates the marked block in contents, matching each marker only as
+// a whole line.
+//
+// A substring search was what made this dangerous: the marker text appears in the
+// user's own startup file and in this project's documentation, so quoting it in a
+// comment is a natural thing to do — and a file that merely mentioned it lost
+// every line between the mention and the next end marker. An unterminated block
+// is reported separately, because guessing where it ends destroys whatever
+// follows it.
+func blockBounds(contents, begin, end string) (start, stop int, found, unterminated bool) {
+	offset := 0
+	start = -1
+	for _, line := range strings.SplitAfter(contents, "\n") {
+		trimmed := strings.TrimSpace(strings.TrimSuffix(line, "\n"))
+		switch {
+		case start < 0 && trimmed == begin:
+			start = offset
+		case start >= 0 && trimmed == end:
+			return start, offset + len(line), true, false
+		}
+		offset += len(line)
+	}
+	if start >= 0 {
+		return start, 0, false, true
+	}
+	return 0, 0, false, false
+}
+
 // upsertBlock replaces the marked block in contents, or appends it when there is
 // none, and reports whether anything changed.
-func upsertBlock(contents, block, begin, end string) (string, bool) {
-	if i := strings.Index(contents, begin); i >= 0 {
-		rest := contents[i:]
-		if j := strings.Index(rest, end); j >= 0 {
-			tail := rest[j+len(end):]
-			updated := contents[:i] + strings.TrimSuffix(block, "\n") + tail
-			return updated, updated != contents
-		}
+func upsertBlock(contents, block, begin, end string) (string, bool, error) {
+	start, stop, found, unterminated := blockBounds(contents, begin, end)
+	if unterminated {
+		return contents, false, fmt.Errorf("found %q with no matching %q; remove the partial block by hand and run this again", begin, end)
+	}
+	if found {
+		updated := contents[:start] + block + contents[stop:]
+		return updated, updated != contents, nil
 	}
 	prefix := contents
 	if prefix != "" && !strings.HasSuffix(prefix, "\n") {
@@ -265,27 +293,29 @@ func upsertBlock(contents, block, begin, end string) (string, bool) {
 	if prefix != "" {
 		prefix += "\n"
 	}
-	return prefix + block, true
+	return prefix + block, true, nil
 }
 
-// removeBlock takes the marked block out of contents, leaving everything else
-// exactly as it was.
-func removeBlock(contents, begin, end string) (string, bool) {
-	i := strings.Index(contents, begin)
-	if i < 0 {
-		return contents, false
+// removeBlock takes every copy of the marked block out of contents, leaving
+// everything else exactly as it was.
+func removeBlock(contents, begin, end string) (string, bool, error) {
+	changed := false
+	for {
+		start, stop, found, unterminated := blockBounds(contents, begin, end)
+		if unterminated {
+			return contents, changed, fmt.Errorf("found %q with no matching %q; remove the partial block by hand", begin, end)
+		}
+		if !found {
+			return contents, changed, nil
+		}
+		head := strings.TrimSuffix(contents[:start], "\n")
+		tail := contents[stop:]
+		if head != "" && tail != "" {
+			head += "\n"
+		}
+		contents = head + tail
+		changed = true
 	}
-	rest := contents[i:]
-	j := strings.Index(rest, end)
-	if j < 0 {
-		return contents, false
-	}
-	tail := strings.TrimPrefix(rest[j+len(end):], "\n")
-	head := strings.TrimSuffix(contents[:i], "\n")
-	if head != "" && tail != "" {
-		head += "\n"
-	}
-	return head + tail, true
 }
 
 // InstallShellIntegration writes the integration file for shell and makes the
@@ -336,11 +366,21 @@ func installBootstrap(app *App, shell, target string) (string, bool, error) {
 	if err != nil {
 		return path, false, err
 	}
-	updated := block
-	changed := existing != block
-	if !owned {
-		begin, end := blockMarkers(app)
-		updated, changed = upsertBlock(existing, block, begin, end)
+	begin, end := blockMarkers(app)
+	updated, changed := block, existing != block
+	if owned {
+		// The drop-in is a whole file of ours, but the path is one a user may
+		// legitimately have taken first. A file without our marker was written by
+		// someone else, and overwriting it is not ours to do.
+		if existing != "" && !strings.Contains(existing, begin) {
+			return path, false, fmt.Errorf("refusing to overwrite %q: it was not written by %s; move it aside and run this again", path, appName(app))
+		}
+	} else {
+		var upsertErr error
+		updated, changed, upsertErr = upsertBlock(existing, block, begin, end)
+		if upsertErr != nil {
+			return path, false, fmt.Errorf("%s: %w", path, upsertErr)
+		}
 	}
 	if !changed {
 		return path, false, nil
@@ -381,13 +421,24 @@ func UninstallShellIntegration(app *App, shell string) (InstallResult, error) {
 		return res, err
 	}
 	res.Startup = path
+	begin, end := blockMarkers(app)
 	if owned {
-		if err := os.Remove(path); err == nil {
-			res.Removed = append(res.Removed, path)
-			res.StartupEdit = true
-		} else if !errors.Is(err, os.ErrNotExist) {
+		// Only remove the drop-in when it is ours; see installBootstrap.
+		body, readErr := os.ReadFile(path)
+		if errors.Is(readErr, os.ErrNotExist) {
+			return res, nil
+		}
+		if readErr != nil {
+			return res, readErr
+		}
+		if !strings.Contains(string(body), begin) {
+			return res, nil // someone else's file at our path: leave it
+		}
+		if err := os.Remove(path); err != nil {
 			return res, err
 		}
+		res.Removed = append(res.Removed, path)
+		res.StartupEdit = true
 		return res, nil
 	}
 
@@ -395,8 +446,10 @@ func UninstallShellIntegration(app *App, shell string) (InstallResult, error) {
 	if err != nil || existing == "" {
 		return res, err
 	}
-	begin, end := blockMarkers(app)
-	updated, changed := removeBlock(existing, begin, end)
+	updated, changed, err := removeBlock(existing, begin, end)
+	if err != nil {
+		return res, fmt.Errorf("%s: %w", path, err)
+	}
 	if !changed {
 		return res, nil
 	}

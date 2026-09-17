@@ -30,7 +30,7 @@ func TestInstallShellIntegrationWritesOneFileAndOneLine(t *testing.T) {
 	for _, tt := range []struct {
 		shell   string
 		startup string
-		owned   bool // clihelp owns the startup file outright
+		owned   bool // clihelp writes a whole drop-in file rather than a block
 	}{
 		{"bash", ".bashrc", false},
 		{"zsh", ".zshrc", false},
