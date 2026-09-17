@@ -2,7 +2,7 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
-## [Unreleased]
+## [0.3.13] - 2026-09-17
 
 ### Fixed
 - **`__clihelp -H`** - `-H` is clihelp's extended-help flag everywhere else, so it asks `__clihelp` for more as well: the reserved argument names, and the exact paths `install` would write on this machine. A hidden entry point cannot answer those through the ordinary help system. It is accepted whatever `App.ExtendedHelpFlag` says, since that field governs the application's flags and this is the library's own surface.
