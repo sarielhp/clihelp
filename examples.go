@@ -103,7 +103,12 @@ func ColorizeExampleLineWithApp(app *App, cmd *Command, line string, th Theme) s
 		b.WriteString(coloredSeg)
 	}
 
-	return inline(b.String())
+	// The line is returned as written, only colored. Running it through the
+	// inline-markdown renderer rewrote the command itself: it swallowed the
+	// backslashes of "--path C:\temp\x", turned the asterisks of "'*.go'" into
+	// emphasis, and ate the escape in "echo a\ b". Descriptions get their own
+	// inline() call; a command line is not prose.
+	return b.String()
 }
 
 type segToken struct {
@@ -250,13 +255,28 @@ func renderExamples(w io.Writer, app *App, cmd *Command, th Theme, o Options, te
 		}
 		lines := splitLines(ex.Line)
 		for _, l := range lines {
-			colored := ColorizeExampleLineWithApp(app, cmd, l, th)
-			reflow(w, th.Body, wrapWidth(termWidth, lineIndent, o.maxContent()), lineIndent, "", colored)
+			writeExampleLine(w, th, lineIndent, ColorizeExampleLineWithApp(app, cmd, l, th))
 		}
 		if ex.Description != "" {
 			reflow(w, descColor, wrapWidth(termWidth, descIndent, o.maxContent()), descIndent, "", inline(ex.Description))
 		}
 	}
+}
+
+// writeExampleLine emits one example command line at its indent and nothing
+// more. Examples are meant to be copied, and the prose reflow broke a long one
+// across two lines, neither of which could be pasted into a shell.
+func writeExampleLine(w io.Writer, th Theme, indent int, colored string) {
+	if strings.TrimSpace(colored) == "" {
+		fmt.Fprintln(w)
+		return
+	}
+	line := strings.Repeat(" ", indent) + colored
+	if th.Body != nil {
+		th.Body.Fprintln(w, line)
+		return
+	}
+	fmt.Fprintln(w, line)
 }
 
 func cleanExampleCommandLine(line string) string {

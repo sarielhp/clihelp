@@ -438,3 +438,42 @@ func TestRenderCommandWithRichExamples(t *testing.T) {
 		t.Errorf("expected example description in RenderCommand output:\n%s", out)
 	}
 }
+
+// TestExampleLinesAreRenderedVerbatim covers two findings of the 2026-09-17
+// review: the colorizer ran its output through the inline-markdown renderer,
+// which rewrote the command itself, and the renderer wrapped example lines
+// through the prose reflow, splitting a command across two unpastable lines.
+func TestExampleLinesAreRenderedVerbatim(t *testing.T) {
+	lines := []string{
+		`myapp run --path C:\temp\x`,
+		`myapp cp '*.go' '*.txt' dest/`,
+		`myapp echo a\ b`,
+		"myapp run --note `date`",
+		`myapp fetch "http://host/**/y"`,
+		`myapp run --title **bold** --strike ~~gone~~`,
+		`myapp deploy --region us-east-1 --cluster production-cluster-01 --namespace observability --timeout 15m --wait`,
+	}
+	examples := make([]Example, 0, len(lines))
+	for _, l := range lines {
+		examples = append(examples, Example{Line: l})
+	}
+
+	app := &App{
+		Name: "myapp",
+		Commands: []Command{{
+			Name:        "run",
+			Description: "Run it",
+			Examples:    examples,
+		}},
+	}
+
+	o, buf := captureOptions(70)
+	app.RenderCommand(o, "run")
+	rendered := strip(buf.String())
+
+	for _, want := range lines {
+		if !strings.Contains(rendered, want) {
+			t.Errorf("example line was rewritten or wrapped.\nwant line: %s\ngot:\n%s", want, rendered)
+		}
+	}
+}
