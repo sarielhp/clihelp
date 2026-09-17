@@ -2,6 +2,33 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [Unreleased]
+
+Fixes from the deep review of the shell-integration surface
+(`review/findings-2026-09-17-shell-integration.md`). Every finding below was
+reproduced before it was fixed, and each fix ships with a regression test whose
+teeth were checked against the unfixed behaviour.
+
+### Security
+- **Arbitrary Code Execution on Tab, in Zsh** - the generated zsh script spliced the typed words into zsh's `_call_program`, whose body ends in `eval … "$argv[2,-1]"`. Typing `myapp $(command) <Tab>` executed the substitution, with nothing shown on screen. This is the 2026-09-17 audit's E1 in the shell that fix did not cover. The arguments now go through `${(q)}`, and `completionScriptVersion` is raised so installed scripts are replaced.
+- **Executable Content Written Permanently Into `~/.bashrc`** - the startup-file line was built with Go's `%q`, which emits a *Go* literal in double quotes, where the shell still expands `$( )` and backticks. Combined with an unvalidated `App.Name` it put live code into the user's startup file, outliving the program. The line is now a single-quoted shell word, and one `safeAppName` gate validates every name that becomes a path, a shell symbol or an rc-file marker.
+- **Alt-H Ran a File From the Current Directory** - the dispatcher matched its registry on the *basename* of the first word and then executed the word as typed, so `./myapp` in a cloned repo ran on a keystroke the user pressed because they had *not* decided to run it. Path-bearing words are now refused in all three shells.
+- **The Generated Wrapper Mangled and Executed Its Arguments** - `escapeShellArg` tested a deny-list that missed the glob characters and the backslash, and its output was interpolated into a double-quoted context where the quoting was inert. `a[1]` matched a file on disk and a command substitution ran on Alt-H. The quoter is now an allow-list, and the wrapper quotes once into shell variables.
+
+### Fixed
+- **An Ordinary Program Run Edited Shell Startup Files** - `AutoInstallCompletion` called the full installer, so an upgrade re-added a block the user had deleted by hand and, with `ZDOTDIR` adopted after installing, created a `.zshrc` that had never existed. The refresh path now writes only the generated file; editing a startup file requires an explicit install. Uninstall also leaves a marker, because the auto path used to fall through and create a *different* artifact in a *different* directory — so uninstall did not stay uninstalled.
+- **Files Clihelp Did Not Write Were Overwritten and Deleted** - the fish `conf.d` drop-in was written whole and removed unconditionally, and `AutoInstallCompletion` replaced hand-written completion scripts because "no marker" was read as "stale" rather than "someone else's". Both now require clihelp's marker.
+- **The Rc-Block Markers Matched Anywhere in the File** - a `~/.bashrc` that merely *mentioned* the marker in a comment lost every line between the mention and the next end marker. Matching is now anchored to whole lines, an unterminated block is an error rather than a guess, and uninstall removes every copy.
+- **A Symlinked Dotfile Was Replaced by a Regular File** - `rename(2)` replaces the link, so installing detached a dotfiles repo silently. Writes now resolve the path first, and the data and directory are flushed before returning.
+- **Concurrent Installs Lost Blocks** - measured at 7 of 8 lost with every caller reporting success. The read-modify-write is now serialized with an advisory lock keyed on the startup file.
+- **`__clihelp` Verbs Disagreed About Their Own Grammar** - `install bash --no-keys` installed the key binding the user had just declined, `manpage --install --uninstall` silently preferred one, and surplus arguments were discarded. One parser now serves every verb.
+- **The Wrapper's Alt-H Branch Was Unreachable** - nothing ever registered a wrapper's name with the dispatcher, so documented behaviour could not occur. The printed registration now covers both the completion table and the registry.
+- **A Hostile `App.Version` Corrupted the Man Page Header** - `.TH`'s arguments were Go-quoted, and `\"` starts a roff comment, so a version containing a quote truncated the header and dropped the section title. `man` warns about none of it.
+- **The Test Suite Wrote Into the Developer's Home Directory** - six sites ran the example binary with the inherited environment. All are sandboxed, and `TestMain` now fingerprints every path this library can write to and fails the suite if anything changed.
+
+### Changed
+- **Names Are Validated** - an `App.Name` containing a space or a shell metacharacter, or no name at all, now produces an error from the generators and the install paths instead of a broken or dangerous script. Help rendering is unaffected.
+
 ## [0.3.14] - 2026-09-17
 
 ### Added
