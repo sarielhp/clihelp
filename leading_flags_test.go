@@ -20,7 +20,7 @@ type leadingState struct {
 	args     []string
 }
 
-// leadingTestApp builds an app shaped like the mail_cli case from bugs/001.md:
+// leadingTestApp builds an app covering every shape a leading flag can take:
 // global flags that take a value and global flags that do not, a command with
 // its own flags, and a nested command carrying a persistent flag.
 func leadingTestApp(st *leadingState) *App {
