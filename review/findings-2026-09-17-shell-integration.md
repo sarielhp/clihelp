@@ -268,6 +268,39 @@ unattended writes running against half-changed code.
 
 ---
 
+## Status
+
+**The Now and Next blocks are applied** on branch `fix/shell-integration-review-2026-09`,
+one commit per fix, each with a regression test whose teeth were checked against the unfixed
+behaviour with `teeth.sh`. Every proof-of-concept in this document was re-run against the
+final tree and is closed. `make check` — which now includes the race detector — and
+`make audit` are green.
+
+The Later block is applied too, except for one item, deliberately: **A1's file
+reorganization**. It is a pure refactor, it touches every file in the surface, and a safety
+pass is not the place for it. The findings it would address (six copies of shell resolution,
+presentation living in a third file, five version constants in five files) are recorded above
+and unchanged.
+
+Two things the fix pass proved this document wrong about, corrected in place:
+
+- **IO-3's mode claim.** File mode *is* preserved across the atomic replace; only ownership,
+  ACLs and hard links are not. Measured during verification, before the fix.
+- **The wrapper's `__explain` branch.** The reviewer's own earlier report described it as
+  working, on the strength of a test that called the wrapper directly. SH-3 showed the
+  dispatcher never reaches it, because nothing registered a wrapper's name. Both the code and
+  `docs/completion.md` are fixed.
+
+Behaviour changes a user will notice, all of which fail visibly rather than silently:
+
+| Change | Why |
+|---|---|
+| An `App.Name` with a space or a shell metacharacter, or no name at all, errors from the generators and the install paths | it becomes a file name and a shell symbol |
+| `__clihelp install bash extra`, `manpage --install --uninstall`, `--force` without `--install` all error | they were silently ignored, always in the unsafe direction |
+| Alt-H no longer answers for a program invoked by path (`./myapp`) | the registry holds names, and matching on the basename executed files out of the current directory |
+| `completion install` and `completion uninstall` print their report on stderr | stdout is what a script captures |
+| `AutoInstallCompletion` no longer creates anything after an explicit uninstall | uninstall did not stay uninstalled |
+
 ## What I would look at with more time
 
 - **SH-5's wire versioning, before the next `keyDispatcherVersion` bump.** The mechanism
