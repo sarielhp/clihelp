@@ -107,29 +107,106 @@ func TestRenderMarkdownCollectIncludesShortcuts(t *testing.T) {
 	}
 }
 
-func TestRenderMarkdownOrphanPruning(t *testing.T) {
+// RenderMarkdown owns the pages it writes, not the directory: a page of an
+// earlier pass that no longer corresponds to a command is pruned, while a file
+// the generator never wrote is left alone. Deleting every .md it did not write
+// destroyed a directory that already held documentation, on the first run.
+func TestRenderMarkdownPrunesItsOwnPagesOnly(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("CLIHELP_GEN", "1")
 
 	app := testApp()
-	_, err := RenderMarkdown(app, MarkdownOptions{Dir: dir})
-	if err != nil {
+	if _, err := RenderMarkdown(app, MarkdownOptions{Dir: dir}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "build.md")); err != nil {
+		t.Fatalf("expected build.md from the first pass: %v", err)
+	}
+
+	handPath := filepath.Join(dir, "handwritten.md")
+	if err := os.WriteFile(handPath, []byte("hand written"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	// Write an orphan .md file
-	orphanPath := filepath.Join(dir, "orphan.md")
-	if err := os.WriteFile(orphanPath, []byte("orphan"), 0o644); err != nil {
+	// Drop the command whose page was generated above.
+	var kept []clihelp.Command
+	for _, c := range app.Commands {
+		if c.Name != "build" {
+			kept = append(kept, c)
+		}
+	}
+	app.Commands = kept
+
+	if _, err := RenderMarkdown(app, MarkdownOptions{Dir: dir}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "build.md")); !os.IsNotExist(err) {
+		t.Error("build.md was not pruned after its command was removed")
+	}
+	if _, err := os.Stat(handPath); err != nil {
+		t.Errorf("a file the generator never wrote was deleted: %v", err)
+	}
+}
+
+// The hash records what was generated, not what survived: a page deleted by hand
+// left the hash matching and the page missing for good.
+func TestRenderMarkdownRestoresADeletedPage(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CLIHELP_GEN", "1")
+
+	app := testApp()
+	if _, err := RenderMarkdown(app, MarkdownOptions{Dir: dir}); err != nil {
 		t.Fatal(err)
 	}
 
-	// Re-generate — orphan should be pruned
-	_, err = RenderMarkdown(app, MarkdownOptions{Dir: dir})
+	page := filepath.Join(dir, "build.md")
+	if err := os.Remove(page); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("CLIHELP_GEN", "")
+	changed, err := RenderMarkdown(app, MarkdownOptions{Dir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(orphanPath); !os.IsNotExist(err) {
-		t.Error("orphan.md was not pruned")
+	if !changed {
+		t.Error("expected a regeneration pass after a page was deleted")
+	}
+	if _, err := os.Stat(page); err != nil {
+		t.Errorf("build.md was not restored: %v", err)
+	}
+}
+
+func TestMarkdownTablesEscapePipes(t *testing.T) {
+	app := &clihelp.App{
+		Name: "app",
+		Commands: []clihelp.Command{{
+			Name:        "run",
+			Description: "Run it",
+			Parameters: []clihelp.Param{
+				{Name: "a|b", Description: "either a | b"},
+			},
+			Subcommands: []clihelp.Command{
+				{Name: "now", Description: "run a | b now"},
+			},
+		}},
+		GlobalFlags: []clihelp.Option{
+			{Flags: "--mode <a|b>", Description: "one of a | b"},
+		},
+	}
+	pages, err := renderMarkdownPages(app)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, page := range pages {
+		for _, line := range strings.Split(page, "\n") {
+			if !strings.HasPrefix(line, "| ") {
+				continue
+			}
+			if n := strings.Count(line, "|") - strings.Count(line, "\\|"); n != 3 {
+				t.Errorf("%s: table row has %d unescaped pipes, want 3:\n%s", name, n, line)
+			}
+		}
 	}
 }
 
@@ -391,7 +468,9 @@ func TestMdCode(t *testing.T) {
 	}{
 		{"foo", "`foo`"},
 		{"-o, --output", "`-o, --output`"},
-		{"a`b", "`a\\`b`"},
+		{"a`b", "``a`b``"},
+		{"`quoted`", "`` `quoted` ``"},
+		{"two\nlines", "`two lines`"},
 	}
 	for _, tc := range tests {
 		got := mdCode(tc.in)

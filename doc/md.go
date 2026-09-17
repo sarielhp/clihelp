@@ -2,7 +2,6 @@
 package doc
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -67,25 +66,27 @@ func RenderMarkdown(a *clihelp.App, o MarkdownOptions) (changed bool, err error)
 	}
 	newHash := markdownHash(pages)
 
-	force := os.Getenv(envGenDocs) != ""
-	if !force {
-		stored, err := os.ReadFile(filepath.Join(dir, markdownHashName))
-		if err != nil {
-			if errors.Is(err, fs.ErrNotExist) {
-				return false, nil // not bootstrapped / deployed
-			}
-			return false, err
+	hashPath := filepath.Join(dir, markdownHashName)
+	previous, readErr := readMarkdownState(hashPath)
+	if readErr != nil && !errors.Is(readErr, fs.ErrNotExist) {
+		return false, readErr
+	}
+
+	if os.Getenv(envGenDocs) == "" {
+		if errors.Is(readErr, fs.ErrNotExist) {
+			return false, nil // not bootstrapped / deployed
 		}
-		if string(stored) == newHash {
+		// The hash records what was generated, not what survived: a page deleted
+		// by hand used to leave the hash matching and the page missing for good.
+		if previous.hash == newHash && pagesPresent(dir, pages) {
 			return false, nil // up to date
 		}
 	}
 
-	if err := writeMarkdownPages(dir, pages); err != nil {
+	if err := writeMarkdownPages(dir, pages, previous.pages); err != nil {
 		return false, err
 	}
-	hashPath := filepath.Join(dir, markdownHashName)
-	if err := os.WriteFile(hashPath, []byte(newHash), 0o644); err != nil {
+	if err := writeMarkdownState(hashPath, markdownState{hash: newHash, pages: pageNames(pages)}); err != nil {
 		return false, err
 	}
 	ensureHashIgnored(dir, hashPath)
@@ -205,8 +206,29 @@ func mdInline(s string) string {
 	).Replace(strings.TrimSpace(s))
 }
 
-// mdCode wraps s as inline code, escaping backticks so they cannot break out.
-func mdCode(s string) string { return "`" + strings.ReplaceAll(s, "`", "\\`") + "`" }
+// mdCode wraps s as inline code. A backslash is not an escape inside a code
+// span, so a backtick cannot be escaped: the span is fenced with a longer run of
+// backticks than any inside it, as CommonMark prescribes, and padded with spaces
+// when the content itself starts or ends with one. A newline cannot appear in an
+// inline span at all, so it becomes a space; a caller that wants a block writes
+// one itself.
+func mdCode(s string) string {
+	s = strings.ReplaceAll(strings.ReplaceAll(s, "\r\n", " "), "\n", " ")
+	fence := "`"
+	for strings.Contains(s, fence) {
+		fence += "`"
+	}
+	pad := ""
+	if strings.HasPrefix(s, "`") || strings.HasSuffix(s, "`") {
+		pad = " "
+	}
+	return fence + pad + s + pad + fence
+}
+
+// mdTableCode renders s as inline code inside a table cell. GitHub splits a row
+// on "|" before it parses the cells, so a pipe must be escaped even inside a
+// code span.
+func mdTableCode(s string) string { return mdTableCell(mdCode(s)) }
 
 // mdTableCell escapes text for use inside a markdown table cell.
 func mdTableCell(s string) string {
@@ -327,7 +349,7 @@ func renderIndexGlobalFlags(b *strings.Builder, a *clihelp.App) {
 		if f.DefaultText != "" {
 			desc = desc + " (default: " + f.DefaultText + ")"
 		}
-		fmt.Fprintf(b, "| %s | %s |\n", mdCode(f.Flags), desc)
+		fmt.Fprintf(b, "| %s | %s |\n", mdTableCode(f.Flags), mdTableCell(desc))
 	}
 	b.WriteString("\n")
 }
@@ -403,9 +425,9 @@ func renderCommandSubcommandsTable(b *strings.Builder, cmd *clihelp.Command, pat
 			desc = "—"
 		}
 		if file != "" {
-			fmt.Fprintf(b, "| [%s](%s) | %s |\n", mdInline(s.Name), file, desc)
+			fmt.Fprintf(b, "| [%s](%s) | %s |\n", mdInline(s.Name), file, mdTableCell(desc))
 		} else {
-			fmt.Fprintf(b, "| %s | %s |\n", mdInline(s.Name), desc)
+			fmt.Fprintf(b, "| %s | %s |\n", mdInline(s.Name), mdTableCell(desc))
 		}
 	}
 	b.WriteString("\n")
@@ -417,7 +439,7 @@ func renderCommandParametersTable(b *strings.Builder, params []clihelp.Param) {
 	}
 	b.WriteString("## Parameters\n\n| Parameter | Description |\n|-----------|-------------|\n")
 	for _, p := range params {
-		fmt.Fprintf(b, "| %s | %s |\n", mdCode(p.Name), p.Description)
+		fmt.Fprintf(b, "| %s | %s |\n", mdTableCode(p.Name), mdTableCell(p.Description))
 	}
 	b.WriteString("\n")
 }
@@ -432,7 +454,7 @@ func renderCommandFlagsTable(b *strings.Builder, options []clihelp.Option) {
 		if f.DefaultText != "" {
 			desc = desc + " (default: " + f.DefaultText + ")"
 		}
-		fmt.Fprintf(b, "| %s | %s |\n", mdCode(f.Flags), mdTableCell(desc))
+		fmt.Fprintf(b, "| %s | %s |\n", mdTableCode(f.Flags), mdTableCell(desc))
 	}
 	b.WriteString("\n")
 }
@@ -493,9 +515,67 @@ func renderCommandPage(a *clihelp.App, n cmdNode) string {
 	return strings.TrimRight(b.String(), "\n") + "\n"
 }
 
-// writeMarkdownPages writes every page under dir and prunes stale .md pages
-// that no longer correspond to a command (dir is generator-owned).
-func writeMarkdownPages(dir string, pages map[string]string) error {
+// markdownState is the sidecar's contents: the hash of the last generated pages
+// and the names of those pages. The names are what makes pruning safe — only a
+// file this generator wrote is a candidate for deletion.
+type markdownState struct {
+	hash  string
+	pages []string
+}
+
+func readMarkdownState(path string) (markdownState, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return markdownState{}, err
+	}
+	lines := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
+	st := markdownState{hash: lines[0]}
+	for _, name := range lines[1:] {
+		if name != "" {
+			st.pages = append(st.pages, name)
+		}
+	}
+	return st, nil
+}
+
+func writeMarkdownState(path string, st markdownState) error {
+	var b strings.Builder
+	b.WriteString(st.hash)
+	for _, name := range st.pages {
+		b.WriteString("\n")
+		b.WriteString(name)
+	}
+	b.WriteString("\n")
+	return os.WriteFile(path, []byte(b.String()), 0o644)
+}
+
+func pageNames(pages map[string]string) []string {
+	names := make([]string, 0, len(pages))
+	for name := range pages {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// pagesPresent reports whether every page the stored hash stands for is still on
+// disk.
+func pagesPresent(dir string, pages map[string]string) bool {
+	for name := range pages {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
+// writeMarkdownPages writes every page under dir and prunes the pages of an
+// earlier pass that no longer correspond to a command.
+//
+// Only a page listed in previous is removed. Deleting every .md the pass did not
+// write meant that pointing Dir at a directory that already held documentation
+// destroyed it on the first run.
+func writeMarkdownPages(dir string, pages map[string]string, previous []string) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
@@ -506,18 +586,11 @@ func writeMarkdownPages(dir string, pages map[string]string) error {
 		}
 	}
 
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return err
-	}
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+	for _, name := range previous {
+		if _, ok := pages[name]; ok {
 			continue
 		}
-		if _, ok := pages[e.Name()]; ok {
-			continue
-		}
-		if err := os.Remove(filepath.Join(dir, e.Name())); err != nil {
+		if err := os.Remove(filepath.Join(dir, name)); err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
 	}
@@ -540,7 +613,7 @@ func ensureHashIgnored(dir, hashPath string) {
 	}
 
 	gi := filepath.Join(dir, ".gitignore")
-	if data, err := os.ReadFile(gi); err == nil && bytes.Contains(data, []byte(filepath.Base(hashPath))) {
+	if data, err := os.ReadFile(gi); err == nil && hasIgnoreRule(string(data), filepath.Base(hashPath)) {
 		return
 	}
 	f, err := os.OpenFile(gi, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
@@ -549,6 +622,18 @@ func ensureHashIgnored(dir, hashPath string) {
 	}
 	defer f.Close()
 	fmt.Fprintf(f, "\n%s\n", filepath.Base(hashPath))
+}
+
+// hasIgnoreRule reports whether .gitignore already carries name as a rule of its
+// own. A substring test matched "!.clihelp-hash", a rule that un-ignores the
+// file, and then declined to add the rule that would ignore it.
+func hasIgnoreRule(contents, name string) bool {
+	for _, line := range strings.Split(contents, "\n") {
+		if strings.TrimSpace(line) == name {
+			return true
+		}
+	}
+	return false
 }
 
 func displayName(c clihelp.Command) string {
