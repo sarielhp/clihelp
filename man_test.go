@@ -128,7 +128,7 @@ func TestLiveManRendersThePageWithoutWarnings(t *testing.T) {
 	if out, err := exec.Command("go", "build", "-o", bin, "./example").CombinedOutput(); err != nil {
 		t.Fatalf("failed to build the example CLI: %v\n%s", err, out)
 	}
-	roff, err := exec.Command(bin, "__clihelp", "manpage").Output()
+	roff, err := sandboxedCommand(t, bin, "__clihelp", "manpage").Output()
 	if err != nil {
 		t.Fatalf("generating the page failed: %v", err)
 	}

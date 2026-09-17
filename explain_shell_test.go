@@ -18,7 +18,7 @@ func buildExplainFixture(t *testing.T, shell string) (binDir, snippet string) {
 	if out, err := exec.Command("go", "build", "-o", bin, "./example").CombinedOutput(); err != nil {
 		t.Fatalf("failed to build the example CLI: %v\n%s", err, out)
 	}
-	out, err := exec.Command(bin, "completion", "keys", shell).Output()
+	out, err := sandboxedCommand(t, bin, "completion", "keys", shell).Output()
 	if err != nil {
 		t.Fatalf("failed to generate %s key bindings: %v", shell, err)
 	}
@@ -162,7 +162,7 @@ func TestCompletionScriptsAreSafeToSource(t *testing.T) {
 			if out, err := exec.Command("go", "build", "-o", bin, "./example").CombinedOutput(); err != nil {
 				t.Fatalf("failed to build the example CLI: %v\n%s", err, out)
 			}
-			script, err := exec.Command(bin, "completion", tt.shell).Output()
+			script, err := sandboxedCommand(t, bin, "completion", tt.shell).Output()
 			if err != nil {
 				t.Fatalf("failed to generate the %s script: %v", tt.shell, err)
 			}
@@ -268,14 +268,14 @@ func TestLiveBashWrapperScript(t *testing.T) {
 
 	// The wrapper, and the completion script, exactly as a user would get them.
 	wrapper := filepath.Join(dir, "pd")
-	script, err := exec.Command(bin, "__clihelp", "wrapper", "pd", "deploy").Output()
+	script, err := sandboxedCommand(t, bin, "__clihelp", "wrapper", "pd", "deploy").Output()
 	if err != nil {
 		t.Fatalf("generating the wrapper failed: %v", err)
 	}
 	if err := os.WriteFile(wrapper, script, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	completion, err := exec.Command(bin, "completion", "bash").Output()
+	completion, err := sandboxedCommand(t, bin, "completion", "bash").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,7 +337,7 @@ func TestLiveBashOneStepInstall(t *testing.T) {
 	}
 	// A logging stand-in on PATH ahead of the real binary would change what runs,
 	// so instead the install is done first and the startup measured after.
-	install := exec.Command(bin, "completion", "install", "bash")
+	install := sandboxedCommand(t, bin, "completion", "install", "bash")
 	install.Env = append(os.Environ(), "HOME="+home, "XDG_CONFIG_HOME="+filepath.Join(home, ".config"),
 		"XDG_DATA_HOME="+filepath.Join(home, ".local", "share"), "CLIHELP_NO_AUTO_COMPLETION=1")
 	if out, err := install.CombinedOutput(); err != nil {

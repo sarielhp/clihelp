@@ -23,7 +23,7 @@ func setupZshCompletion(t *testing.T) (string, func([]string) []string) {
 		t.Fatalf("failed to build example CLI binary: %v, output: %s", err, string(out))
 	}
 
-	genCmd := exec.Command(binPath, "completion", "zsh")
+	genCmd := sandboxedCommand(t, binPath, "completion", "zsh")
 	scriptBytes, err := genCmd.Output()
 	if err != nil {
 		t.Fatalf("failed to generate zsh completion script: %v", err)
@@ -379,7 +379,7 @@ func main() {
 		t.Fatalf("failed to build dynamic CLI binary: %v, output: %s", err, string(out))
 	}
 
-	genCmd := exec.Command(binPath, "completion", "zsh")
+	genCmd := sandboxedCommand(t, binPath, "completion", "zsh")
 	scriptBytes, err := genCmd.Output()
 	if err != nil {
 		t.Fatalf("failed to generate zsh completion script: %v", err)
