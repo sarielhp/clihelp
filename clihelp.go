@@ -266,6 +266,14 @@ func (a *App) ancestorsForPath(path ...string) []*Command {
 	currentSlice := a.Commands
 	for i := 0; i < len(path)-1; i++ {
 		found, _ := findCommand(currentSlice, path[i])
+		if found == nil && i == 0 {
+			// A shortcut is a top-level command under its own heading, and
+			// LookupCommand beside this already falls back to them. Without the
+			// same fallback here a shortcut's subcommand rendered a page missing
+			// the shortcut's persistent flags — flags it really does accept,
+			// since execution builds its ancestors correctly.
+			found, _ = findCommand(a.Shortcuts, path[i])
+		}
 		if found == nil {
 			return ancestors
 		}

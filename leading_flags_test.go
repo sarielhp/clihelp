@@ -3,6 +3,8 @@ package clihelp
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -472,4 +474,66 @@ func TestResolutionDoesNotBindOptions(t *testing.T) {
 		TestExecute(app, []string{"__complete", "search", ""}).AssertNoError(t)
 		assertLive(t, &st, "__complete")
 	})
+}
+
+// TestResolutionMutatesNothing is the purity test the file named for it never
+// contained.
+//
+// It covers the entry points TestResolutionDoesNotBindOptions does not —
+// ValidateExamples resolves twice per example line, and the render paths resolve
+// too — and it checks the command tree as well as the caller's variables,
+// because filterCommandsByPrefix hands out *Command pointers into the caller's
+// own slice and nothing stopped a future edit writing through them.
+func TestResolutionMutatesNothing(t *testing.T) {
+	for _, entry := range []struct {
+		name string
+		run  func(*App)
+	}{
+		{"resolveCommand", func(a *App) { _, _ = a.resolveCommand([]string{"-v", "-A", "work", "search"}) }},
+		{"ValidateExamples", func(a *App) { _ = a.ValidateExamples() }},
+		{"RenderGlobal", func(a *App) { a.RenderGlobal(Options{Writer: io.Discard, Width: 80}) }},
+		{"RenderCommand", func(a *App) { a.RenderCommand(Options{Writer: io.Discard, Width: 80}, "search") }},
+		{"RenderMan", func(a *App) { a.RenderMan(Options{Writer: io.Discard, Width: 80}) }},
+		{"__complete", func(a *App) { TestExecute(a, []string{"__complete", "search", ""}) }},
+		{"__explain", func(a *App) { TestExecute(a, []string{"__explain", "mail search inv"}) }},
+	} {
+		t.Run(entry.name, func(t *testing.T) {
+			var st leadingState
+			app := leadingTestApp(&st)
+			app.Commands[0].Examples = []Example{{Line: "mail search invoice -n 2"}}
+			st = leadingState{account: "USERVALUE", number: 99, verbose: true}
+			want := st
+			before := snapshotCommandTree(app)
+
+			entry.run(app)
+
+			if st.account != want.account || st.number != want.number || st.verbose != want.verbose ||
+				st.readOnly != want.readOnly || st.dbURL != want.dbURL {
+				t.Errorf("%s mutated the caller's option variables:\n got %+v\nwant %+v", entry.name, st, want)
+			}
+			if after := snapshotCommandTree(app); after != before {
+				t.Errorf("%s mutated the command tree:\n got %s\nwant %s", entry.name, after, before)
+			}
+		})
+	}
+}
+
+// snapshotCommandTree renders every field resolution reads into one string, so a
+// write through a returned *Command shows up as a difference.
+func snapshotCommandTree(a *App) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "app=%q run=%v shortcuts=%d;", a.Name, a.Run != nil, len(a.Shortcuts))
+	_ = a.Walk(func(path []string, cmd *Command) error {
+		fmt.Fprintf(&b, "[%s name=%q aliases=%v hidden=%v run=%v subs=%d",
+			strings.Join(path, " "), cmd.Name, cmd.Aliases, cmd.Hidden, cmd.Run != nil, len(cmd.Subcommands))
+		for _, o := range cmd.Options {
+			fmt.Fprintf(&b, " opt=%q", o.Flags)
+		}
+		for _, o := range cmd.PersistentOptions {
+			fmt.Fprintf(&b, " popt=%q", o.Flags)
+		}
+		b.WriteString("]")
+		return nil
+	})
+	return b.String()
 }

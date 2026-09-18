@@ -232,10 +232,22 @@ func TestExecuteSubcommandLocationSuggestion(t *testing.T) {
 			},
 		},
 		{
-			name: "sibling typo takes priority over deep command",
+			// Named for the opposite of what the code does: findSubcommandPaths
+			// is tried first and returns from inside its own branch, so an exact
+			// deep match outranks a fuzzy sibling. This input cannot show that
+			// either way — "scna" matches nothing deep — so the assertion was
+			// true and vacuous. The real contest is the case below it.
+			name: "a sibling typo, with no deep match to compete",
 			args: []string{"scna"},
 			wantContain: []string{
 				`unknown command "scna" for "testcli". Did you mean "scan"?`,
+			},
+		},
+		{
+			name: "an exact deep match outranks a one-edit sibling",
+			args: []string{"bye"},
+			wantContain: []string{
+				`unknown command "bye" for "testcli". Did you mean "spam bye"?`,
 			},
 		},
 	}

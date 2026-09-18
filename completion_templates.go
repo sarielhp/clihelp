@@ -73,9 +73,9 @@ _%[2]s() {
         # so anything spliced in unquoted is re-parsed as shell code, and $words
         # holds the command line the user has typed verbatim. Without the quoting
         # flag, a line containing $(...) executes when Tab is pressed.
-        output=(${(f)"$(_call_program %[1]s ${(q)binary_cmd} __complete ${(q)words_to_pass[@]})"})
+        output=(${(f)"$(_call_program %[1]s ${(q)binary_cmd} __complete ${(q)words_to_pass[@]} 2>/dev/null)"})
     else
-        output=(${(f)"$(${binary_cmd} __complete "${words_to_pass[@]}")"})
+        output=(${(f)"$(${binary_cmd} __complete "${words_to_pass[@]}" 2>/dev/null)"})
     fi
 
     for line in "${output[@]}"; do
@@ -139,7 +139,10 @@ const fishCompletionTemplate = `# fish completion for %[1]s
 function __fish_%[2]s_complete
     set -l cmd (commandline -opc) (commandline -ct)
     test (count $cmd) -gt 1; and set -e cmd[1]
-    %[1]s __complete $cmd
+    # Resolution errors — an ambiguous or unknown half-typed line, which is what
+    # a partial command line usually is — go nowhere, as they already do in bash.
+    # Printed, they land on top of the user's prompt mid-edit.
+    %[1]s __complete $cmd 2>/dev/null
 end
 
 # __fish_%[2]s_needs_files reruns the completer only to ask whether it had

@@ -163,9 +163,12 @@ func matchAbbrevCommand(currentCommands []Command, arg string) (*Command, error)
 		return matches[0], nil
 	}
 	if len(matches) > 1 {
+		// Name the spelling the prefix matched. Listing cmd.Name for a command
+		// matched through an alias printed a name the user's own prefix does
+		// not match, which reads as a non sequitur.
 		names := make([]string, len(matches))
 		for i, cmd := range matches {
-			names[i] = cmd.Name
+			names[i] = matchedSpelling(cmd, arg)
 		}
 		var buf strings.Builder
 		buf.WriteString(fmt.Sprintf("command %q is ambiguous. Did you mean one of these?\n", arg))
@@ -185,6 +188,20 @@ func matchAbbrevCommand(currentCommands []Command, arg string) (*Command, error)
 // name spelled out — which is the exact invocation, for the commands authors
 // hide precisely because they are deprecated, internal or destructive. Walk is
 // pre-order, so a hidden parent is always recorded before its children.
+// matchedSpelling is the name or alias of cmd that arg is a prefix of, for a
+// message about arg. The command's own name is the fallback.
+func matchedSpelling(cmd *Command, arg string) string {
+	if strings.HasPrefix(cmd.Name, arg) {
+		return cmd.Name
+	}
+	for _, alias := range cmd.Aliases {
+		if strings.HasPrefix(alias, arg) {
+			return fmt.Sprintf("%s (%s)", alias, cmd.Name)
+		}
+	}
+	return cmd.Name
+}
+
 func (a *App) findSubcommandPaths(target string) []string {
 	var matches []string
 	var hidden []string

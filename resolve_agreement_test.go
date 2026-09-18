@@ -107,3 +107,47 @@ func TestHelpRefusesAnAmbiguousAbbreviation(t *testing.T) {
 		t.Errorf("`app help d` resolved %q for an ambiguous prefix", cmd.Name)
 	}
 }
+
+// L4 — a shortcut's subcommand executes with the shortcut's persistent flags,
+// but the page describing it was rendered from ancestors derived separately,
+// and that derivation had no shortcut fallback.
+func TestShortcutSubcommandHelpShowsItsPersistentFlags(t *testing.T) {
+	var scFlag string
+	app := &App{Name: "app", Shortcuts: []Command{{
+		Name: "sc", Description: "A shortcut.",
+		PersistentOptions: []Option{String(&scFlag, "--sc-flag <v>", "", "A flag the subcommand accepts.")},
+		Subcommands: []Command{{
+			Name: "sub", Description: "A subcommand.", Run: nopRun,
+		}},
+	}}}
+	out := silentApp(app)
+
+	// It really is accepted.
+	if err := app.Execute([]string{"sc", "sub", "--sc-flag", "x"}); err != nil {
+		t.Fatalf("the flag is not accepted: %v", err)
+	}
+	out.Reset()
+	if err := app.Execute([]string{"help", "sc", "sub"}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(StripANSI(out.String()), "--sc-flag") {
+		t.Errorf("the page omits a flag the command accepts:\n%s", StripANSI(out.String()))
+	}
+}
+
+// L7 — an ambiguity matched through an alias used to print the command's name,
+// which the user's prefix does not match.
+func TestAmbiguityNamesTheMatchedSpelling(t *testing.T) {
+	app := &App{Name: "app", AbbrevCommands: true, Commands: []Command{
+		{Name: "delete", Description: "D."},
+		{Name: "remove", Aliases: []string{"delink"}, Description: "R."},
+	}}
+	silentApp(app)
+	err := app.Execute([]string{"del"})
+	if err == nil {
+		t.Fatal("expected an ambiguity")
+	}
+	if !strings.Contains(err.Error(), "delink") {
+		t.Errorf("the ambiguity does not name the spelling the prefix matched:\n%v", err)
+	}
+}

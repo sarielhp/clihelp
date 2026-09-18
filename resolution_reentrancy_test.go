@@ -1,5 +1,13 @@
 package clihelp
 
+// Re-entrancy and silence: that resolving does not render, and that the paths
+// which merely resolve — completion, example validation, example colourisation —
+// emit nothing of their own.
+//
+// This file used to be called resolution_purity_test.go and contained no purity
+// test at all; the real one is TestResolutionMutatesNothing in
+// leading_flags_test.go.
+
 import (
 	"bytes"
 	"io"

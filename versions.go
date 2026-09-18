@@ -17,7 +17,7 @@ import "fmt"
 // completionScriptVersion marks the generated scripts. It is raised whenever a
 // template changes in a way that already-installed scripts must pick up, so that
 // the auto-install path rewrites them instead of leaving an old script in place.
-const completionScriptVersion = 5
+const completionScriptVersion = 6
 
 // keyDispatcherVersion is raised whenever the shared dispatcher changes. A
 // snippet installs its dispatcher only when nothing newer is already in place,
