@@ -22,7 +22,7 @@ type App struct {
     OmitGlobalFlagsInCommands bool       // Suppress global flags table in subcommands, showing 1-line reference
     ExtendedHelpFlag          bool       // Enable -H as opt-in single-letter shortcut for extended help (--help)
     InteractiveFallback       bool       // Prompt interactively for missing required options in a TTY
-    AutoInstallCompletion     bool       // Silently install shell autocompletion on first run
+    AutoInstallCompletion     bool       // Keep an installed integration current; never creates a file
     Theme                     Theme      // ANSI styling configuration
     PersistentOptions         []Option
     Commands                  []Command

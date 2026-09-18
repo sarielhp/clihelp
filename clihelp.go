@@ -155,8 +155,18 @@ type App struct {
 	ExtendedHelpFlag bool
 	// InteractiveFallback enables prompting for missing inputs/flags interactively.
 	InteractiveFallback bool
-	// AutoInstallCompletion when true silently ensures that the shell completion script
-	// is installed into the user's standard XDG directory on execution.
+	// AutoInstallCompletion when true keeps an already-installed shell
+	// integration current on every ordinary run: a generated file whose version
+	// marker is stale is rewritten, and so is a completion script at the older
+	// XDG location if this library wrote it.
+	//
+	// It never creates a file and never edits a shell startup file. This flag is
+	// the application author's choice, but the files land in the user's home
+	// directory, and nothing there should appear because someone ran an
+	// unrelated command; installing is what "__clihelp install" (or
+	// CompletionCommand's "completion install") is for. Setting
+	// CLIHELP_NO_AUTO_COMPLETION, NO_AUTO_COMPLETION, CI, GITHUB_ACTIONS or
+	// TERM=dumb switches even the refresh off.
 	AutoInstallCompletion bool
 
 	// Presentation overrides

@@ -2,6 +2,11 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.17] - unreleased
+
+### Fixed
+- **`AutoInstallCompletion` Created a File Nobody Asked For** - with no shell integration present, an ordinary program run fell through to the older completion-script location and *created* a script there, so running a program for the first time installed something into the user's home unprompted. The automatic path now only ever rewrites a file that already exists, and only one carrying clihelp's marker. The flag is the application author's choice while the file lands in the user's home directory; creating is what `__clihelp install` is for. Two tests asserted the old behaviour and now assert the rule.
+
 ## [0.3.16] - 2026-09-17
 
 Follow-ups to the shell-integration review: three defects in the surface

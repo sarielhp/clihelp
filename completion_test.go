@@ -3,6 +3,7 @@ package clihelp
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -383,10 +384,18 @@ func TestAutoInstallCompletionOnExecute(t *testing.T) {
 		},
 	}
 
+	// The auto path refreshes; it does not create. An installed script that a
+	// library upgrade has left stale is what it exists for, so that is what this
+	// test sets up. (TestAutoInstallNeverCreatesACompletionScript covers the
+	// other half: with nothing installed, an ordinary run writes nothing.)
 	expectedPath := filepath.Join(tmpDir, "share", "zsh", "site-functions", "_autocli")
-	if _, err := os.Stat(expectedPath); !os.IsNotExist(err) {
-		t.Fatalf("completion file should not exist yet")
+	var script bytes.Buffer
+	if err := GenZshCompletion(app, &script); err != nil {
+		t.Fatal(err)
 	}
+	marker := fmt.Sprintf("clihelp-completion-version: %d", completionScriptVersion)
+	stale := strings.Replace(script.String(), marker, "clihelp-completion-version: 0", 1)
+	writeFixture(t, expectedPath, stale)
 
 	if err := app.ExecuteContext(context.Background(), []string{}); err != nil {
 		t.Fatalf("app.ExecuteContext failed: %v", err)
@@ -396,9 +405,12 @@ func TestAutoInstallCompletionOnExecute(t *testing.T) {
 		t.Fatalf("expected app Run handler to execute")
 	}
 
-	info, err := os.Stat(expectedPath)
-	if err != nil || info.Size() == 0 {
-		t.Fatalf("expected completion file to be auto-installed at %q, err: %v", expectedPath, err)
+	body, err := os.ReadFile(expectedPath)
+	if err != nil {
+		t.Fatalf("the installed script is gone: %v", err)
+	}
+	if !strings.Contains(string(body), marker) {
+		t.Fatalf("a stale script was not refreshed at %q:\n%s", expectedPath, body)
 	}
 
 	if !IsCompletionInstalled(app, "zsh") {

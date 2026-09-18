@@ -1,6 +1,7 @@
 package clihelp
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -226,6 +227,60 @@ func TestAutoInstallRefreshesButNeverCreates(t *testing.T) {
 	}
 	if !strings.Contains(string(body), "_clihelp_explain") {
 		t.Errorf("the refresh dropped the key bindings the user had installed")
+	}
+}
+
+// The unattended path may keep a file the user installed current; it may not
+// bring one into existence. This is the harder half of that rule, and the half
+// the code got wrong: when no shell integration was present it fell through to
+// the older completion-script location and *created* a script there, so an
+// ordinary command run put a file in the user's home that nobody had asked for.
+func TestAutoInstallNeverCreatesACompletionScript(t *testing.T) {
+	home := sandboxHome(t)
+	t.Setenv("SHELL", "/bin/bash")
+	for _, v := range []string{"CI", "GITHUB_ACTIONS", "NO_AUTO_COMPLETION", "CLIHELP_NO_AUTO_COMPLETION"} {
+		t.Setenv(v, "")
+	}
+	t.Setenv("TERM", "xterm")
+
+	app := installApp()
+	app.AutoInstallCompletion = true
+
+	script, err := CompletionPath(app, "bash")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	TestExecute(app, []string{"build"}).AssertNoError(t)
+	if _, err := os.Stat(script); !os.IsNotExist(err) {
+		t.Errorf("an ordinary run created %s", script)
+	}
+	if entries, err := os.ReadDir(home); err == nil {
+		for _, e := range entries {
+			if e.Name() != ".config" {
+				t.Errorf("an ordinary run created ~/%s", e.Name())
+			}
+		}
+	}
+
+	// A script the user installed, gone stale the way a library upgrade makes it
+	// stale, is still repaired — the refresh half of the rule.
+	var body bytes.Buffer
+	if err := GenBashCompletion(app, &body); err != nil {
+		t.Fatal(err)
+	}
+	stale := strings.Replace(body.String(),
+		fmt.Sprintf("clihelp-completion-version: %d", completionScriptVersion),
+		"clihelp-completion-version: 0", 1)
+	writeFixture(t, script, stale)
+
+	TestExecute(app, []string{"build"}).AssertNoError(t)
+	got, err := os.ReadFile(script)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), fmt.Sprintf("clihelp-completion-version: %d", completionScriptVersion)) {
+		t.Errorf("a stale script the user had installed was not refreshed:\n%s", got)
 	}
 }
 

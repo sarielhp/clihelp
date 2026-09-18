@@ -49,16 +49,28 @@ func TestAutoInstallSkipsShellsWithoutAScript(t *testing.T) {
 		Commands:              []Command{{Name: "run", Description: "Run it", Run: func(*Context) error { return nil }}},
 	}
 
+	// The refresh is what the shell gate has to hold back, since the auto path
+	// never creates anything: a stale bash script must stay untouched for a ksh
+	// user and be repaired for a bash one.
+	script := filepath.Join(dataHome, "bash-completion", "completions", "ksh-app")
+	var body bytes.Buffer
+	if err := GenBashCompletion(app, &body); err != nil {
+		t.Fatal(err)
+	}
+	marker := fmt.Sprintf("clihelp-completion-version: %d", completionScriptVersion)
+	stale := strings.Replace(body.String(), marker, "clihelp-completion-version: 0", 1)
+	writeFixture(t, script, stale)
+
 	t.Setenv("SHELL", "/bin/ksh")
 	TestExecute(app, []string{"run"}).AssertNoError(t)
-	if entries, _ := os.ReadDir(filepath.Join(dataHome, "bash-completion", "completions")); len(entries) > 0 {
-		t.Errorf("a bash script was installed for a ksh user: %v", entries)
+	if got, _ := os.ReadFile(script); strings.Contains(string(got), marker) {
+		t.Errorf("a ksh user's run refreshed a bash script")
 	}
 
 	t.Setenv("SHELL", "/bin/bash")
 	TestExecute(app, []string{"run"}).AssertNoError(t)
-	if _, err := os.Stat(filepath.Join(dataHome, "bash-completion", "completions", "ksh-app")); err != nil {
-		t.Errorf("a bash user got no script: %v", err)
+	if got, _ := os.ReadFile(script); !strings.Contains(string(got), marker) {
+		t.Errorf("a bash user's stale script was not refreshed:\n%s", got)
 	}
 }
 

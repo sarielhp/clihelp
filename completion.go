@@ -379,18 +379,24 @@ func (a *App) maybeAutoInstallCompletion(args []string) {
 			return
 		}
 	}
-	// Creating a script where there is none is what AutoInstallCompletion
-	// documents. Replacing one is only safe when this library wrote it:
-	// completionIsCurrent answers "no marker" for a *foreign* script exactly as it
-	// does for a stale one, so without this check a hand-written completion was
-	// read as out of date and overwritten by an ordinary command.
+	// A completion script at the older location — installed before this library
+	// grew its one-file integration, or by a packager — is kept current, and
+	// that is all. This path runs on every ordinary program run, unasked, and
+	// bringing a file into existence in someone's home directory is not a
+	// decision it gets to make: AutoInstallCompletion is the *author's* choice,
+	// while the file lands in the *user's* home. It used to create one here, so
+	// running a program for the first time installed something nobody had asked
+	// for. Creating is what "completion install" is for.
+	//
+	// Overwriting is also only safe when this library wrote the file:
+	// completionIsCurrent answers "no marker" for a *foreign* script exactly as
+	// it does for a stale one, so without the marker check a hand-written
+	// completion was read as out of date and replaced by an ordinary command.
 	path, err := CompletionPath(a, sh)
 	if err != nil {
 		return
 	}
-	if _, statErr := os.Stat(path); errors.Is(statErr, os.ErrNotExist) {
-		_, installErr := InstallCompletion(a, sh)
-		autoDebug(a, installErr)
+	if _, statErr := os.Stat(path); statErr != nil {
 		return
 	}
 	if isGeneratedCompletionScript(path) && !completionIsCurrent(a, sh) {
