@@ -154,9 +154,9 @@ func TestKeyBindingSnippets(t *testing.T) {
 		shell string
 		want  []string
 	}{
-		{"bash", []string{`bind -x '"\eh": _clihelp_explain'`, "$READLINE_LINE", "__explain", "CLIHELP_TERM_LINES", `_clihelp_apps="${_clihelp_apps:-} pod-ctl "`}},
-		{"zsh", []string{"bindkey '^[h' _clihelp_explain", "zle run-help", "$BUFFER", "__explain", "pod-ctl "}},
-		{"fish", []string{`bind \eh __clihelp_explain`, "__fish_man_page", "commandline -r", "__explain", "pod-ctl"}},
+		{"bash", []string{`bind -m "$_clihelp_keymap" -x '"\eh": _clihelp_explain'`, "$READLINE_LINE", "__explain", "CLIHELP_TERM_LINES", `_clihelp_apps="${_clihelp_apps:-} pod-ctl "`}},
+		{"zsh", []string{"bindkey -M emacs '^[h' _clihelp_explain", "zle run-help", "$BUFFER", "__explain", "pod-ctl "}},
+		{"fish", []string{`bind -M default \eh __clihelp_explain`, "__fish_man_page", "commandline -r", "__explain", "pod-ctl"}},
 	} {
 		t.Run(tt.shell, func(t *testing.T) {
 			var b strings.Builder

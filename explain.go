@@ -234,7 +234,15 @@ if [ "${_clihelp_dispatcher_version:-0}" -lt {{dispatcher}} ]; then
         printf '\n'
         case $out in *$'\n'*) printf '%s\n' "${out#*$'\n'}" ;; esac
     }
-    bind -x '"\eh": _clihelp_explain' 2>/dev/null
+    # A key binding belongs to one keymap. Binding only the current one meant
+    # that a user who ran "set -o vi" — before or after sourcing this — had no
+    # Alt-H at all, silently. Set CLIHELP_NO_KEY_BINDINGS to keep the key.
+    if [ -z "${CLIHELP_NO_KEY_BINDINGS:-}" ]; then
+        for _clihelp_keymap in emacs-standard vi-insert vi-command; do
+            bind -m "$_clihelp_keymap" -x '"\eh": _clihelp_explain' 2>/dev/null
+        done
+        unset _clihelp_keymap
+    fi
 fi
 case " ${_clihelp_apps:-} " in
     *" {{app}} "*) ;;
@@ -272,7 +280,12 @@ if [[ ${_clihelp_dispatcher_version:-0} -lt {{dispatcher}} ]]; then
         zle reset-prompt
     }
     zle -N _clihelp_explain
-    bindkey '^[h' _clihelp_explain
+    # Every keymap, not just the current one; see the bash snippet.
+    if [[ -z ${CLIHELP_NO_KEY_BINDINGS:-} ]]; then
+        bindkey -M emacs '^[h' _clihelp_explain
+        bindkey -M viins '^[h' _clihelp_explain
+        bindkey -M vicmd '^[h' _clihelp_explain
+    fi
 fi
 if [[ " ${_clihelp_apps:-} " != *" {{app}} "* ]]; then
     typeset -g _clihelp_apps="${_clihelp_apps:-} {{app}} "
@@ -305,7 +318,11 @@ if not set -q _clihelp_dispatcher_version; or test $_clihelp_dispatcher_version 
         test (count $out) -gt 1; and printf '%s\n' $out[2..-1]
         commandline -f repaint
     end
-    bind \eh __clihelp_explain
+    # Every keymap, not just the current one; see the bash snippet.
+    if not set -q CLIHELP_NO_KEY_BINDINGS
+        bind -M default \eh __clihelp_explain
+        bind -M insert \eh __clihelp_explain
+    end
 end
 contains -- {{app}} $_clihelp_apps; or set -g _clihelp_apps $_clihelp_apps {{app}}
 `
@@ -314,7 +331,7 @@ contains -- {{app}} $_clihelp_apps; or set -g _clihelp_apps $_clihelp_apps {{app
 // snippet installs its dispatcher only when nothing newer is already in place,
 // so two programs shipping different clihelp versions cannot fight over the key:
 // the newer dispatcher wins, and it serves every program in the shared registry.
-const keyDispatcherVersion = 2
+const keyDispatcherVersion = 3
 
 // GenKeyBindings writes the shell snippet that binds Alt-H to "expand this
 // command line and explain it". The binding acts only on command lines that
