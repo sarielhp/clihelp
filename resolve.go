@@ -55,23 +55,11 @@ func (a *App) lookupCommandPath(path []string) (*Command, []string) {
 	currentSlice := a.Commands
 	var found *Command
 	var resolvedPath []string
-	for idx, p := range path {
-		cmd, _ := findCommand(currentSlice, p)
-		if cmd == nil && idx == 0 && len(a.Shortcuts) > 0 {
-			cmd, _ = findCommand(a.Shortcuts, p)
-		}
-		if cmd == nil && a.AbbrevCommands && p != "" {
-			matches := filterCommandsByPrefix(currentSlice, p)
-			if len(matches) == 1 {
-				cmd = matches[0]
-			} else if idx == 0 && len(a.Shortcuts) > 0 {
-				shortcutMatches := filterCommandsByPrefix(a.Shortcuts, p)
-				if len(shortcutMatches) == 1 {
-					cmd = shortcutMatches[0]
-				}
-			}
-		}
-		if cmd == nil {
+	for _, p := range path {
+		// The same resolver execution uses, so that "help X" and "X" can never
+		// name different commands.
+		cmd, err := a.matchCommandOrShortcut(currentSlice, p, found == nil)
+		if err != nil || cmd == nil {
 			return nil, nil
 		}
 		found = cmd
@@ -80,7 +68,6 @@ func (a *App) lookupCommandPath(path []string) (*Command, []string) {
 	}
 	return found, resolvedPath
 }
-
 func (a *App) handleRootHelpTopic(topic string) (bool, error) {
 	switch {
 	case topic == "flags" || topic == "options" || topic == "opts" || topic == "flag" || (a.AbbrevCommands && (strings.HasPrefix("flags", topic) || strings.HasPrefix("options", topic))):
@@ -204,8 +191,16 @@ func formatSubcommandSuggestions(arg, parentName string, suggestions []string) e
 }
 
 func (a *App) checkUnknownCommand(currentCmd *Command, currentCommands []Command, arg string) error {
+	// Shortcuts are top-level commands too. Leaving them out meant an
+	// application whose verbs all live in Shortcuts had no commands at this
+	// level by this test's reckoning, so the check never ran at all: any typo
+	// printed the global help and exited 0. The copy matters — appending to the
+	// caller's slice could write into App.Commands' spare capacity.
+	if currentCmd == nil && len(a.Shortcuts) > 0 {
+		currentCommands = append(append([]Command{}, currentCommands...), a.Shortcuts...)
+	}
 	if len(currentCommands) > 0 && ((currentCmd == nil && a.Run == nil) || (currentCmd != nil && currentCmd.Run == nil)) {
-		parentName := a.Name
+		parentName := appName(a)
 		if currentCmd != nil {
 			parentName = currentCmd.Name
 		}
@@ -258,8 +253,31 @@ func addFlagArity(arity map[string]bool, opts []Option) {
 		for _, short := range spec.shortNames {
 			arity["-"+short] = takesValue
 		}
-		if len(spec.longNames) == 0 && len(spec.shortNames) > 0 {
+		primaryLong, _ := spec.primaryNames()
+		if primaryLong == "" && len(spec.shortNames) > 0 {
 			arity["--flag-"+spec.shortNames[0]] = takesValue
+		}
+		// bindToggle derives a negative spelling for the toggle's base name and
+		// for every positive long name, while parseFlagSpec reports only the
+		// names the spec string spells out. So "--cache" bound a "--no-cache"
+		// nothing here named, and resolution stopped at it: the command after it
+		// became a positional and the program printed its help and exited 0.
+		if opt.toggle {
+			base := spec.toggleBase()
+			if base != "" {
+				arity["--no-"+base] = takesValue
+				primaryLong = base
+			}
+			for _, long := range spec.longNames {
+				if !strings.HasPrefix(long, "no-") {
+					arity["--no-"+long] = takesValue
+				}
+			}
+		}
+		// Each shorthand after the first is registered under a synthetic long
+		// name, because pflag offers no way to attach a second shorthand.
+		for i := 1; i < len(spec.shortNames); i++ {
+			arity["--"+aliasFlagName(primaryLong, spec.shortNames[i])] = takesValue
 		}
 	}
 }
@@ -339,34 +357,40 @@ func scanShorthandCluster(arity map[string]bool, args []string) (int, bool) {
 	return 1, true
 }
 
-// matchCommand returns the command named by arg, using prefix matching when
-// AbbrevCommands is enabled and an exact match fails. A nil command and a nil
-// error mean arg names no command.
-func (a *App) matchCommand(cmds []Command, arg string) (*Command, error) {
-	if matched, _ := findCommand(cmds, arg); matched != nil {
-		return matched, nil
-	}
-	if a.AbbrevCommands {
-		return matchAbbrevCommand(cmds, arg)
-	}
-	return nil, nil
-}
-
 // matchCommandOrShortcut matches arg against the commands available at this
 // depth and, at the root, against App.Shortcuts as well. Shortcuts are top-level
-// commands shown under their own heading; help lookup has always consulted them,
-// while resolution did not, so running one reported "unknown command".
+// commands shown under their own heading.
+//
+// The order is exact before abbreviated, and commands before shortcuts within
+// each. It has to be one order, used by every caller: this function and
+// lookupCommandPath used to try the four strategies in different sequences, so
+// "app dep" ran the command "deploy" while "app help dep" documented the
+// shortcut "dep" — the page a user reads described something other than what
+// runs.
+//
+// An ambiguity among real commands is not a shortcut's to break. That fell out
+// of the old shape: the error was computed and then discarded whenever a
+// shortcut happened to share the prefix, so with commands "deploy" and
+// "destroy" and a shortcut "dance", typing "d" ran "dance".
 func (a *App) matchCommandOrShortcut(cmds []Command, arg string, atRoot bool) (*Command, error) {
-	matched, err := a.matchCommand(cmds, arg)
-	if matched != nil || !atRoot || len(a.Shortcuts) == 0 {
+	shortcuts := atRoot && len(a.Shortcuts) > 0
+
+	if exact, _ := findCommand(cmds, arg); exact != nil {
+		return exact, nil
+	}
+	if shortcuts {
+		if exact, _ := findCommand(a.Shortcuts, arg); exact != nil {
+			return exact, nil
+		}
+	}
+	if !a.AbbrevCommands {
+		return nil, nil
+	}
+	matched, err := matchAbbrevCommand(cmds, arg)
+	if matched != nil || err != nil || !shortcuts {
 		return matched, err
 	}
-	if shortcut, shortcutErr := a.matchCommand(a.Shortcuts, arg); shortcut != nil {
-		return shortcut, nil
-	} else if err == nil {
-		err = shortcutErr
-	}
-	return nil, err
+	return matchAbbrevCommand(a.Shortcuts, arg)
 }
 
 // resolveCommandPath resolves a path of command names, using prefix matching when

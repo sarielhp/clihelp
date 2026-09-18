@@ -112,6 +112,45 @@ func (a *App) setupFlagSet(targetCmd *Command, ancestors []*Command) (*pflag.Fla
 	return fs, h, nil
 }
 
+// checkLeftoverArgument reports a positional argument left over for something
+// that can only group subcommands.
+//
+// Such a target has no Run, so it renders its help and exits 0 — which meant
+// several different ways of failing to resolve a subcommand ended in a silent
+// success: a flag resolution did not know how to skip, a "--" that ended the
+// scan before the next word was examined, or a grouping command's own option
+// consuming the name after it. This runs after pflag, so what is left really is
+// a positional.
+func (a *App) checkLeftoverArgument(targetCmd *Command, rest []string) error {
+	if len(rest) == 0 {
+		return nil
+	}
+	if targetCmd == nil {
+		if a.Run != nil || (len(a.Commands) == 0 && len(a.Shortcuts) == 0) {
+			return nil
+		}
+	} else if targetCmd.Run != nil || len(targetCmd.Subcommands) == 0 {
+		return nil
+	}
+
+	cmds := a.Commands
+	if targetCmd != nil {
+		cmds = targetCmd.Subcommands
+	}
+	// A name that does resolve got here because something ahead of it was
+	// consumed, and saying "unknown command" about a real subcommand would be a
+	// lie — as would suggesting the word back to the user, which is what
+	// suggestCommand does at distance zero.
+	if cmd, _ := a.matchCommandOrShortcut(cmds, rest[0], targetCmd == nil); cmd != nil {
+		parent := appName(a)
+		if targetCmd != nil {
+			parent = targetCmd.Name
+		}
+		return fmt.Errorf("%q is a subcommand of %q, but a flag written before it was taken as an argument; write the flag after the subcommand name", rest[0], parent)
+	}
+	return a.checkUnknownCommand(targetCmd, cmds, rest[0])
+}
+
 func (a *App) collectAllActiveOptions(targetCmd *Command, ancestors []*Command) []Option {
 	var allOptions []Option
 	allOptions = append(allOptions, a.PersistentOptions...)
@@ -284,6 +323,10 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 			a.RenderCommand(o, path...)
 		}
 		return nil
+	}
+
+	if err := a.checkLeftoverArgument(targetCmd, fs.Args()); err != nil {
+		return err
 	}
 
 	allOptions := a.collectAllActiveOptions(targetCmd, ancestors)
