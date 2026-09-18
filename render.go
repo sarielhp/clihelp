@@ -689,11 +689,25 @@ const conciseHelpLines = 24
 // then the terminal's own height when it is shorter than the default, then the
 // default. A line is left for the shell prompt.
 func (o Options) conciseBudget() int {
-	if o.ConciseMaxLines != 0 {
-		return o.ConciseMaxLines
+	return conciseBudgetFor(o.ConciseMaxLines, o.height())
+}
+
+// conciseBudgetFor is the concise tier's line budget, given what the caller
+// asked for and how tall the terminal is. A terminal shorter than the tier's
+// own bound gets one line less than its height, so the shell's next prompt does
+// not scroll the first line away.
+//
+// It takes the height as an argument rather than measuring it, because a
+// measurement needs a real terminal: height() returns zero for every writer a
+// test can hand it, so the short-terminal branch could be deleted with the suite
+// green. This is the same seam doc/'s markdownHashOf uses for its format
+// version.
+func conciseBudgetFor(configured, height int) int {
+	if configured != 0 {
+		return configured
 	}
-	if h := o.height(); h > 0 && h-1 < conciseHelpLines {
-		return h - 1
+	if height > 0 && height-1 < conciseHelpLines {
+		return height - 1
 	}
 	return conciseHelpLines
 }
