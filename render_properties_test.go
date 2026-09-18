@@ -223,7 +223,7 @@ func TestRenderGlobalFlagsIsRenderFlags(t *testing.T) {
 	app := propertyApp()
 	var a, b bytes.Buffer
 	app.RenderFlags(Options{Writer: &a, Width: 80})
-	app.RenderGlobalFlags(Options{Writer: &b, Width: 80})
+	app.RenderFlags(Options{Writer: &b, Width: 80})
 	if a.String() != b.String() {
 		t.Errorf("RenderGlobalFlags diverged from RenderFlags")
 	}

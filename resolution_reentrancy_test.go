@@ -67,7 +67,7 @@ func TestCompleteHelpEmitsOnlyCandidates(t *testing.T) {
 func TestValidateExamplesEmitsNoHelp(t *testing.T) {
 	var out bytes.Buffer
 	app := helpExampleApp(&out)
-	if errs := app.ValidateExamples(); len(errs) != 0 {
+	if errs := app.validateExamples(); len(errs) != 0 {
 		t.Fatalf("unexpected validation errors: %v", errs)
 	}
 	if out.Len() != 0 {

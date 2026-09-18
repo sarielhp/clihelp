@@ -175,11 +175,6 @@ func (a *App) RenderFlags(o Options) {
 	})
 }
 
-// RenderGlobalFlags is an alias for RenderFlags.
-func (a *App) RenderGlobalFlags(o Options) {
-	a.RenderFlags(o)
-}
-
 // RenderMan writes an exhaustive, Unix manual-style reference containing the
 // full application overview, grouped global options, all command hierarchies,
 // parameters, local flags, examples, notes, and help topics.

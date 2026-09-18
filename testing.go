@@ -86,9 +86,19 @@ type AuditOptions struct {
 	SkipExampleValidation bool
 }
 
-// Audit traverses the app's command tree to statically verify documentation and consistency.
-func Audit(app *App) error {
-	return AuditWithOptions(app, AuditOptions{})
+// Audit traverses the app's command tree to statically verify documentation and
+// consistency. It is what the README recommends running in CI.
+//
+// The options are variadic so that the common call is Audit(app) and the
+// customised one is Audit(app, AuditOptions{...}); only the first is read. This
+// was two functions, Audit and AuditWithOptions, which is two entry points for
+// one job and a default that had to be documented rather than shown.
+func Audit(app *App, opts ...AuditOptions) error {
+	var o AuditOptions
+	if len(opts) > 0 {
+		o = opts[0]
+	}
+	return audit(app, o)
 }
 
 type commandPathInfo struct {
@@ -220,8 +230,7 @@ func auditCommandTree(cmds []Command, currentPath []string, allPaths *[]commandP
 	return nil
 }
 
-// AuditWithOptions traverses the app's command tree using customized options.
-func AuditWithOptions(app *App, opts AuditOptions) error {
+func audit(app *App, opts AuditOptions) error {
 	if !opts.SkipExampleValidation {
 		if err := app.ValidateAllExamples(); err != nil {
 			return err

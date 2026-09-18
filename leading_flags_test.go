@@ -314,7 +314,7 @@ func TestLeadingFlagsInExampleValidation(t *testing.T) {
 		{Line: "mail -A work search invoice -n 2"},
 		{Line: "mail --read-only db --db-url pg://x migrate"},
 	}
-	if errs := app.ValidateExamples(); len(errs) != 0 {
+	if errs := app.validateExamples(); len(errs) != 0 {
 		t.Fatalf("expected no validation errors, got %v", errs)
 	}
 }
@@ -490,7 +490,7 @@ func TestResolutionMutatesNothing(t *testing.T) {
 		run  func(*App)
 	}{
 		{"resolveCommand", func(a *App) { _, _ = a.resolveCommand([]string{"-v", "-A", "work", "search"}) }},
-		{"ValidateExamples", func(a *App) { _ = a.ValidateExamples() }},
+		{"ValidateExamples", func(a *App) { _ = a.validateExamples() }},
 		{"RenderGlobal", func(a *App) { a.RenderGlobal(Options{Writer: io.Discard, Width: 80}) }},
 		{"RenderCommand", func(a *App) { a.RenderCommand(Options{Writer: io.Discard, Width: 80}, "search") }},
 		{"RenderMan", func(a *App) { a.RenderMan(Options{Writer: io.Discard, Width: 80}) }},

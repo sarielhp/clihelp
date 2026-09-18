@@ -178,17 +178,6 @@ type App struct {
 	// prompt to re-run setup and no symptom to notice; the refresh is what makes
 	// a one-time setup stay correct across upgrades.
 	AutoRefreshIntegration bool
-	// AutoInstallCompletion is the former name of AutoRefreshIntegration, and
-	// either field enables the same behaviour.
-	//
-	// Deprecated: the name says "install completion" for something that can do
-	// neither. It has not created a file since the unattended path was narrowed
-	// to refreshing what the user already installed, and it refreshes the man
-	// page as well as the completion script. An author reading the old name
-	// would reasonably expect setting it to install completions for their users,
-	// which is the misreading that produced the overreach. Use
-	// AutoRefreshIntegration.
-	AutoInstallCompletion bool
 
 	// Presentation overrides
 	Theme       *Theme

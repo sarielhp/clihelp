@@ -539,7 +539,7 @@ func TestAuditHelper(t *testing.T) {
 	}
 
 	// 5. Whitelisted path permutation should succeed audit
-	err := AuditWithOptions(badApp4, AuditOptions{
+	err := Audit(badApp4, AuditOptions{
 		AllowPathPermutations: [][]string{
 			{"scan", "spam"},
 		},

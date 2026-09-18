@@ -41,9 +41,9 @@ func startsComment(s string, i, tokenStart int) bool {
 	return s[i] == '#' || strings.HasPrefix(s[i:], "//")
 }
 
-// ColorizeExampleLine applies ANSI syntax colors to a command-line example string.
+// colorizeExampleLine applies ANSI syntax colors to a command-line example string.
 // It recognizes comments, shell prompts, subcommands, flags, values, and operators.
-func ColorizeExampleLine(line string, th Theme) string {
+func colorizeExampleLine(line string, th Theme) string {
 	return ColorizeExampleLineWithApp(nil, nil, line, th)
 }
 
@@ -517,10 +517,10 @@ func validateExampleTokens(app *App, targetCmd *Command, ancestors []*Command, r
 	return nil
 }
 
-// ValidateExample statically validates that an Example can be parsed and accepted
+// validateExample statically validates that an Example can be parsed and accepted
 // by the application. It verifies that commands exist, flags are recognized with valid
 // syntax/values, mutually exclusive rules pass, and positional arguments satisfy constraints.
-func ValidateExample(app *App, ex Example, cmd *Command) error {
+func validateExample(app *App, ex Example, cmd *Command) error {
 	if app == nil {
 		return errors.New("app is nil")
 	}
@@ -564,9 +564,9 @@ func ValidateExample(app *App, ex Example, cmd *Command) error {
 	return nil
 }
 
-// ValidateExamples validates all examples defined on the application and all its commands.
+// validateExamples validates all examples defined on the application and all its commands.
 // Returns a slice of all validation errors encountered.
-func (a *App) ValidateExamples() []error {
+func (a *App) validateExamples() []error {
 	if a == nil {
 		return nil
 	}
@@ -574,7 +574,7 @@ func (a *App) ValidateExamples() []error {
 
 	// App-level examples
 	for _, ex := range a.Examples {
-		if err := ValidateExample(a, ex, nil); err != nil {
+		if err := validateExample(a, ex, nil); err != nil {
 			errs = append(errs, fmt.Errorf("app %q: %w", appName(a), err))
 		}
 	}
@@ -583,7 +583,7 @@ func (a *App) ValidateExamples() []error {
 	_ = a.Walk(func(path []string, cmd *Command) error {
 		pathStr := strings.Join(path, " ")
 		for _, ex := range cmd.Examples {
-			if err := ValidateExample(a, ex, cmd); err != nil {
+			if err := validateExample(a, ex, cmd); err != nil {
 				errs = append(errs, fmt.Errorf("command %q: %w", pathStr, err))
 			}
 		}
@@ -595,7 +595,7 @@ func (a *App) ValidateExamples() []error {
 
 // ValidateAllExamples validates all examples and returns a single combined error if any fail.
 func (a *App) ValidateAllExamples() error {
-	errs := a.ValidateExamples()
+	errs := a.validateExamples()
 	if len(errs) == 0 {
 		return nil
 	}
@@ -604,9 +604,4 @@ func (a *App) ValidateAllExamples() error {
 		msgs = append(msgs, err.Error())
 	}
 	return fmt.Errorf("example validation failed:\n  %s", strings.Join(msgs, "\n  "))
-}
-
-// CheckExample validates a single Example against a specific command context.
-func (a *App) CheckExample(ex Example, cmd *Command) error {
-	return ValidateExample(a, ex, cmd)
 }
