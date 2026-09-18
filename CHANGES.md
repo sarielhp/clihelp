@@ -2,7 +2,7 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
-## [0.3.19] - unreleased
+## [0.3.19] - 2026-09-17
 
 ### Internal
 - **The Shell-Integration Surface Is Layered Now, and Acyclic.** This is A1 from the review, the one finding deliberately left open through the fix pass. Five files formed a complete dependency cycle: `completion.go` reached into `install.go` nine ways, `install.go` reached back six, and `protocol.go` sat at the top while `install.go` reached up into it for one string constant. There are four layers now — leaves (`shell.go`, `names.go`, `versions.go`, `atomicwrite.go`, `completion_templates.go`), generators that produce text and touch no files (`completion.go`, `explain.go`, `man.go`), installers that write them (`install.go`, `autoinstall.go`), and the command layer over those (`protocol.go`, `completion_command.go`) — with no edge pointing up. `completion.go` is 372 lines rather than 724, and `AGENTS.md` records the rule so the cycle does not grow back.
