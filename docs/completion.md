@@ -126,7 +126,9 @@ This is deliberately **not** part of the completion script: every shell loads th
 ### What the binding touches
 
 - **Alt-H is the shell's own convention for this.** zsh binds it to `run-help` and fish binds it (and F1) to `__fish_man_page` — both meaning "explain the command I am typing". clihelp fills that in for programs that ship no man page, and hands the key straight back to `run-help` / `__fish_man_page` for any command line that is not a clihelp program's. In bash, Alt-H is unbound by default.
-- **Several clihelp programs share one dispatcher.** A key binding is global to the shell, so each program registers its name in a shared list and the first snippet loaded installs the binding. Without that, the last program installed would own Alt-H and refuse every other program's command line. The dispatcher is versioned, so two programs built against different clihelp releases settle on the newer one rather than fighting.
+- **Several clihelp programs share one dispatcher.** A key binding is global to the shell, so each program registers its name in a shared list and the first snippet loaded installs the binding. Without that, the last program installed would own Alt-H and refuse every other program's command line. The dispatcher is versioned, so two programs built against different clihelp releases settle on the newer one rather than fighting, and each registry entry is `name:protocol`, so the dispatcher knows what the program on the other end speaks before it calls it.
+- **Every keymap is bound**, not just the one that happens to be current when the snippet is sourced: `emacs-standard`, `vi-insert` and `vi-command` in bash, `emacs`, `viins` and `vicmd` in zsh, `default` and `insert` in fish. Otherwise `set -o vi` would silently leave the key dead.
+- **`CLIHELP_NO_KEY_BINDINGS` declines the key.** Set it before your shell sources the integration file and nothing is bound — zsh's `run-help` and fish's man-page binding stay exactly as they were — while tab completion is unaffected. There is no portable way to ask readline what `\eh` is already bound to, so this is an opt-out rather than a check.
 - The shell passes its own `$LINES` and `$COLUMNS` through `CLIHELP_TERM_LINES` / `CLIHELP_TERM_COLUMNS`, because the binding captures the program's stdout and a pipe has no size to measure.
 - The underlying protocol call is `<app> __explain "<command line>"`, whose first output line is always the expanded command line. `App.Explain` is exported if you want to drive it yourself.
 
@@ -224,6 +226,13 @@ Two things worth knowing:
 ---
 
 ## Manual Shell Script Generation
+
+All three scripts fall back to filename completion when the program returns no
+candidates, and never mix filenames into candidates it did return. The three
+shells reach that differently — bash's `complete -o default`, an explicit
+`_files` in zsh, a second conditional `complete` rule in fish — but the
+behaviour a user sees is the same, so an argument that is a path completes
+whichever shell they are in.
 
 ### Bash (`clihelp.GenBashCompletion`)
 

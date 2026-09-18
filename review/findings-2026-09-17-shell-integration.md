@@ -174,10 +174,10 @@ changed. The per-test `sandboxHome` discipline has already failed once; the guar
 | IO-8/9 | Four marker checks read a fixed-size head with the error discarded; an interrupted write leaves a `.tmp-*` sibling in `$HOME` forever. |
 | S9 | The wrapper's `rest=${2#* }` reconstruction leaks the wrapper's own name when the line has leading blanks, and drops every argument when the separator is a tab. |
 | A1 | The five files form a complete dependency cycle; there is no layering. Shell resolution is written out six times with two different error messages. |
-| SH-5 | The Alt-H protocol has a version on the *dispatcher* but none on the *wire*: `_clihelp_apps` carries bare names, so a newer dispatcher cannot tell which release a registered program speaks. Nothing is broken today; the first bump of `keyDispatcherVersion` is what breaks, silently. Fix before the next bump, not after. |
-| SH-6 | The key binds into whatever keymap is current at source time: with `set -o vi` after the block, Alt-H is dead in bash and zsh. It also silently clobbers a user's existing `\eh` binding. |
-| SH-7 | zsh completion is silently not registered when `compdef` does not exist yet — deferred/turbo loaders and late `compinit` all land here, with no diagnostic and no retry. |
-| SH-8 | Three different file-completion behaviours for one program: bash falls back to filenames, zsh offers nothing, fish disables them outright with `-f`. |
+| SH-5 | The Alt-H protocol has a version on the *dispatcher* but none on the *wire*: `_clihelp_apps` carries bare names, so a newer dispatcher cannot tell which release a registered program speaks. Nothing is broken today; the first bump of `keyDispatcherVersion` is what breaks, silently. Fix before the next bump, not after. **[fixed: 995d880]** |
+| SH-6 | The key binds into whatever keymap is current at source time: with `set -o vi` after the block, Alt-H is dead in bash and zsh. It also silently clobbers a user's existing `\eh` binding. **[fixed: cf9ab99]** — the keymaps by binding all of them; the clobber by `CLIHELP_NO_KEY_BINDINGS`, an opt-out rather than detection, because readline gives no portable way to ask what `\eh` is currently bound to. |
+| SH-7 | zsh completion is silently not registered when `compdef` does not exist yet — deferred/turbo loaders and late `compinit` all land here, with no diagnostic and no retry. **[fixed: 578a860]** |
+| SH-8 | Three different file-completion behaviours for one program: bash falls back to filenames, zsh offers nothing, fish disables them outright with `-f`. **[fixed: de792a6]** |
 | SH-9 | bash inserts a completion candidate containing a space unquoted, so the buffer is re-parsed as two arguments. zsh and fish quote correctly. |
 | SH-11/12 | The bootstrap line is the last command in the rc, so a missing integration file leaves `$?=1` at every prompt (visible in prompts that render exit status); and the path is emitted with Go's `%q` inside shell double quotes — same defect as S3, second site. |
 | SH-14 | fish alone does not check the child's exit status and passes the buffer unquoted as a list, so a multi-line buffer loses everything after the first line. |
@@ -303,13 +303,14 @@ Behaviour changes a user will notice, all of which fail visibly rather than sile
 
 ## What I would look at with more time
 
-- **SH-5's wire versioning, before the next `keyDispatcherVersion` bump.** The mechanism
-  exists precisely so a future protocol change is safe, and it is not: the dual-registration
-  form has to ship in a release *before* the change it protects against.
-- **The `zpty` harness from S1's verification, as shared test infrastructure.** It is the
-  only way to drive zsh's ZLE widget and fish's binding, which are currently syntax-checked
-  and nothing more. A cheaper variant works too: both are ordinary functions, and stubbing
-  `zle` / `commandline` with shell functions drives them headlessly with no new dependency.
+- ~~**SH-5's wire versioning, before the next `keyDispatcherVersion` bump.**~~ Done in
+  `995d880`: entries are `name:protocol`, both forms are written for one release, and a
+  dispatcher that meets an unknown protocol declines instead of calling.
+- ~~**The `zpty` harness from S1's verification, as shared test infrastructure.**~~ Done in
+  `cf9ab99`, as the cheaper variant: `shell_harness_test.go` stubs `zle`, `bindkey`, `bind`
+  and `commandline` with shell functions. It found nothing on its own, but SH-6, SH-7 and
+  SH-8 were all provable the moment it existed — which is the point, since all three had
+  reached a release through shells that were only ever syntax-checked.
 - **Whether `AutoInstallCompletion` should exist at all.** Every finding here is more severe
   because it runs unattended, and its kill switches are opt-out rather than opt-in. It is
   also why the safety rules for this review had to forbid running the example binary.

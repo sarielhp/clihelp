@@ -2,6 +2,25 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.16] - unreleased
+
+Follow-ups to the shell-integration review: three defects in the surface
+0.3.15 shipped, and the versioning that has to be in place before the
+Alt-H protocol changes again.
+
+### Fixed
+- **`set -o vi` Killed Alt-H** - a key binding belongs to one keymap, and all three snippets bound only whichever keymap happened to be current when they were sourced. bash now binds `emacs-standard`, `vi-insert` and `vi-command`, zsh binds `emacs`, `viins` and `vicmd`, and fish binds `default` and `insert`. Setting `CLIHELP_NO_KEY_BINDINGS` before the snippet is sourced declines the key entirely — zsh's `run-help` and fish's man-page binding stay yours — without giving up completion.
+- **Zsh Completion Was Silently Not Registered Under a Deferred `compinit`** - the script registered with `compdef` or, when autoloaded, called itself; if neither held it did nothing and said nothing. A plugin manager that defers `compinit`, or an rc file that sources the bootstrap before it, landed here. A self-removing `precmd` hook now retries at the first prompt.
+- **Filename Completion Differed in Every Shell** - bash fell back to filenames when the program offered no candidates, zsh offered nothing, and fish's `-f` forbade them outright, so an argument that is a path could not be completed at all in two shells out of three. zsh calls `_files` and fish gets a conditional rule; candidates and filenames are still never mixed. zsh's emptiness test was separately wrong — it measured the candidate array joined into one string.
+
+### Changed
+- **The Alt-H Registry Carries a Protocol Version** - `_clihelp_apps` entries are now `name:protocol`. The dispatcher is shared by every clihelp program in the shell, including ones built against other library versions, and nothing in the registry said what the program on the other end speaks; the first change to the `__explain` protocol would have been a silent misread. A bare name still means protocol 1, both forms are registered for one release, and a dispatcher that meets a protocol it does not know declines rather than calling.
+
+### Internal
+- The generated completion scripts move to `completion_templates.go`; they are shell programs, and they had pushed `GenZshCompletion` past the 80-line limit.
+- `shell_harness_test.go` drives the generated zsh and fish code headlessly by stubbing `zle`, `bindkey`, `bind` and `commandline` — in all three shells a function shadows a builtin. Until now those two shells were only syntax-checked, which is why every defect above reached a release.
+- The home-directory guard is extended: the `example` package gets its own sandbox (its app sets `AutoInstallCompletion`, so rendering a help page in a test installed into the real home), and every remaining subprocess in the root tests goes through `sandboxedCommand`.
+
 ## [0.3.15] - 2026-09-17
 
 Fixes from the deep review of the shell-integration surface
