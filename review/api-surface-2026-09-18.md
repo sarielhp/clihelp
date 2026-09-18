@@ -229,3 +229,121 @@ consumer — it is really part of the internal helper set), `App.PrintError` (a
 consumer rarely needs it, since `Execute` already prints what it returns), and
 the `Render` dispatcher itself, which exists to choose between two functions the
 caller could choose between.
+
+---
+
+# Addendum 2 — checked against a real application
+
+A 65,000-line program built on this library (`mail_cli`: 77 commands, 90
+examples, 46 declared parameters) was read as evidence. Nothing in it was
+modified. This section replaces guesswork with one data point — a strong one for
+what is needed, a weak one for what is not, since one program's silence does not
+make a feature dead.
+
+## What it uses
+
+Twenty-three distinct exported names, and thirteen `Command` fields:
+
+```
+Command  Example  Context  Param  Bool  NoArgs  ExactArgs  Option  Options  App
+String   MaximumNArgs  RangeArgs  MinimumNArgs  Group  MutuallyExclusive  Int
+Audit    ValidateOptions  ManPageCommand  IntegrationPath  Enum  CompletionCommand
+```
+
+`Name`, `Description`, `UsageLine`, `Examples`, `Run`, `Args`, `Parameters`,
+`Subcommands`, `Options`, `Aliases`, `Hidden`, `OptionsValidator`,
+`LongDescription`.
+
+Never touched, by a program of that size: `Command.Notes`, `Command.Group`,
+`Command.Deprecated`, `App.Shortcuts`, `Theme`, `Walk`, `BoolToggle`, `Duration`,
+`StringSlice`, `Var`, `Required`, `StripANSI`, `VisualWidth`, `Inline`. That is
+not an argument for removing them. It is an argument that the demo application
+this audit's first numbers came from is a showcase rather than a sample.
+
+## Two things this reduction got wrong
+
+Both were found by building the application against this branch.
+
+**`Option.Binder` had to stay exported.** The application sets it by hand:
+
+```go
+Binder: func(fs *pflag.FlagSet) error {
+    fs.StringVarP(&app.FlagMoveSpamStr, "move", "m", "", "...")
+    if f := fs.Lookup("move"); f != nil { f.NoOptDefVal = "true" }
+    return nil
+},
+```
+
+That is a flag whose value is optional — `-m` means true, `-m=addr` means an
+address — which needs pflag's `NoOptDefVal`, and which clihelp has no constructor
+for. Unexporting `Binder` closed the only door out of the library's vocabulary.
+It is exported again, documented as the one place pflag is named on purpose.
+
+**The four path queries had to stay exported.** `IntegrationPath`,
+`CompletionPath`, `ManPagePath` and `IsCompletionInstalled` compute or stat a
+path and change nothing. The line drawn in B1 — "reads or writes inside the
+user's home" — was wrong; the right one is **actions go through the setup
+command, queries stay open**. The application's own test asks `IntegrationPath`
+where `completion install` put the file, in order to check that it worked. That
+is exactly what a query is for.
+
+With both restored, the application builds and its whole test suite passes
+against this branch after **one line changed**: `AutoInstallCompletion` to
+`AutoRefreshIntegration`.
+
+## Three features it had to build itself
+
+This is what an API audit cannot find by reading the surface, and it is worth
+more than the rest of this document.
+
+### F1 — Show the command's help when required arguments are missing
+
+`cli/usage_wrapper.go`, 81 lines, recursively rewrites the entire command tree to
+get one behaviour: a command invoked with no arguments, which requires some,
+should print its own help rather than a generic argument error.
+
+The workaround is expensive and fragile. It **disables `Args` validation**
+(returns `nil` where the validator said no) and re-implements the check in three
+more places; it calls `origArgs([]string{})` as an *oracle*, up to four times per
+invocation, to ask "would zero arguments be acceptable"; it silently swallows
+`PreRun` and `PostRun` on that path; and it replaces `Run` on **every command in
+the tree**, so clihelp's own view of which commands have handlers is now always
+"yes".
+
+It should be a field — `Command.HelpOnMissingArgs`, or `App`-wide — or simply the
+default, since a bare `error: accepts 1 arg(s), received 0` is worse than the
+help page for every CLI I can think of.
+
+### F2 — An unknown command should still be an unknown command when `App.Run` is set
+
+`cli/suggest.go`, 112 lines, reimplements `suggestCommand`, `levenshtein`,
+subcommand-path search, hidden filtering and alias matching — all of which
+`resolve.go` already has, and which v0.3.23 spent a release getting right.
+
+The cause is structural: an application that defines `App.Run` receives leftover
+arguments itself, so clihelp's unknown-command check never fires and its
+suggestions never appear. The author had no way to say "handle a bare invocation,
+but let the library keep rejecting typos". Worse, F1's wrapper replaces `Run`
+throughout the tree, so its `unknown subcommand %q` — with no suggestion at all —
+shadows the library's good error for every subcommand too.
+
+A real application therefore has **worse** command-not-found messages than the
+library provides, because the only way to get the behaviour it wanted was to take
+over the path that produces them.
+
+### F3 — An option whose value is optional
+
+The `Binder` escape hatch above exists only because there is no constructor for
+it. `Bool` cannot carry a value, `String` requires one. This is also the only
+reason a consumer of this library imports pflag at all — which makes it the last
+mile of the pflag decoupling, not a separate feature.
+
+## What this changes about the roadmap
+
+The surface reduction was worth doing and is now verified against a real
+consumer at the cost of one line. But the ratio is worth stating plainly: this
+audit removed about thirty names nobody was using, while the same application
+carries **193 lines written to work around three things the library does not
+do** — two of which make its user-facing behaviour worse than clihelp's own.
+
+Adding F1, F2 and F3 is now more valuable than removing anything further.
