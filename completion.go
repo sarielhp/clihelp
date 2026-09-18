@@ -19,7 +19,7 @@ var SupportedShells = []string{"bash", "zsh", "fish"}
 // completionScriptVersion marks the generated scripts. It is raised whenever a
 // template changes in a way that already-installed scripts must pick up, so that
 // the auto-install path rewrites them instead of leaving an old script in place.
-const completionScriptVersion = 3
+const completionScriptVersion = 4
 
 // sanitizeCompletionField makes a string safe to put in one field of a
 // completion record. The protocol is line-oriented with a tab between candidate
@@ -358,6 +358,19 @@ if [ "$funcstack[1]" = "_%[2]s" ]; then
     _%[2]s "$@"
 elif type compdef >/dev/null 2>&1; then
     compdef _%[2]s %[1]s
+else
+    # compinit has not run yet. Sourcing this file before it — a plugin manager
+    # that defers compinit, or an rc file that sources clihelp's bootstrap near
+    # the top — used to leave completion unregistered with nothing printed to
+    # say so. Retry from the first prompt, then take the hook back out.
+    _%[2]s_deferred_compdef() {
+        type compdef >/dev/null 2>&1 || return
+        compdef _%[2]s %[1]s
+        add-zsh-hook -d precmd _%[2]s_deferred_compdef
+        unfunction _%[2]s_deferred_compdef
+    }
+    autoload -Uz add-zsh-hook 2>/dev/null &&
+        add-zsh-hook precmd _%[2]s_deferred_compdef
 fi
 `, name, cleanName, completionScriptVersion)
 	_, err = io.WriteString(w, tmpl)

@@ -1,6 +1,7 @@
 package clihelp
 
 import (
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -176,5 +177,73 @@ func TestKeyBindingOptOut(t *testing.T) {
 				t.Errorf("%s snippet did not run to completion:\n%s", tc.shell, out)
 			}
 		})
+	}
+}
+
+// zshCompletionStubs shadows what the script reaches for at registration time.
+// autoload is stubbed too, so `autoload -Uz add-zsh-hook` cannot replace the
+// add-zsh-hook stub with the real one.
+const zshCompletionStubs = `
+autoload() { return 0 }
+add-zsh-hook() { print -r -- "HOOK:$*" }
+`
+
+func completionSnippet(t *testing.T, dir, shell string, app *App) string {
+	t.Helper()
+	gen := map[string]func(*App, io.Writer) error{
+		"bash": GenBashCompletion,
+		"zsh":  GenZshCompletion,
+		"fish": GenFishCompletion,
+	}[shell]
+	if gen == nil {
+		t.Fatalf("no generator for %q", shell)
+	}
+	return generateSnippet(t, dir, "completion."+shell, func(a *App, _ string, b *strings.Builder) error {
+		return gen(a, b)
+	}, app, shell)
+}
+
+// Sourcing the zsh script before compinit has run left completion silently
+// unregistered: compdef did not exist yet, so neither branch fired and there was
+// no error anywhere. Plugin managers that defer compinit, and rc files that
+// source clihelp's bootstrap near the top, both land here.
+func TestZshCompletionRegistersAfterDeferredCompinit(t *testing.T) {
+	dir := t.TempDir()
+	snippet := completionSnippet(t, dir, "zsh", &App{Name: "alpha"})
+
+	// compdef is deliberately absent while the script is sourced, then defined,
+	// then the registered hook is fired the way the first prompt would fire it.
+	body := `
+compdef() { print -r -- "COMPDEF:$*" }
+if (( ${+functions[_alpha_deferred_compdef]} )); then
+    _alpha_deferred_compdef
+fi
+print -r -- done`
+	out := driveShell(t, "zsh", dir, snippet, zshCompletionStubs, body)
+
+	if !strings.Contains(out, "HOOK:precmd _alpha_deferred_compdef") {
+		t.Errorf("no precmd retry was registered:\n%s", out)
+	}
+	if !strings.Contains(out, "COMPDEF:_alpha alpha") {
+		t.Errorf("the retry never registered the completion:\n%s", out)
+	}
+	if !strings.Contains(out, "HOOK:-d precmd _alpha_deferred_compdef") {
+		t.Errorf("the retry did not remove its own hook:\n%s", out)
+	}
+}
+
+// The ordinary case must not grow a hook: when compinit has already run the
+// script registers immediately and leaves nothing behind on precmd.
+func TestZshCompletionRegistersImmediately(t *testing.T) {
+	dir := t.TempDir()
+	snippet := completionSnippet(t, dir, "zsh", &App{Name: "alpha"})
+	stubs := zshCompletionStubs + "\ncompdef() { print -r -- \"COMPDEF:$*\" }\n"
+	out := driveShell(t, "zsh", dir, snippet, stubs, `print -r -- done`)
+
+	if !strings.Contains(out, "COMPDEF:_alpha alpha") {
+		t.Errorf("completion was not registered:\n%s", out)
+	}
+	if strings.Contains(out, "HOOK:") {
+		t.Errorf("a precmd hook was installed although compdef was available:\n%s", out)
 	}
 }
