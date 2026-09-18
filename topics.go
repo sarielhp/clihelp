@@ -165,7 +165,7 @@ func (a *App) RenderFlags(o Options) {
 		termWidth := o.width()
 
 		th.Hdr.Fprint(w, "Usage:  ")
-		fmt.Fprintln(w, a.usageLine())
+		fmt.Fprintln(w, inline(a.usageLine())) // see RenderGlobal
 
 		fmt.Fprintln(w)
 		th.Body.Fprintln(w, "Global flags available to all commands:")

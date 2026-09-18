@@ -1,6 +1,7 @@
 package clihelp
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -78,8 +79,18 @@ type Options struct {
 	// the pager only when it doesn't fit on one screen.
 	Pager bool
 	// Concise requests concise command help (-h), suppressing notes and
-	// displaying a footer hint pointing to extended help.
+	// displaying a footer hint pointing to extended help. The result is held to
+	// ConciseMaxLines.
 	Concise bool
+	// ConciseMaxLines bounds concise (-h) output. Zero means the documented
+	// default of 24 lines; a negative value means no bound, which is what the
+	// concise tier did before the bound existed.
+	//
+	// The number is the promise -h has always made in README.md and llms.txt and
+	// in the comparison with cobra, where it is the stated differentiator. It was
+	// a convention with nothing enforcing it: a command with thirty flags
+	// rendered 92 lines, identical to --help.
+	ConciseMaxLines int
 	// Extended requests full command help (--help / -H / help <cmd>),
 	// displaying LongDescription, all Notes, and Examples.
 	Extended bool
@@ -337,49 +348,54 @@ func (a *App) renderGlobalFlagsSection(w io.Writer, th Theme, o Options, termWid
 // template, description, command list with aliases, shortcut commands,
 // global flags, and help footer.
 func (a *App) RenderGlobal(o Options) {
-	a.pageOutput(o, func(w io.Writer) {
-		th := o.theme(a)
-		termWidth := o.width()
+	a.pageOutput(o, func(out io.Writer) {
+		a.budgeted(out, o, nil, func(w io.Writer) {
+			th := o.theme(a)
+			termWidth := o.width()
 
-		th.Hdr.Fprint(w, "Usage:  ")
-		fmt.Fprintln(w, a.usageLine())
+			th.Hdr.Fprint(w, "Usage:  ")
+			// inline(), as RenderCommand and RenderMan already do: App.UsageLine was
+			// rendered on two of the four paths, so the same app showed raw ** here
+			// and a URL the author had written as a link.
+			fmt.Fprintln(w, inline(a.usageLine()))
 
-		if a.Description != "" {
-			fmt.Fprintln(w)
-			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", inline(a.Description))
-		}
-		fmt.Fprintln(w)
-
-		var visibleCommands []Command
-		for _, c := range a.Commands {
-			if !c.Hidden {
-				visibleCommands = append(visibleCommands, c)
+			if a.Description != "" {
+				fmt.Fprintln(w)
+				reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", inline(a.Description))
 			}
-		}
-		if len(visibleCommands) > 0 {
-			th.Accent.Fprintln(w, "Commands:")
-			a.renderCommandGrouped(w, th, o, termWidth, a.Commands)
 			fmt.Fprintln(w)
-		}
 
-		a.renderGlobalShortcuts(w, th, o, termWidth)
-		a.renderGlobalFlagsSection(w, th, o, termWidth)
+			var visibleCommands []Command
+			for _, c := range a.Commands {
+				if !c.Hidden {
+					visibleCommands = append(visibleCommands, c)
+				}
+			}
+			if len(visibleCommands) > 0 {
+				th.Accent.Fprintln(w, "Commands:")
+				a.renderCommandGrouped(w, th, o, termWidth, a.Commands)
+				fmt.Fprintln(w)
+			}
 
-		if len(a.Examples) > 0 {
-			th.Accent.Fprintln(w, "Examples:")
-			renderExamples(w, a, nil, th, o, termWidth, a.Examples, 2, 4)
-			fmt.Fprintln(w)
-		}
+			a.renderGlobalShortcuts(w, th, o, termWidth)
+			a.renderGlobalFlagsSection(w, th, o, termWidth)
 
-		if len(visibleCommands) > 0 || len(a.Shortcuts) > 0 {
-			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", fmt.Sprintf("Run '%s <command> -h' for command help, or '%s help [flags|man]'.", appName(a), appName(a)))
-		}
+			if len(a.Examples) > 0 {
+				th.Accent.Fprintln(w, "Examples:")
+				renderExamples(w, a, nil, th, o, termWidth, a.Examples, 2, 4)
+				fmt.Fprintln(w)
+			}
 
-		if a.ConfigPath != "" {
-			fmt.Fprintln(w)
-			th.Hdr.Fprint(w, "Config: ")
-			fmt.Fprintln(w, a.ConfigPath)
-		}
+			if len(visibleCommands) > 0 || len(a.Shortcuts) > 0 {
+				reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", fmt.Sprintf("Run '%s <command> -h' for command help, or '%s help [flags|man]'.", appName(a), appName(a)))
+			}
+
+			if a.ConfigPath != "" {
+				fmt.Fprintln(w)
+				th.Hdr.Fprint(w, "Config: ")
+				fmt.Fprintln(w, a.ConfigPath)
+			}
+		})
 	})
 }
 
@@ -537,6 +553,42 @@ func renderCommandNotes(w io.Writer, th Theme, o Options, termWidth int, notes [
 	}
 }
 
+// conciseHelpLines is the documented bound on -h output.
+const conciseHelpLines = 24
+
+// conciseBudget resolves the line bound for one render: the caller's override,
+// then the terminal's own height when it is shorter than the default, then the
+// default. A line is left for the shell prompt.
+func (o Options) conciseBudget() int {
+	if o.ConciseMaxLines != 0 {
+		return o.ConciseMaxLines
+	}
+	if h := o.height(); h > 0 && h-1 < conciseHelpLines {
+		return h - 1
+	}
+	return conciseHelpLines
+}
+
+// budgeted renders through fn and holds the result to the concise bound,
+// replacing whatever did not fit with one line saying how much was dropped and
+// where to read it. Outside the concise tier it renders straight through.
+func (a *App) budgeted(w io.Writer, o Options, path []string, fn func(io.Writer)) {
+	budget := o.conciseBudget()
+	if !o.Concise || budget < 1 {
+		fn(w)
+		return
+	}
+	var buf bytes.Buffer
+	fn(&buf)
+	// Pass it through untouched when it fits: writeWithinBudget trims trailing
+	// newlines, and the blank line a help page ends with is deliberate spacing.
+	if len(splitLines(strings.TrimRight(buf.String(), "\n"))) <= budget {
+		_, _ = w.Write(buf.Bytes())
+		return
+	}
+	writeWithinBudget(w, buf.String(), budget, o.width(), a.explainMoreHint(path))
+}
+
 func (a *App) renderCommandConciseFooter(w io.Writer, th Theme, o Options, termWidth int, path []string) {
 	helpHint := "(or --help)"
 	if a.ExtendedHelpFlag {
@@ -556,45 +608,47 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 	if cmd == nil {
 		return false
 	}
-	a.pageOutput(o, func(w io.Writer) {
-		th := o.theme(a)
-		sepW := min(o.width(), o.maxContent())
-		termWidth := o.width()
+	a.pageOutput(o, func(out io.Writer) {
+		a.budgeted(out, o, path, func(w io.Writer) {
+			th := o.theme(a)
+			sepW := min(o.width(), o.maxContent())
+			termWidth := o.width()
 
-		renderCommandTitle(w, th, o, cmd, termWidth, sepW)
+			renderCommandTitle(w, th, o, cmd, termWidth, sepW)
 
-		usage := a.buildDefaultUsage(cmd, path)
-		th.Hdr.Fprint(w, "Usage:  ")
-		fmt.Fprintln(w, inline(usage))
+			usage := a.buildDefaultUsage(cmd, path)
+			th.Hdr.Fprint(w, "Usage:  ")
+			fmt.Fprintln(w, inline(usage))
 
-		desc := cmd.Description
-		if !o.Concise && cmd.LongDescription != "" {
-			desc = cmd.LongDescription
-		}
-		if desc != "" {
+			desc := cmd.Description
+			if !o.Concise && cmd.LongDescription != "" {
+				desc = cmd.LongDescription
+			}
+			if desc != "" {
+				fmt.Fprintln(w)
+				reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", inline(desc))
+			}
+
+			a.renderCommandSubcommands(w, th, o, termWidth, cmd)
+			renderCommandParams(w, th, o, termWidth, cmd.Parameters)
+			a.renderCommandFlags(w, th, o, termWidth, path, cmd)
+
+			if len(cmd.Examples) > 0 {
+				th.Hdr.Fprintln(w, "\nExamples:")
+				renderExamples(w, a, cmd, th, o, termWidth, cmd.Examples, 2, 4)
+			}
+
+			if !o.Concise {
+				renderCommandNotes(w, th, o, termWidth, cmd.Notes)
+			} else if cmd.LongDescription != "" || len(cmd.Notes) > 0 {
+				a.renderCommandConciseFooter(w, th, o, termWidth, path)
+			}
+
+			if th.Separator {
+				separator(w, th, sepW)
+			}
 			fmt.Fprintln(w)
-			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", inline(desc))
-		}
-
-		a.renderCommandSubcommands(w, th, o, termWidth, cmd)
-		renderCommandParams(w, th, o, termWidth, cmd.Parameters)
-		a.renderCommandFlags(w, th, o, termWidth, path, cmd)
-
-		if len(cmd.Examples) > 0 {
-			th.Hdr.Fprintln(w, "\nExamples:")
-			renderExamples(w, a, cmd, th, o, termWidth, cmd.Examples, 2, 4)
-		}
-
-		if !o.Concise {
-			renderCommandNotes(w, th, o, termWidth, cmd.Notes)
-		} else if cmd.LongDescription != "" || len(cmd.Notes) > 0 {
-			a.renderCommandConciseFooter(w, th, o, termWidth, path)
-		}
-
-		if th.Separator {
-			separator(w, th, sepW)
-		}
-		fmt.Fprintln(w)
+		})
 	})
 	return true
 }
