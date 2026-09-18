@@ -13,7 +13,7 @@ import (
 // text alignment in two-column command and option listings (GNU standard: 24).
 const DefaultMaxColIndent = 24
 
-var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]|\x1b\].*?(?:\x1b\\|\x07)`)
+var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;:?<=>!]*[@-~]|\x1b\][^\x1b\x07]*(?:\x07|\x1b\\)?`)
 
 // stripANSI removes both CSI escape sequences (e.g. \x1b[31m) and OSC
 // sequences (e.g. \x1b]8;;url\x1b\ for hyperlinks, \x1b]0;title\x07 for
@@ -101,12 +101,51 @@ func formatPrefix(w io.Writer, c *color.Color, prefixColor *color.Color, indent 
 	return prefixStr, visualLen(prefixStr), false
 }
 
+// openHyperlink returns the URL of an OSC 8 hyperlink that s leaves open, or "".
+//
+// The last introducer in s is either an opener — osc8, the URL, then oscEnd —
+// or the closer, which is osc8 immediately followed by oscEnd. Anything else is
+// a sequence we did not emit and cannot reopen.
+func openHyperlink(s string) string {
+	i := strings.LastIndex(s, osc8)
+	if i < 0 {
+		return ""
+	}
+	rest := s[i+len(osc8):]
+	if strings.HasPrefix(rest, oscEnd) {
+		return "" // that was the closer
+	}
+	if j := strings.Index(rest, oscEnd); j >= 0 {
+		return rest[:j]
+	}
+	return ""
+}
+
+// emitLine writes one wrapped line and returns what the next line must start
+// with to carry an unfinished hyperlink across the break.
+//
+// A hyperlink must not span a line: the per-line reset that fatih/color appends
+// is an SGR reset, which does not close an OSC 8 sequence, so a link split
+// across a wrap left an opener with no terminator. Anything that then truncates
+// by line — App.Explain's budget, or `myapp --help | head` — dropped the
+// terminator for good, and the terminal went on hyperlinking every cell it drew
+// afterwards, the shell prompt included, after the program had exited.
+func emitLine(w io.Writer, c *color.Color, line string) string {
+	if url := openHyperlink(line); url != "" {
+		c.Fprintln(w, line+osc8+oscEnd)
+		return osc8 + url + oscEnd
+	}
+	c.Fprintln(w, line)
+	return ""
+}
+
 func reflowWords(w io.Writer, c *color.Color, width, indent int, initialStr string, initialLen int, words []string) {
 	indentStr := strings.Repeat(" ", indent)
 	var cur strings.Builder
 	cur.WriteString(initialStr)
 	curLen := initialLen
 	wrote := false
+	reopen := ""
 	for _, word := range words {
 		wlen := visualLen(word)
 		space := 0
@@ -114,9 +153,10 @@ func reflowWords(w io.Writer, c *color.Color, width, indent int, initialStr stri
 			space = 1
 		}
 		if curLen+space+wlen > width {
-			c.Fprintln(w, cur.String())
+			reopen = emitLine(w, c, cur.String())
 			cur.Reset()
 			cur.WriteString(indentStr)
+			cur.WriteString(reopen) // zero width, so curLen is unchanged by it
 			cur.WriteString(word)
 			curLen = indent + wlen
 		} else {
@@ -133,7 +173,7 @@ func reflowWords(w io.Writer, c *color.Color, width, indent int, initialStr stri
 	// zero-width space — still belongs to a row that has a prefix to show, so
 	// the test is whether anything was written, not how wide it came out.
 	if wrote || curLen > indent {
-		c.Fprintln(w, cur.String())
+		emitLine(w, c, cur.String())
 	}
 }
 
