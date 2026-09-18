@@ -314,6 +314,9 @@ Behaviour changes a user will notice, all of which fail visibly rather than sile
 - ~~**SH-5's wire versioning, before the next `keyDispatcherVersion` bump.**~~ Done in
   `995d880`: entries are `name:protocol`, both forms are written for one release, and a
   dispatcher that meets an unknown protocol declines instead of calling.
+- ~~**Live end-to-end install tests for zsh and fish.**~~ Done in `install_live_test.go`:
+  every live test used to drive bash, so the two shells whose install paths actually differ
+  were started by nothing. The deferred-`compinit` order is covered there too.
 - ~~**The `zpty` harness from S1's verification, as shared test infrastructure.**~~ Done in
   `cf9ab99`, as the cheaper variant: `shell_harness_test.go` stubs `zle`, `bindkey`, `bind`
   and `commandline` with shell functions. It found nothing on its own, but SH-6, SH-7 and

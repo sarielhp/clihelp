@@ -4,6 +4,9 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [0.3.18] - unreleased
 
+### Internal
+- **The One-Step Install Is Now Proved in zsh and fish, Not Only bash.** Every live test in this repository drove bash — the shell whose install path is the simplest, with one rc file and no completion system to initialise — while zsh and fish, where the mechanism actually differs (`ZDOTDIR`, a `conf.d` drop-in, `compinit` ordering), were covered only at the Go level. `install_live_test.go` starts a real zsh and a real fish against a sandboxed home and asks what the install left them: the completion registered with `compdef`, the ZLE widget defined, the registry carrying both entry forms, and — in the order plugin managers actually produce — the deferred-`compinit` retry firing and then removing itself. It checks uninstall too, including the manual page.
+
 ### Fixed
 - **Fish Lost Everything After the First Line of a Multi-Line Command** - the Alt-H dispatcher read the buffer with `(commandline)`, which splits a multi-line command line into one element per line and then handed those to `__explain` as separate arguments, of which only the first was read. The continuation lines of exactly the long command someone would press Alt-H on were dropped. It now reads the buffer with `string collect` and passes it as one argument, which is what bash and zsh have always done.
 - **Bash Inserted a Completion Candidate Containing a Space Unquoted** - completing `prod east` put it on the command line verbatim, where the shell re-parsed it as two arguments. Candidates are quoted for insertion now; zsh and fish already quoted theirs.
