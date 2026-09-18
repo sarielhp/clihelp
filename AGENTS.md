@@ -76,8 +76,8 @@ make run
 
 ## API Stability & Backward Compatibility
 
-- **Stable Interface**: Preserve backward compatibility for all exported types and methods (`App`, `Command`, `Option`, `Example`, `Param`, `Note`, `Theme`, `Options`, `App.Render`, `App.RenderGlobal`, `App.RenderCommand`, `App.LookupCommand`, `App.Walk`).
-- **Additive Changes**: Adding new fields, structs, or methods is encouraged. Avoid breaking existing function signatures or struct field semantics in future development.
+- **Before 1.0, the surface is not frozen.** The library is pre-1.0 and backward compatibility is not yet a promise: a name, field, or function that is wrong should be changed or removed outright. Prefer that to adding a correct alternative beside it — a deprecated alias is a permanent cost paid to avoid a break that is currently free. `review/api-surface-2026-09-18.md` is the audit of what should go.
+- **After 1.0**: preserve backward compatibility for all exported types and methods (`App`, `Command`, `Option`, `Example`, `Param`, `Note`, `Theme`, `Options`, `App.Render`, `App.RenderGlobal`, `App.RenderCommand`, `App.LookupCommand`, `App.Walk`), and prefer additive changes — new fields, structs, or methods — over breaking existing signatures or struct field semantics.
 
 ## Sizing
 
@@ -246,7 +246,7 @@ what you need from above, move the constant down — that is why the `__complete
 3. **Exploration**: Run `make map` before introducing new types or functions to inspect existing API signatures.
 4. **Checkpointing**: Run `make checkpoint` after passing checks to preserve working states during long sessions.
 5. **No Direct ANSI Codes**: Do not hardcode ANSI escape sequences (`\033`, `\x1b`) in source or test files — use `fatih/color` or `stripansi`.
-6. **Backward Compatibility**: Maintain strict backward compatibility for exported APIs. Introduce non-breaking additive fields or methods rather than modifying existing public signatures.
+6. **Backward Compatibility**: After 1.0, maintain strict backward compatibility for exported APIs and prefer additive fields or methods to modified public signatures. Before 1.0 — where the library is now — a wrong name or a redundant entry point should be removed rather than aliased.
 7. **Commit Messages**: Use conventional commits format (`feat:`, `fix:`, `chore:`, `docs:`, `test:`).
 
 ## AI Agent Keywords
