@@ -2,6 +2,7 @@
 package doc
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/sarielhp/clihelp"
 )
@@ -615,12 +617,24 @@ func writeMarkdownPages(dir string, pages map[string]string, previous []string) 
 	return nil
 }
 
+// gitLookupTimeout bounds the one external command this package runs.
+const gitLookupTimeout = 3 * time.Second
+
 // ensureHashIgnored keeps the hash sidecar out of git so it is never committed
 // or pushed. It asks git rather than parsing .gitignore itself, because only git
 // knows its own ignore semantics (patterns, negation, nesting, global excludes).
 // Outside a git work tree it silently does nothing.
 func ensureHashIgnored(dir, hashPath string) {
-	cmd := exec.Command("git", "check-ignore", "-q", hashPath)
+	// git is another program, and this one runs inside the caller's. A repository
+	// on an unreachable mount, or a git that stops for credentials, would
+	// otherwise hang documentation generation with nothing on screen. The
+	// deadline kills git; WaitDelay is what bounds the wait when git has forked
+	// and its child still holds the pipe — the same pair the pager and the manual
+	// page lookup need, and this was the one place without either.
+	ctx, cancel := context.WithTimeout(context.Background(), gitLookupTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "git", "check-ignore", "-q", hashPath)
+	cmd.WaitDelay = time.Second
 	runErr := cmd.Run()
 	if runErr == nil {
 		return // already ignored

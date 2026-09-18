@@ -1,6 +1,11 @@
 package doc
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+)
 
 // markdownHash is the cache key: RenderMarkdown compares it against the value
 // stored beside the pages and rewrites nothing when they agree. Determinism was
@@ -78,4 +83,26 @@ func clonePages(in map[string]string) map[string]string {
 		out[k] = v
 	}
 	return out
+}
+
+// The one external command this package runs is bounded. A repository on an
+// unreachable mount, or a git that stops for credentials, would otherwise hang
+// documentation generation with nothing on screen — and killing git is not
+// enough on its own when git has forked and its child still holds the pipe.
+func TestGitLookupIsBounded(t *testing.T) {
+	dir := t.TempDir()
+	stub := filepath.Join(dir, "bin")
+	if err := os.MkdirAll(stub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(stub, "git"), []byte("#!/bin/sh\nsleep 30\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", stub+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	start := time.Now()
+	ensureHashIgnored(dir, filepath.Join(dir, ".clihelp-md-hash"))
+	if elapsed := time.Since(start); elapsed > gitLookupTimeout+2*time.Second {
+		t.Errorf("the git lookup ran for %v against a %v deadline", elapsed, gitLookupTimeout)
+	}
 }

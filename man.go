@@ -428,7 +428,15 @@ func manPageElsewhere(app *App, target string) (string, bool) {
 	// — would hang the install with no explanation, so it gets a deadline.
 	ctx, cancel := context.WithTimeout(context.Background(), manLookupTimeout)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, "man", "-w", appName(app)).Output()
+	cmd := exec.CommandContext(ctx, "man", "-w", appName(app))
+	// The deadline kills man, but Output waits for its stdout to close, and a
+	// man that has forked — a pager, a decompressor, anything on an unreachable
+	// mount — leaves a child holding that pipe. Without this the context expired
+	// and the call went on waiting: measured at a full 30 seconds against a
+	// 3-second deadline. The same defect the pager had, in the other place this
+	// library runs a program.
+	cmd.WaitDelay = time.Second
+	out, err := cmd.Output()
 	if err != nil {
 		return "", false
 	}
