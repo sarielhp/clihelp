@@ -2,6 +2,13 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.25] - 2026-09-18
+
+### Internal
+- **`doc/` and `tree/` Judged by Mutation, Not Coverage.** 22 mutations, each proved to change an observable value; **7 survived the suite**, all of them in two places. `tree`'s continuation columns — the box-drawing that makes a tree a tree, and the only decision about whether a parent's vertical bar continues past a child — could be broken in all three of their branches with nothing failing, because the existing tests assert the *child* prefixes and those are built elsewhere. `markdownHash` is the cache key `RenderMarkdown` compares against the value stored beside the pages, and its determinism was asserted while its sensitivity was not: dropping the format version from it, so that raising `markdownFormatVersion` would regenerate nothing, and dropping the page names, so that renaming a page or two pages swapping content would go unnoticed, both passed. `tree` also rendered hidden commands and untruncated descriptions with no test objecting.
+- The hash takes its version as an argument now (`markdownHashOf`), so the version's contribution can be asserted without editing the constant — the same seam the atomic writer uses for its failure paths. New tests cover the tree's structure at every branch of the continuation logic, its filtering and truncation, and the hash against all five ways its input can change. **22 of 22 mutations are now killed**, stable across three consecutive runs.
+- One intermediate run reported 21 of 22 and I could not reproduce it; the three runs since are identical. Recorded rather than rounded away.
+
 ## [0.3.24] - 2026-09-18
 
 ### Fixed

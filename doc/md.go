@@ -148,6 +148,13 @@ func renderMarkdownPages(a *clihelp.App) (map[string]string, error) {
 // version participates implicitly through the index page content, so bumping
 // the version invalidates the cache even when no command changed.
 func markdownHash(pages map[string]string) string {
+	return markdownHashOf(pages, markdownFormatVersion)
+}
+
+// markdownHashOf takes the version as an argument so that its contribution can
+// be asserted: with the constant inlined, the only way to check that raising it
+// regenerates anything was to raise it.
+func markdownHashOf(pages map[string]string, version int) string {
 	keys := make([]string, 0, len(pages))
 	for k := range pages {
 		keys = append(keys, k)
@@ -155,7 +162,7 @@ func markdownHash(pages map[string]string) string {
 	sort.Strings(keys)
 
 	h := sha256.New()
-	fmt.Fprintf(h, "clihelp-md-v%d\n", markdownFormatVersion)
+	fmt.Fprintf(h, "clihelp-md-v%d\n", version)
 	for _, k := range keys {
 		fmt.Fprintf(h, "== %s ==\n%s\n", k, pages[k])
 	}
