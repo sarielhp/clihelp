@@ -446,3 +446,111 @@ func TestKeyBindingRegistersBothForms(t *testing.T) {
 		})
 	}
 }
+
+// A command line is one string. fish read it with `(commandline)`, which splits
+// a multi-line buffer into one element per line and then passed those as
+// separate arguments, so everything after the first line was dropped — the
+// continuation lines of exactly the long command a user would press Alt-H on.
+// bash and zsh have always passed the whole buffer as one argument.
+func TestFishExplainPassesTheWholeBuffer(t *testing.T) {
+	dir := t.TempDir()
+	// The stub reports what it was actually handed, with newlines made visible.
+	body := "#!/bin/sh\nprintf 'expanded\\n'\nprintf 'argc=%s\\n' \"$#\"\n" +
+		"printf 'line=%s\\n' \"$(printf '%s' \"$2\" | tr '\\n' '|')\"\n"
+	if err := os.WriteFile(filepath.Join(dir, "beta"), []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	snippet := keySnippet(t, dir, "fish", &App{Name: "alpha"})
+	drive := fishStubs + `
+function commandline
+    if test (count $argv) -eq 0
+        printf '%s\n' "beta run \\" "  --flag"
+        return
+    end
+    switch $argv[1]
+        case '-r' '--replace'
+            echo "SET:$argv[-1]"
+        case '*'
+            echo REPAINT
+    end
+end
+`
+	out := driveShell(t, "fish", dir, snippet, drive,
+		"set -g _clihelp_apps beta:1\n__clihelp_explain\ntrue")
+
+	if !strings.Contains(out, "argc=2") {
+		t.Errorf("the buffer was split across several arguments:\n%s", out)
+	}
+	if !strings.Contains(out, "--flag") {
+		t.Errorf("everything after the first line was lost:\n%s", out)
+	}
+}
+
+// bash puts a COMPREPLY entry on the command line verbatim, so a candidate
+// containing a space was re-parsed as two arguments the moment it was inserted.
+// zsh and fish quote theirs.
+func TestBashCompletionQuotesCandidates(t *testing.T) {
+	dir := t.TempDir()
+	stubCompleter(t, dir, "alpha", "prod east\nstaging\n")
+	snippet := completionSnippet(t, dir, "bash", &App{Name: "alpha"})
+
+	body := `
+COMP_WORDS=(alpha deploy "")
+COMP_CWORD=2
+_alpha_complete
+printf 'REPLY:%s\n' "${COMPREPLY[@]}"`
+	out := driveShell(t, "bash", dir, snippet, bashStubs, body)
+
+	if !strings.Contains(out, `REPLY:prod\ east`) {
+		t.Errorf("a candidate with a space was not quoted for insertion:\n%s", out)
+	}
+	if !strings.Contains(out, "REPLY:staging") {
+		t.Errorf("an ordinary candidate was mangled:\n%s", out)
+	}
+}
+
+// The wrapper reconstructs the wrapped command line by stripping its own name
+// off the front. It cut at the first space, so a tab between the name and the
+// arguments matched nothing, emptied the remainder, and explained the bare
+// command as though the user had typed no arguments at all.
+func TestWrapperSplitsOnAnyBlank(t *testing.T) {
+	shPath, err := exec.LookPath("sh")
+	if err != nil {
+		t.Skip("sh not found, skipping")
+	}
+	dir := t.TempDir()
+	// The wrapped program reports the line it was asked to explain.
+	body := "#!/bin/sh\nprintf 'expanded\\n'\nprintf 'got=[%s]\\n' \"$2\"\n"
+	if err := os.WriteFile(filepath.Join(dir, "pod"), []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	var script strings.Builder
+	if err := GenWrapperScript(&App{Name: "pod"}, "pd", []string{"deploy"}, &script); err != nil {
+		t.Fatal(err)
+	}
+	wrapper := filepath.Join(dir, "pd")
+	if err := os.WriteFile(wrapper, []byte(script.String()), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tt := range []struct{ name, line, want string }{
+		{"space", "pd --stage=prod", "pod deploy --stage=prod"},
+		{"tab", "pd\t--stage=prod", "pod deploy --stage=prod"},
+		{"several blanks", "pd   --stage=prod", "pod deploy --stage=prod"},
+		{"no arguments", "pd", "pod deploy"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := sandboxedCommand(t, shPath, wrapper, "__explain", tt.line)
+			cmd.Env = append(cmd.Env, "PATH="+dir+":"+os.Getenv("PATH"))
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("the wrapper failed: %v\n%s", err, out)
+			}
+			if !strings.Contains(string(out), "got=["+tt.want+"]") {
+				t.Errorf("wanted the wrapped line %q:\n%s", tt.want, out)
+			}
+		})
+	}
+}

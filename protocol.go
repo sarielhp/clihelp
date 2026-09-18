@@ -284,8 +284,12 @@ case $1 in
         printf '%s\n' "$2"
         line=$2
         while [ "${line#[[:space:]]}" != "$line" ]; do line=${line#[[:space:]]}; done
-        rest=${line#* }
-        [ "$rest" = "$line" ] && rest=
+        # Split on the first run of blanks, not on a space: "${line#* }" found
+        # no match when the separator was a tab, which emptied rest and dropped
+        # every argument the user had typed.
+        first=${line%%[[:space:]]*}
+        rest=${line#"$first"}
+        while [ "${rest#[[:space:]]}" != "$rest" ]; do rest=${rest#[[:space:]]}; done
         "$__clihelp_app" __explain "$__clihelp_target${rest:+ }$rest" | tail -n +2
         exit 0
         ;;

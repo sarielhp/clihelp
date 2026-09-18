@@ -19,7 +19,7 @@ var SupportedShells = []string{"bash", "zsh", "fish"}
 // completionScriptVersion marks the generated scripts. It is raised whenever a
 // template changes in a way that already-installed scripts must pick up, so that
 // the auto-install path rewrites them instead of leaving an old script in place.
-const completionScriptVersion = 4
+const completionScriptVersion = 5
 
 // sanitizeCompletionField makes a string safe to put in one field of a
 // completion record. The protocol is line-oriented with a tab between candidate

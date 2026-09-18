@@ -164,7 +164,7 @@ changed. The per-test `sandboxHome` discipline has already failed once; the guar
 | ID | Finding |
 |---|---|
 | D2 | No stdout/stderr contract: `__clihelp uninstall` and `manpage --uninstall` put prose on stdout where their siblings put a bare path. **verified** |
-| D4 | The block written into `~/.bashrc` tells the user to run `<app> completion install` to remove it — which does not exist unless the author added `CompletionCommand()`, the exact case `__clihelp` exists for. **verified** |
+| D4 | The block written into `~/.bashrc` tells the user to run `<app> completion install` to remove it — which does not exist unless the author added `CompletionCommand()`, the exact case `__clihelp` exists for. **verified** **[fixed: 51bee84]** |
 | D7 | `manpage --install --uninstall` is accepted and silently prefers uninstall; `--force` without `--install` is ignored. **verified** |
 | S7/E8 | `.TH`'s arguments go through Go's `%q`, not roff escaping: `\"` starts a roff comment, so a version containing a quote truncates the footer and silently drops the `"User Commands"` argument. `man` emits no warning, so the one live test (which asserts empty stderr) passes on a corrupted page. |
 | IO-3 | The atomic replace installs a new inode: mode is preserved (**verified**), ownership, ACLs and hard links are not (**verified** for hard links). `sudo -E myapp anything` rewrites `~/.bashrc` as root. |
@@ -172,15 +172,15 @@ changed. The per-test `sandboxHome` discipline has already failed once; the guar
 | IO-6 | The auto path discards every error, and writes the integration file *before* editing the startup file — so a failed bootstrap is never retried, because the staleness gate is already satisfied. |
 | IO-7 | `man -w` runs with no timeout inside the user's program. (Disproved: it is *not* on the per-invocation path, and its stderr does not leak.) |
 | IO-8/9 | Four marker checks read a fixed-size head with the error discarded; an interrupted write leaves a `.tmp-*` sibling in `$HOME` forever. |
-| S9 | The wrapper's `rest=${2#* }` reconstruction leaks the wrapper's own name when the line has leading blanks, and drops every argument when the separator is a tab. |
+| S9 | The wrapper's `rest=${2#* }` reconstruction leaks the wrapper's own name when the line has leading blanks, and drops every argument when the separator is a tab. **[fixed: pending]** |
 | A1 | The five files form a complete dependency cycle; there is no layering. Shell resolution is written out six times with two different error messages. |
 | SH-5 | The Alt-H protocol has a version on the *dispatcher* but none on the *wire*: `_clihelp_apps` carries bare names, so a newer dispatcher cannot tell which release a registered program speaks. Nothing is broken today; the first bump of `keyDispatcherVersion` is what breaks, silently. Fix before the next bump, not after. **[fixed: 995d880]** |
 | SH-6 | The key binds into whatever keymap is current at source time: with `set -o vi` after the block, Alt-H is dead in bash and zsh. It also silently clobbers a user's existing `\eh` binding. **[fixed: cf9ab99]** — the keymaps by binding all of them; the clobber by `CLIHELP_NO_KEY_BINDINGS`, an opt-out rather than detection, because readline gives no portable way to ask what `\eh` is currently bound to. |
 | SH-7 | zsh completion is silently not registered when `compdef` does not exist yet — deferred/turbo loaders and late `compinit` all land here, with no diagnostic and no retry. **[fixed: 578a860]** |
 | SH-8 | Three different file-completion behaviours for one program: bash falls back to filenames, zsh offers nothing, fish disables them outright with `-f`. **[fixed: de792a6]** |
-| SH-9 | bash inserts a completion candidate containing a space unquoted, so the buffer is re-parsed as two arguments. zsh and fish quote correctly. |
+| SH-9 | bash inserts a completion candidate containing a space unquoted, so the buffer is re-parsed as two arguments. zsh and fish quote correctly. **[fixed: pending]** |
 | SH-11/12 | The bootstrap line is the last command in the rc, so a missing integration file leaves `$?=1` at every prompt (visible in prompts that render exit status); and the path is emitted with Go's `%q` inside shell double quotes — same defect as S3, second site. |
-| SH-14 | fish alone does not check the child's exit status and passes the buffer unquoted as a list, so a multi-line buffer loses everything after the first line. |
+| SH-14 | fish alone does not check the child's exit status and passes the buffer unquoted as a list, so a multi-line buffer loses everything after the first line. **[fixed: pending]** |
 | E10-E13 | `docs/completion.md` contains five false statements; `README.md` and `llms.txt` do not mention that `completion install` edits a shell startup file; `AGENTS.md`'s file table omits seven test files; the gate never runs `-race` and `make check` rewrites source. |
 
 ---
@@ -269,6 +269,14 @@ unattended writes running against half-changed code.
 ---
 
 ## Status
+
+**Correction, added after the fact:** this section originally read as though every
+finding was closed. It was not. The roadmap blocks were all applied, but four rows of
+the medium/low table — D4, S9, SH-9 and SH-14 — were never *in* a roadmap block, so the
+fix pass never saw them. They stayed open through two releases and are closed now, each
+with its own regression test. The lesson is about the document rather than the code: a
+roadmap is not a checklist of the findings, and the status has to be written against the
+findings table, not against the roadmap.
 
 **The Now and Next blocks are applied** on branch `fix/shell-integration-review-2026-09`,
 one commit per fix, each with a regression test whose teeth were checked against the unfixed

@@ -335,7 +335,11 @@ const fishKeysTemplate = `# clihelp key bindings for {{app}}
 if not set -q _clihelp_dispatcher_version; or test $_clihelp_dispatcher_version -lt {{dispatcher}}
     set -g _clihelp_dispatcher_version {{dispatcher}}
     function __clihelp_explain
-        set -l line (commandline)
+        # string collect keeps the buffer as one value. Plain (commandline)
+        # splits a multi-line buffer into one element per line, and those then
+        # went to __explain as separate arguments, of which only the first was
+        # read — so the continuation lines of a long command were dropped.
+        set -l line (commandline | string collect)
         set -l word (string split -m 1 ' ' -- (string trim -l -- "$line"))[1]
         # A path is not a registered program, and see the bash snippet for the
         # registry's "name:protocol" wire format.
@@ -357,7 +361,7 @@ if not set -q _clihelp_dispatcher_version; or test $_clihelp_dispatcher_version 
         end
         set -lx CLIHELP_TERM_LINES $LINES
         set -lx CLIHELP_TERM_COLUMNS $COLUMNS
-        set -l out ($word __explain $line 2>/dev/null)
+        set -l out ($word __explain "$line" 2>/dev/null)
         test (count $out) -gt 0; or return
         commandline -r -- $out[1]
         echo
@@ -382,7 +386,7 @@ set -e _clihelp_entry
 // snippet installs its dispatcher only when nothing newer is already in place,
 // so two programs shipping different clihelp versions cannot fight over the key:
 // the newer dispatcher wins, and it serves every program in the shared registry.
-const keyDispatcherVersion = 4
+const keyDispatcherVersion = 5
 
 // explainProtocolVersion is what a program tells the shared dispatcher it
 // speaks, through its registry entry. It is not the dispatcher's own version:

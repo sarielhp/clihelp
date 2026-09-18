@@ -35,7 +35,10 @@ _%[2]s_complete() {
     while IFS= read -r line; do
         [[ -z $line ]] && continue
         cand="${line%%%%	*}"
-        [[ $cand == "$cur"* ]] && COMPREPLY+=("$cand")
+        # Quote for insertion: bash puts a COMPREPLY entry on the command line
+        # verbatim, so a candidate containing a space became two arguments the
+        # moment it was completed. zsh and fish quote theirs.
+        [[ $cand == "$cur"* ]] && COMPREPLY+=("$(printf '%%q' "$cand")")
     done <<< "$out"
 
     if declare -F __ltrim_colon_completions >/dev/null 2>&1; then
