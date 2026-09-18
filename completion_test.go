@@ -370,8 +370,13 @@ func TestAutoInstallCompletionOnExecute(t *testing.T) {
 	t.Setenv("XDG_DATA_HOME", filepath.Join(tmpDir, "share"))
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, "config"))
 	t.Setenv("SHELL", "/bin/zsh")
-	t.Setenv("CI", "")
-	t.Setenv("GITHUB_ACTIONS", "")
+	// All four, as install_test.go, man_test.go, protocol_test.go and
+	// autopath_test.go already do. This file had an incomplete copy, so the suite
+	// failed for anyone with NO_AUTO_COMPLETION set — including anyone following
+	// this repository's own review guardrails.
+	for _, v := range []string{"CI", "GITHUB_ACTIONS", "NO_AUTO_COMPLETION", "CLIHELP_NO_AUTO_COMPLETION"} {
+		t.Setenv(v, "")
+	}
 	t.Setenv("TERM", "xterm-256color")
 
 	ran := false
@@ -423,8 +428,13 @@ func TestAutoInstallCompletionKillSwitch(t *testing.T) {
 	t.Setenv("XDG_DATA_HOME", filepath.Join(tmpDir, "share"))
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, "config"))
 	t.Setenv("SHELL", "/bin/zsh")
-	t.Setenv("CI", "")
-	t.Setenv("GITHUB_ACTIONS", "")
+	// All four, as install_test.go, man_test.go, protocol_test.go and
+	// autopath_test.go already do. This file had an incomplete copy, so the suite
+	// failed for anyone with NO_AUTO_COMPLETION set — including anyone following
+	// this repository's own review guardrails.
+	for _, v := range []string{"CI", "GITHUB_ACTIONS", "NO_AUTO_COMPLETION", "CLIHELP_NO_AUTO_COMPLETION"} {
+		t.Setenv(v, "")
+	}
 	t.Setenv("TERM", "xterm-256color")
 	t.Setenv("NO_AUTO_COMPLETION", "1")
 
