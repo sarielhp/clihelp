@@ -2,6 +2,15 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.27] - 2026-09-18
+
+### Fixed
+- **Two of the Three Programs This Library Runs Could Hang It.** A mutation survey of `install.go` and `man.go` turned up a real defect: `manPageElsewhere`'s deadline did not bound it. The context kills `man`, but `Output` waits for its standard output to close, and a `man` that has forked leaves a child holding that pipe — measured at a full 30 seconds against a 3-second deadline. This is the same defect the pager had, fixed there without looking for the other places a program is run. There are three, and the third — `doc/`'s `git check-ignore`, which keeps the hash sidecar out of version control — had neither a deadline nor a `WaitDelay`, so a repository on an unreachable mount or a `git` that stops for credentials would hang documentation generation indefinitely. All three are bounded now, and the two new ones have a test that drives them with a stub that never returns.
+
+### Internal
+- The same survey found five assertion gaps, two with a user-visible consequence. zsh's `$ZDOTDIR` was unasserted, so the sourcing line could have gone to a file the user's shell never reads while the install reported success; and `integrationHasKeys` could answer "yes" always, which would add the Alt-H key binding to an integration the user had installed with `--no-keys`, during an automatic refresh they did not ask for. The other three: `upsertBlock`'s changed-or-not answer, which is what the install report tells the user it did; the uninstalled marker, which is what keeps a deliberate uninstall uninstalled; and `manPageIsCurrent`'s version check, without which an upgrade would never refresh a page.
+- One mutation survives and is left surviving: replacing the uninstalled marker's filename. Both the writer and the reader go through the same function, so a consistent change to it alters no behaviour — only the name of a file in the user's configuration directory. Pinning that name would be a golden assertion on an internal detail, and a surviving mutant has to be shown to change something observable before it earns a test.
+
 ## [0.3.26] - 2026-09-18
 
 ### Internal
