@@ -6,7 +6,7 @@ All notable changes to `clihelp` will be documented in this file.
 
 ### Fixed
 - **`Audit` Rejected Examples That Run** - the example validator bound its own idea of the help flags, `--help` with shorthand `-h`, while the real flag set binds `--help-concise` with `-h` and `--help` with `-H` when `App.ExtendedHelpFlag` is set. So an example line using `--help-concise`, or `-H` on an application that offers it, was reported as `invalid flag in example` — by `Audit`, which the README recommends running in CI, for a line that works at run time. The validator calls the same binder the real path uses, so the two cannot drift again, and a test pins `helpFlagNames` against what `bindHelpFlags` actually binds: they are two lists of the same thing, one for what resolution skips and one for what pflag parses, and that pair is what the validator drifted from.
-- The package documentation named only `-h` and `--help` as the flags an application must not register itself. It names all four now, under both `ExtendedHelpFlag` settings.
+- The package documentation named only `-h` and `--help` as the flags an application must not register itself. It names all four now, under both `ExtendedHelpFlag` settings, and `docs/flags-and-options.md` explains what `--help-concise` is: `pflag` cannot bind a shorthand without a long name, so `-h` needs one, and it is hidden because `-h` is the spelling to type. It is a real flag all the same — accepted on a command line and in an `Example` — and one of the four an option must not collide with, so a collision is now something an author can look up rather than discover from a parse error.
 
 ## [0.3.23] - 2026-09-18
 

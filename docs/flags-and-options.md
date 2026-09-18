@@ -211,9 +211,23 @@ Constraint names may be written in any spelling the option declares — `"-a"` a
 ## Automatic Help Flag Collision Trap
 
 > [!CAUTION]
-> **Never manually declare `-h`, `--help`, or `-H` in Options**: `clihelp` automatically binds and manages help flags for all commands:
-> - `-h`: Concise help suppressing verbose notes and fitting within 24-line terminals.
+> **Never manually declare `-h`, `--help`, `--help-concise`, or `-H` in Options**: `clihelp` automatically binds and manages help flags for all commands:
+> - `-h`: Concise help suppressing verbose notes and fitting within 24 lines.
+> - `--help-concise`: The long name `-h` is bound under. See below.
 > - `--help`: Extended help rendering `LongDescription`, all notes, and examples.
 > - `-H`: Opt-in single-letter shortcut for extended help when `App.ExtendedHelpFlag = true`.
 >
 > Explicitly registering a help flag will return a validation error or cause a `pflag` conflict. Always let `clihelp` manage help flags and help text generation automatically.
+
+### Why `--help-concise` exists
+
+`pflag` cannot bind a shorthand without a long name, so `-h` needs one. It is
+`--help-concise`, and it is hidden from every help page because `-h` is the spelling you
+are meant to type — the same constraint that gives an option's second and later shorthands
+their synthetic `--<name>-alias-<short>` long names.
+
+It is nevertheless a real flag. `myapp build --help-concise` works, it is accepted in an
+`Example` line, and it is one of the four names an option of your own must not collide
+with. It is documented here rather than in your program's help precisely so that a
+collision is something you can look up, rather than something you discover from a `pflag`
+error at run time.
