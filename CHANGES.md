@@ -2,7 +2,7 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
-## [0.3.21] - unreleased
+## [0.3.21] - 2026-09-18
 
 ### Fixed
 - **The Startup-File Lock Was Barely a Lock** - `flock` is held on an inode rather than a name, and the release function unlinked the lock file, so a waiter already blocked on the old inode could acquire it at the moment a newcomer's `O_CREATE` produced a fresh inode and locked that one instead — two writers, each certain it held the lock. A deterministic test (twelve workers, forty read-modify-writes each) reports **478 of 480 updates lost** against the old code; the install test's "2 of 8 blocks lost" was the mild case, and it only ever appeared under a full `-race` run, never on its own. The lock file is no longer removed.
