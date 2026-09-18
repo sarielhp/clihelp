@@ -574,12 +574,16 @@ func appName(a *App) string {
 // that no longer fits the reduced column takes formatPrefix's own-line branch,
 // which is already the tested behaviour for a name wider than its column.
 func colIndentFor(params []Param, termWidth, minText int) int {
-	indent := colIndent(params)
+	return clampIndent(colIndent(params), termWidth, minText)
+}
+
+// clampIndent reduces a description column so that at least minText columns are
+// left for the text, splitting the difference on a terminal too narrow to give
+// minText away outright.
+func clampIndent(indent, termWidth, minText int) int {
 	if termWidth <= 0 {
 		return indent
 	}
-	// On a terminal too narrow to give minText away, split the difference rather
-	// than starve one side.
 	if half := termWidth / 2; minText > half {
 		minText = half
 	}

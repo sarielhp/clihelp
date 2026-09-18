@@ -6,8 +6,6 @@ import (
 	"errors"
 	"strings"
 	"testing"
-
-	"github.com/acarl005/stripansi"
 )
 
 func TestExecuteLifecycleAndHooks(t *testing.T) {
@@ -428,7 +426,7 @@ func TestExecuteHelpSubcommandNoDoubleRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	output := stripansi.Strip(outBuf.String())
+	output := StripANSI(outBuf.String())
 	// Count occurrences of "testapp info"
 	count := strings.Count(output, "Usage:  testapp info")
 	if count != 1 {
@@ -471,7 +469,7 @@ func TestExecuteNestedHelpSubcommandNoDoubleRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	output := stripansi.Strip(outBuf.String())
+	output := StripANSI(outBuf.String())
 	count := strings.Count(output, "Usage:  nestapp config set")
 	if count != 1 {
 		t.Errorf("expected exactly 1 occurrence of 'Usage:  nestapp config set', got %d\n%s", count, output)
@@ -538,7 +536,7 @@ func TestExecuteNestedHelpNoCustomCommandNoDoubleRender(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	output := stripansi.Strip(outBuf.String())
+	output := StripANSI(outBuf.String())
 	// Count occurrences of "nestapp config"
 	count := strings.Count(output, "Usage:  nestapp config")
 	if count != 1 {
@@ -698,7 +696,7 @@ func TestExecuteTieredHelpFlags(t *testing.T) {
 		if err := app.Execute([]string{"deploy", "-h"}); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		res := stripansi.Strip(out.String())
+		res := StripANSI(out.String())
 		if !strings.Contains(res, "Brief deploy description.") {
 			t.Errorf("expected Description in -h, got:\n%s", res)
 		}
@@ -718,7 +716,7 @@ func TestExecuteTieredHelpFlags(t *testing.T) {
 		if err := app.Execute([]string{"deploy", "--help"}); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		res := stripansi.Strip(out.String())
+		res := StripANSI(out.String())
 		if !strings.Contains(res, "Full extended deploy description") {
 			t.Errorf("expected LongDescription in --help, got:\n%s", res)
 		}
@@ -741,7 +739,7 @@ func TestExecuteTieredHelpFlags(t *testing.T) {
 		if err := app.Execute([]string{"help", "deploy"}); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		res := stripansi.Strip(out.String())
+		res := StripANSI(out.String())
 		if !strings.Contains(res, "Full extended deploy description") {
 			t.Errorf("expected LongDescription in help deploy, got:\n%s", res)
 		}
@@ -755,7 +753,7 @@ func TestExecuteTieredHelpFlags(t *testing.T) {
 		if err := app.Execute([]string{"deploy", "-H"}); err != nil {
 			t.Fatalf("unexpected error with -H when ExtendedHelpFlag=true: %v", err)
 		}
-		res := stripansi.Strip(out.String())
+		res := StripANSI(out.String())
 		if !strings.Contains(res, "Full extended deploy description") {
 			t.Errorf("expected LongDescription in -H, got:\n%s", res)
 		}
@@ -769,7 +767,7 @@ func TestExecuteTieredHelpFlags(t *testing.T) {
 		if err := app.Execute([]string{"-H"}); err != nil {
 			t.Fatalf("unexpected error on root -H: %v", err)
 		}
-		res := stripansi.Strip(out.String())
+		res := StripANSI(out.String())
 		if !strings.Contains(res, "Usage:  tierapp") {
 			t.Errorf("expected root help on -H, got:\n%s", res)
 		}

@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/acarl005/stripansi"
 	"github.com/fatih/color"
 	"github.com/spf13/pflag"
 )
@@ -53,7 +52,14 @@ func testApp() *App {
 	}
 }
 
-func strip(s string) string { return stripansi.Strip(s) }
+// strip is the library's own stripper, not the third-party one.
+//
+// stripansi does not understand OSC sequences: given one of this package's
+// hyperlinks it does not merely miss it, it eats seven bytes out of the middle
+// and leaves the URL visible. Forty assertions here read its output, and
+// TestExampleAppNoBareMarkdownAndNoVisibleURLs — whose whole job is proving URLs
+// stay hidden — would have reported a visible URL had it used this helper.
+func strip(s string) string { return StripANSI(s) }
 
 func TestExampleAppNoBareMarkdownAndNoVisibleURLs(t *testing.T) {
 	had := color.NoColor

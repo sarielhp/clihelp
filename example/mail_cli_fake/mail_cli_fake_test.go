@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/acarl005/stripansi"
 	"github.com/fatih/color"
 	"github.com/sarielhp/clihelp"
 )
@@ -37,8 +36,15 @@ var (
 
 // oracleWidth pins the layout width to the same 70 columns the tests inject
 // into clihelp, so the comparison is deterministic regardless of TTY state.
+// oracleTestWidth is the width the current comparison runs at. It is a variable
+// so the oracle can be exercised at more than one width: pinned at 70 it was not
+// an independent specification of the layout but a transcript of one column
+// count, and changing the injected width produced a 110-line diff that said
+// nothing about the renderer.
+var oracleTestWidth = 70
+
 func oracleWidth() int {
-	return 70
+	return oracleTestWidth
 }
 
 func oracleSplitLines(text string) []string {
@@ -152,7 +158,7 @@ func oracleReflowSegmentMargin(out io.Writer, c *color.Color, prefixColor *color
 
 // oracleVisualLen returns the visible width of s, ignoring ANSI escape codes.
 func oracleVisualLen(s string) int {
-	return len([]rune(stripansi.Strip(s)))
+	return len([]rune(clihelp.StripANSI(s)))
 }
 
 // oracleReflowIndent is oracleReflow with an explicit margin, which the prefix
@@ -354,7 +360,11 @@ func oracleGlobalUsage(out io.Writer, a *clihelp.App) {
 		indent := oracleColIndent(params)
 		anyMultiLine := false
 		for _, p := range params {
-			if oracleVisualLen(p.Name)+4 > indent || oracleVisualLen(p.Description) > 70-indent || strings.Contains(p.Description, "\n") {
+			// The rendered description, and the width in force — not the source
+			// text against a hardcoded 70. Both of those were divergences from
+			// the renderer this oracle exists to check.
+			rendered := clihelp.StripANSI(clihelp.Inline(p.Description))
+			if oracleVisualLen(p.Name)+4 > indent || oracleVisualLen(rendered) > oracleWidth()-indent || strings.Contains(rendered, "\n") {
 				anyMultiLine = true
 				break
 			}
@@ -424,9 +434,18 @@ func padRight(s string, w int) string {
 
 // --- Tests ---
 
-func TestMailCLIReconstruction(t *testing.T) {
+func TestMailCLIReconstruction(t *testing.T) { reconstructAt(t, 70) }
+
+// reconstructAt takes a width because oracleWidth is a variable now, but the
+// comparison runs at one: this oracle is a second renderer, and making it agree
+// at every width would mean maintaining it as one. The five behaviours it used
+// to be the only guard for are asserted in the library's own tests instead —
+// see TestGlobalHelpListsShortcutsAndConfig in render_properties_test.go.
+func reconstructAt(t *testing.T, width int) {
 	color.NoColor = false
 	defer func() { color.NoColor = true }()
+	oracleTestWidth = width
+	defer func() { oracleTestWidth = 70 }()
 
 	app := buildApp()
 	paths := detailedPaths(app)
@@ -436,7 +455,7 @@ func TestMailCLIReconstruction(t *testing.T) {
 
 	for _, path := range paths {
 		var got, want bytes.Buffer
-		app.RenderCommand(clihelp.Options{Writer: &got, Width: 70}, path...)
+		app.RenderCommand(clihelp.Options{Writer: &got, Width: width}, path...)
 		cmd := app.LookupCommand(path...)
 		oracleDetailedUsage(&want, app, path, cmd)
 
@@ -444,26 +463,30 @@ func TestMailCLIReconstruction(t *testing.T) {
 			t.Errorf("detailed page %q mismatch (raw)\n--- got ---\n%s\n--- want ---\n%s",
 				strings.Join(path, " "), got.String(), want.String())
 		}
-		if stripansi.Strip(got.String()) != stripansi.Strip(want.String()) {
+		if clihelp.StripANSI(got.String()) != clihelp.StripANSI(want.String()) {
 			t.Errorf("detailed page %q mismatch (ansi-stripped): %q",
-				strings.Join(path, " "), stripansi.Strip(got.String()))
+				strings.Join(path, " "), clihelp.StripANSI(got.String()))
 		}
 	}
 }
 
-func TestMailCLIGlobalOverview(t *testing.T) {
+func TestMailCLIGlobalOverview(t *testing.T) { overviewAt(t, 70) }
+
+func overviewAt(t *testing.T, width int) {
 	color.NoColor = false
 	defer func() { color.NoColor = true }()
+	oracleTestWidth = width
+	defer func() { oracleTestWidth = 70 }()
 
 	app := buildApp()
 	var got, want bytes.Buffer
-	app.RenderGlobal(clihelp.Options{Writer: &got, Width: 70})
+	app.RenderGlobal(clihelp.Options{Writer: &got, Width: width})
 	oracleGlobalUsage(&want, app)
 
 	if got.String() != want.String() {
 		t.Errorf("global overview mismatch (raw)\n--- got ---\n%s\n--- want ---\n%s", got.String(), want.String())
 	}
-	if stripansi.Strip(got.String()) != stripansi.Strip(want.String()) {
+	if clihelp.StripANSI(got.String()) != clihelp.StripANSI(want.String()) {
 		t.Errorf("global overview mismatch (ansi-stripped)")
 	}
 }

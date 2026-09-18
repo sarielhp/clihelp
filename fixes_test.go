@@ -46,6 +46,21 @@ func TestRenderGlobalGroupedCommands(t *testing.T) {
 	if coreIdx > extrasIdx {
 		t.Errorf("expected Core heading before Extras heading")
 	}
+
+	// "delta" declares no group. This test already built that input — it is the
+	// one input that exposes the defect — and then asserted only that the word
+	// appears somewhere and that the two headings are in order, both of which
+	// held while delta was printed under "Extras:". Assert the heading it is
+	// actually under.
+	if got := headingOf(out, "delta"); got == "Extras:" || got == "Core:" {
+		t.Errorf("ungrouped command 'delta' is listed under %q:\n%s", got, out)
+	}
+	if got := headingOf(out, "alpha"); got != "Core:" {
+		t.Errorf("alpha's heading = %q, want Core::\n%s", got, out)
+	}
+	if got := headingOf(out, "gamma"); got != "Extras:" {
+		t.Errorf("gamma's heading = %q, want Extras::\n%s", got, out)
+	}
 }
 
 func TestRenderCommandSubcommandsGroupedAndAliased(t *testing.T) {

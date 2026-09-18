@@ -568,7 +568,7 @@ func (a *App) renderCommandSubcommands(w io.Writer, th Theme, o Options, termWid
 	}
 	th.Hdr.Fprintln(w, "\nSubcommands:")
 	if len(cmd.SubcommandEntries) > 0 {
-		indent := colIndent(subs)
+		indent := colIndentFor(subs, termWidth, minTextColumns)
 		for _, s := range subs {
 			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, s.Name, o.inline(s.Description), th.Subcommand)
 		}

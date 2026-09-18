@@ -1,6 +1,7 @@
 package doc
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sarielhp/clihelp"
@@ -31,5 +32,33 @@ func TestSubcommandEntriesAgreesWithClihelp(t *testing.T) {
 				t.Errorf("%s entry %d: %+v, clihelp says %+v", cmd.Name, i, got[i], want[i])
 			}
 		}
+	}
+}
+
+// The tautology above is worth keeping — it is what the cross-package guard
+// points at — but on its own it compares a one-line delegation against the thing
+// it delegates to, so it cannot fail. This asserts the consequence that actually
+// regressed: a subcommand documented only through SubcommandEntries used to be
+// missing from the generated page while `--help` went on showing it.
+func TestDocumentedOnlySubcommandReachesThePage(t *testing.T) {
+	cmd := clihelp.Command{
+		Name: "whitelist", Description: "Manage the whitelist.",
+		UsageLine: "app whitelist <subcommand>",
+		SubcommandEntries: []clihelp.Param{
+			{Name: "add <email>", Description: "Add an address."},
+			{Name: "list", Description: "List every address."},
+		},
+		Subcommands: []clihelp.Command{{Name: "add", Description: "Add an address."}},
+	}
+	app := &clihelp.App{Name: "app", Commands: []clihelp.Command{cmd}}
+	page := renderCommandPage(app, cmdNode{path: []string{"whitelist"}, cmd: cmd})
+
+	for _, want := range []string{"add \\<email>", "| list |", "List every address."} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the page is missing %q:\n%s", want, page)
+		}
+	}
+	if !strings.Contains(page, "(whitelist-add.md)") {
+		t.Errorf("the entry that does have a page lost its link:\n%s", page)
 	}
 }

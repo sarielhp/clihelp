@@ -162,7 +162,7 @@ func (a *App) RenderFlags(o Options) {
 			"Usage:", o.inline(a.usageLine()), th.Hdr) // see RenderGlobal
 
 		fmt.Fprintln(w)
-		th.Body.Fprintln(w, "Global flags available to all commands:")
+		reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", "Global flags available to all commands:")
 		fmt.Fprintln(w)
 
 		allFlags := a.collectRenderFlags()
@@ -266,7 +266,7 @@ func (a *App) renderManTopics(w io.Writer, th Theme, o Options, termWidth int) {
 		{Name: "man", Description: "Display this complete reference manual (paged)"},
 	}
 	// margin 4: the topic list sits under the sentence introducing it.
-	indent := colIndent(topics) + 2
+	indent := clampIndent(colIndent(topics)+2, termWidth, minTextColumns)
 	for _, t := range topics {
 		reflowMargin(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), 4, indent, t.Name, o.inline(t.Description), th.Subcommand)
 	}
@@ -296,7 +296,7 @@ func (a *App) renderManCommands(w io.Writer, th Theme, o Options, termWidth int,
 			th.Hdr.Fprintln(w, "      Parameters:")
 			// margin 6: these sit inside the command they belong to, level with
 			// the "Parameters:" heading above them.
-			indent := colIndent(c.Parameters) + 4
+			indent := clampIndent(colIndent(c.Parameters)+4, termWidth, minTextColumns)
 			for _, p := range c.Parameters {
 				reflowMargin(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), 6, indent, p.Name, o.inline(p.Description))
 			}
@@ -320,7 +320,7 @@ func (a *App) renderManCommands(w io.Writer, th Theme, o Options, termWidth int,
 				}
 				optParams = append(optParams, Param{Name: opt.Flags, Description: desc})
 			}
-			indent := colIndent(optParams) + 4
+			indent := clampIndent(colIndent(optParams)+4, termWidth, minTextColumns)
 			for _, p := range optParams {
 				reflowMargin(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), 6, indent, p.Name, o.inline(p.Description), th.Flag)
 			}
@@ -366,7 +366,7 @@ func (a *App) RenderHelpTopics(o Options) {
 			{Name: "help flags", Description: "Show all global flags and persistent options"},
 			{Name: "help man", Description: "Display the complete reference manual (paged)"},
 		}
-		indent := colIndent(topics)
+		indent := colIndentFor(topics, termWidth, minTextColumns)
 		for _, t := range topics {
 			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, t.Name, o.inline(t.Description), th.Subcommand)
 		}
