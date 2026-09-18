@@ -44,7 +44,7 @@ type clihelpVerb struct {
 func clihelpVerbs() []clihelpVerb {
 	return []clihelpVerb{
 		{"version", "", "report the clihelp version this program was built with"},
-		{"install", "[--no-keys] [<shell>]", "set up the shell: tab completion and the Alt-H binding"},
+		{"install", "[--no-keys] [--no-man] [<shell>]", "set this program up: completion, the Alt-H binding and the manual page"},
 		{"uninstall", "[<shell>]", "remove what install wrote"},
 		{"keys", "[<shell>]", "print the key bindings, for inspection or manual setup"},
 		{"wrapper", "<name> [<args>...]", "print a wrapper script for this program, with arguments"},
@@ -95,7 +95,7 @@ func (a *App) handleClihelpCommand(args []string) error {
 		if err != nil {
 			return err
 		}
-		res, err := UninstallShellIntegration(a, firstArg(shells))
+		res, err := uninstallProgram(a, firstArg(shells))
 		if err != nil {
 			return err
 		}
@@ -219,12 +219,12 @@ func (a *App) printClihelpDetail(w io.Writer) {
 // clihelpInstall writes the generated file's path to stdout, alone, so that a
 // script can capture it; everything for a human goes to stderr.
 func (a *App) clihelpInstall(args []string) error {
-	var noKeys bool
-	rest, err := parseVerbArgs("install", args, map[string]*bool{"--no-keys": &noKeys}, 1)
+	var noKeys, noMan bool
+	rest, err := parseVerbArgs("install", args, map[string]*bool{"--no-keys": &noKeys, "--no-man": &noMan}, 1)
 	if err != nil {
 		return err
 	}
-	res, err := InstallShellIntegration(a, firstArg(rest), !noKeys)
+	res, err := installProgram(a, firstArg(rest), !noKeys, !noMan)
 	if err != nil {
 		return err
 	}

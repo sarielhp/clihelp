@@ -87,6 +87,7 @@ The generated file holds both halves — the completion registration *and* the A
 
 ```bash
 podctl completion install --no-keys      # tab completion only, leave Alt-H alone
+podctl completion install --no-man       # skip the manual page
 podctl completion install zsh            # a shell other than the active one
 podctl completion uninstall              # remove the file and the block
 ```

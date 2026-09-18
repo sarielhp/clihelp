@@ -644,11 +644,11 @@ func completionKeysSubcommand() Command {
 
 // completionInstallSubcommand sets up the shell integration for a shell.
 func completionInstallSubcommand() Command {
-	var noKeys bool
+	var noKeys, noMan bool
 	return Command{
 		Name:        "install",
-		Description: "Install tab completion and the Alt-H key binding for a shell",
-		UsageLine:   "completion install [--no-keys] [<shell>]",
+		Description: "Set this program up: tab completion, the Alt-H key binding and the manual page",
+		UsageLine:   "completion install [--no-keys] [--no-man] [<shell>]",
 		Examples: []Example{
 			{Line: "completion install", Description: "Set up the active shell"},
 			{Line: "completion install --no-keys zsh", Description: "Set up Zsh completion without the Alt-H binding"},
@@ -658,11 +658,12 @@ func completionInstallSubcommand() Command {
 		},
 		Options: []Option{
 			Bool(&noKeys, "--no-keys", false, "Install tab completion only, leaving Alt-H alone"),
+			Bool(&noMan, "--no-man", false, "Skip the manual page"),
 		},
 		Notes: []Note{
 			{
 				Heading: "What It Writes",
-				Text:    "One generated file under this application's configuration directory, and one permanent line in the shell's startup file that sources it. The line never changes; the generated file is rewritten whenever the application is upgraded. On fish nothing shared is touched at all, because conf.d is a drop-in directory. Run 'completion uninstall' to remove both.",
+				Text:    "One generated file under this application's configuration directory, one permanent line in the shell's startup file that sources it, and a manual page under the user's data directory. The line never changes; the generated file is rewritten whenever the application is upgraded. On fish nothing shared is touched at all, because conf.d is a drop-in directory. Run 'completion uninstall' to remove all of it.",
 			},
 		},
 		Args: MaximumNArgs(1),
@@ -671,7 +672,7 @@ func completionInstallSubcommand() Command {
 			if len(ctx.Args) > 0 {
 				shell = ctx.Args[0]
 			}
-			res, err := InstallShellIntegration(ctx.App, shell, !noKeys)
+			res, err := installProgram(ctx.App, shell, !noKeys, !noMan)
 			if err != nil {
 				return err
 			}
@@ -699,7 +700,7 @@ func completionUninstallSubcommand() Command {
 			if len(ctx.Args) > 0 {
 				shell = ctx.Args[0]
 			}
-			res, err := UninstallShellIntegration(ctx.App, shell)
+			res, err := uninstallProgram(ctx.App, shell)
 			if err != nil {
 				return err
 			}
@@ -726,8 +727,14 @@ func reportInstall(w io.Writer, app *App, res InstallResult) {
 	for _, path := range res.Removed {
 		fmt.Fprintf(w, "    superseded, removed: %s\n", path)
 	}
+	if res.ManPage != "" {
+		fmt.Fprintf(w, "    manual page: %s\n", res.ManPage)
+	}
+	for _, warning := range res.Warnings {
+		fmt.Fprintf(w, "    ! %s\n", warning)
+	}
 	fmt.Fprintln(w, "Restart your shell to activate it: <Tab> completes, Alt-H explains.")
-	fmt.Fprintf(w, "Run '%s completion uninstall' to undo all of this.\n", appName(app))
+	fmt.Fprintf(w, "Run '%s uninstall' to undo all of this.\n", setupHint(app))
 }
 
 func reportUninstall(w io.Writer, res InstallResult) {
@@ -741,5 +748,8 @@ func reportUninstall(w io.Writer, res InstallResult) {
 	}
 	if res.StartupEdit && res.Startup != "" {
 		fmt.Fprintf(w, "    edited:  %s\n", res.Startup)
+	}
+	for _, warning := range res.Warnings {
+		fmt.Fprintf(w, "    ! %s\n", warning)
 	}
 }
