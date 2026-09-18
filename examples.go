@@ -503,7 +503,7 @@ func validateExampleTokens(app *App, targetCmd *Command, ancestors []*Command, r
 	}
 
 	if targetCmd != nil && targetCmd.OptionsValidator != nil {
-		if err := targetCmd.OptionsValidator(fs); err != nil {
+		if err := targetCmd.OptionsValidator(flagSetView{fs}); err != nil {
 			return fmt.Errorf("option constraint failed in example %q: %w", rawLine, err)
 		}
 	}

@@ -59,7 +59,7 @@ func TestShellCompletionProtocol(t *testing.T) {
 							}
 							return res
 						},
-						Binder: String(&podcastVal, "-p, --podcast <id>", "", "Podcast ID").Binder,
+						binder: String(&podcastVal, "-p, --podcast <id>", "", "Podcast ID").binder,
 					},
 					Bool(&fillVal, "-f, --fill", false, "Fill gaps"),
 				},

@@ -20,7 +20,7 @@ type Option struct {
 	Deprecated  string                           // Deprecation notice
 	Required    bool                             // Required flag constraint
 	Complete    func(toComplete string) []string // Dynamic shell tab-completion callback
-	Binder      func(fs *pflag.FlagSet) error    // Registers the flag on fs; returns an error on duplicate/help-flag conflicts
+	binder      func(fs *pflag.FlagSet) error    // Registers the flag on fs; returns an error on duplicate/help-flag conflicts
 
 	// arity records whether this option consumes the argument that follows it.
 	// The typed constructors set it; an Option assembled by hand leaves it
@@ -97,7 +97,7 @@ type Note struct {
 type ArgsValidator func(args []string) error
 
 // OptionsValidator validates command-line flags after parsing.
-type OptionsValidator func(fs *pflag.FlagSet) error
+type OptionsValidator func(opts Flags) error
 
 // Command represents an executable command or category node.
 type Command struct {

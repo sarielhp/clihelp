@@ -268,7 +268,7 @@ func bindHelper(fs *pflag.FlagSet, spec flagSpec, fn func(long, short string)) e
 // String binds a string flag to target.
 func String(target *string, flags string, defaultVal string, usage string) Option {
 	opt := stringOption(target, flags, defaultVal, usage)
-	opt.scratch = stringOption(new(string), flags, defaultVal, usage).Binder
+	opt.scratch = stringOption(new(string), flags, defaultVal, usage).binder
 	return opt
 }
 
@@ -280,7 +280,7 @@ func stringOption(target *string, flags string, defaultVal string, usage string)
 		Flags:       flags,
 		Description: usage,
 		DefaultText: defaultVal,
-		Binder: func(fs *pflag.FlagSet) error {
+		binder: func(fs *pflag.FlagSet) error {
 			return bindHelper(fs, spec, func(long, short string) {
 				if long != "" && short != "" {
 					fs.StringVarP(target, long, short, defaultVal, usage)
@@ -297,7 +297,7 @@ func stringOption(target *string, flags string, defaultVal string, usage string)
 // Int binds an integer flag to target.
 func Int(target *int, flags string, defaultVal int, usage string) Option {
 	opt := intOption(target, flags, defaultVal, usage)
-	opt.scratch = intOption(new(int), flags, defaultVal, usage).Binder
+	opt.scratch = intOption(new(int), flags, defaultVal, usage).binder
 	return opt
 }
 
@@ -313,7 +313,7 @@ func intOption(target *int, flags string, defaultVal int, usage string) Option {
 		Flags:       flags,
 		Description: usage,
 		DefaultText: defaultText,
-		Binder: func(fs *pflag.FlagSet) error {
+		binder: func(fs *pflag.FlagSet) error {
 			return bindHelper(fs, spec, func(long, short string) {
 				if long != "" && short != "" {
 					fs.IntVarP(target, long, short, defaultVal, usage)
@@ -330,7 +330,7 @@ func intOption(target *int, flags string, defaultVal int, usage string) Option {
 // Bool binds a boolean flag to target.
 func Bool(target *bool, flags string, defaultVal bool, usage string) Option {
 	opt := boolOption(target, flags, defaultVal, usage)
-	opt.scratch = boolOption(new(bool), flags, defaultVal, usage).Binder
+	opt.scratch = boolOption(new(bool), flags, defaultVal, usage).binder
 	return opt
 }
 
@@ -346,7 +346,7 @@ func boolOption(target *bool, flags string, defaultVal bool, usage string) Optio
 		Flags:       flags,
 		Description: usage,
 		DefaultText: defaultText,
-		Binder: func(fs *pflag.FlagSet) error {
+		binder: func(fs *pflag.FlagSet) error {
 			return bindHelper(fs, spec, func(long, short string) {
 				if long != "" && short != "" {
 					fs.BoolVarP(target, long, short, defaultVal, usage)
@@ -399,7 +399,7 @@ func (t *toggleVal) IsBoolFlag() bool {
 // BoolToggle binds a boolean toggle pair (e.g. --[no-]check-new).
 func BoolToggle(target *bool, flags string, defaultVal bool, usage string) Option {
 	opt := boolToggleOption(target, flags, defaultVal, usage)
-	opt.scratch = boolToggleOption(new(bool), flags, defaultVal, usage).Binder
+	opt.scratch = boolToggleOption(new(bool), flags, defaultVal, usage).binder
 	return opt
 }
 
@@ -412,7 +412,7 @@ func boolToggleOption(target *bool, flags string, defaultVal bool, usage string)
 		Flags:       flags,
 		Description: usage,
 		DefaultText: strconv.FormatBool(defaultVal),
-		Binder: func(fs *pflag.FlagSet) error {
+		binder: func(fs *pflag.FlagSet) error {
 			return bindToggle(fs, spec, target, usage)
 		},
 	}
@@ -498,7 +498,7 @@ func bindToggleShorthands(fs *pflag.FlagSet, spec flagSpec, base string, primary
 // Duration binds a time.Duration flag to target.
 func Duration(target *time.Duration, flags string, defaultVal time.Duration, usage string) Option {
 	opt := durationOption(target, flags, defaultVal, usage)
-	opt.scratch = durationOption(new(time.Duration), flags, defaultVal, usage).Binder
+	opt.scratch = durationOption(new(time.Duration), flags, defaultVal, usage).binder
 	return opt
 }
 
@@ -514,7 +514,7 @@ func durationOption(target *time.Duration, flags string, defaultVal time.Duratio
 		Flags:       flags,
 		Description: usage,
 		DefaultText: defaultText,
-		Binder: func(fs *pflag.FlagSet) error {
+		binder: func(fs *pflag.FlagSet) error {
 			return bindHelper(fs, spec, func(long, short string) {
 				if long != "" && short != "" {
 					fs.DurationVarP(target, long, short, defaultVal, usage)
@@ -531,7 +531,7 @@ func durationOption(target *time.Duration, flags string, defaultVal time.Duratio
 // StringSlice binds a repeatable or comma-separated string slice flag to target.
 func StringSlice(target *[]string, flags string, defaultVal []string, usage string) Option {
 	opt := stringSliceOption(target, flags, defaultVal, usage)
-	opt.scratch = stringSliceOption(new([]string), flags, defaultVal, usage).Binder
+	opt.scratch = stringSliceOption(new([]string), flags, defaultVal, usage).binder
 	return opt
 }
 
@@ -548,7 +548,7 @@ func stringSliceOption(target *[]string, flags string, defaultVal []string, usag
 		Flags:       flags,
 		Description: usage,
 		DefaultText: defaultText,
-		Binder: func(fs *pflag.FlagSet) error {
+		binder: func(fs *pflag.FlagSet) error {
 			return bindHelper(fs, spec, func(long, short string) {
 				init := append([]string{}, defaultVal...)
 				if long != "" && short != "" {
@@ -592,7 +592,7 @@ func (e *enumVal) Type() string {
 // Enum restricts input to an enumerated list of valid strings.
 func Enum(target *string, flags string, allowed []string, defaultVal string, usage string) Option {
 	opt := enumOption(target, flags, allowed, defaultVal, usage)
-	opt.scratch = enumOption(new(string), flags, allowed, defaultVal, usage).Binder
+	opt.scratch = enumOption(new(string), flags, allowed, defaultVal, usage).binder
 	return opt
 }
 
@@ -613,7 +613,7 @@ func enumOption(target *string, flags string, allowed []string, defaultVal strin
 			}
 			return matches
 		},
-		Binder: func(fs *pflag.FlagSet) error {
+		binder: func(fs *pflag.FlagSet) error {
 			valid := false
 			for _, a := range allowed {
 				if a == defaultVal {
@@ -638,22 +638,31 @@ func enumOption(target *string, flags string, allowed []string, defaultVal strin
 	}
 }
 
-// Var binds a custom user-defined pflag.Value interface. Only the caller's value
-// can parse the flag, so example validation binds a permissive stand-in rather
-// than writing through it.
-func Var(target pflag.Value, flags string, usage string) Option {
+// Value is the interface a custom option's target implements: exactly
+// pflag.Value's method set, named here so that a consumer writing one never has
+// to import pflag. Any pflag.Value satisfies it and vice versa.
+type Value interface {
+	String() string
+	Set(string) error
+	Type() string
+}
+
+// Var binds a custom option whose target implements Value. Only the caller's
+// value can parse the flag, so example validation binds a permissive stand-in
+// rather than writing through it.
+func Var(target Value, flags string, usage string) Option {
 	opt := varOption(target, flags, usage)
-	opt.scratch = varOption(&scratchValue{}, flags, usage).Binder
+	opt.scratch = varOption(&scratchValue{}, flags, usage).binder
 	return opt
 }
 
-func varOption(target pflag.Value, flags string, usage string) Option {
+func varOption(target Value, flags string, usage string) Option {
 	spec := parseFlagSpec(flags)
 	return Option{
 		arity:       arityValue,
 		Flags:       flags,
 		Description: usage,
-		Binder: func(fs *pflag.FlagSet) error {
+		binder: func(fs *pflag.FlagSet) error {
 			return bindHelper(fs, spec, func(long, short string) {
 				if long != "" && short != "" {
 					fs.VarP(target, long, short, usage)
@@ -700,7 +709,7 @@ func bindScratch(fs *pflag.FlagSet, opt Option) error {
 	if opt.scratch != nil {
 		return opt.scratch(fs)
 	}
-	if opt.Binder == nil {
+	if opt.binder == nil {
 		return nil
 	}
 	spec := parseFlagSpec(opt.Flags)

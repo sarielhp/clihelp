@@ -163,7 +163,7 @@ func TestParseFlagSpecEqualsForm(t *testing.T) {
 func TestEnumRejectsInvalidDefault(t *testing.T) {
 	var env string
 	opt := Enum(&env, "--env <env>", []string{"dev", "prod"}, "qa", "target env")
-	err := opt.Binder(newFlagSetForTest("test"))
+	err := opt.binder(newFlagSetForTest("test"))
 	if err == nil {
 		t.Fatal("expected error for enum default outside allowed set, got nil")
 	}
@@ -177,7 +177,7 @@ func TestStringSliceDoesNotAliasCallerSlice(t *testing.T) {
 	var got []string
 	opt := StringSlice(&got, "--tag <t>", defaults, "tags")
 	fs := newFlagSetForTest("test")
-	if err := opt.Binder(fs); err != nil {
+	if err := opt.binder(fs); err != nil {
 		t.Fatal(err)
 	}
 	defaults[0] = "MUTATED"

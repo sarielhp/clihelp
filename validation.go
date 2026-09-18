@@ -7,12 +7,45 @@ import (
 	"github.com/spf13/pflag"
 )
 
+// Flags is what an OptionsValidator is given: the options of the command being
+// run, as the user left them.
+//
+// It is an interface clihelp owns rather than *pflag.FlagSet, so that writing a
+// custom validator does not require importing pflag. While the signature named
+// pflag, this library's compatibility promise depended on pflag's — a pflag v2
+// would have broken every consumer who had ever written a validator, and clihelp
+// could not have shielded them. The binding library is meant to be an
+// implementation detail of the "--tag <v>, -t" spec string.
+type Flags interface {
+	// Changed reports whether the named option was given on the command line,
+	// under any of its spellings. A "name=value" form additionally requires the
+	// value to match. Naming an option the command does not have is an error
+	// rather than a quiet false, because a constraint over a flag that does not
+	// exist can never fire and nothing else would ever say so.
+	Changed(name string) (bool, error)
+	// Value returns the named option's value as a string.
+	Value(name string) (string, error)
+}
+
+// flagSetView adapts a pflag.FlagSet to Flags.
+type flagSetView struct{ fs *pflag.FlagSet }
+
+func (v flagSetView) Changed(name string) (bool, error) { return isFlagSet(v.fs, name) }
+
+func (v flagSetView) Value(name string) (string, error) {
+	flg := lookupFlagName(v.fs, cleanFlagName(name))
+	if flg == nil {
+		return "", fmt.Errorf("option constraint names %q, which is not a flag of this command", name)
+	}
+	return flg.Value.String(), nil
+}
+
 // ValidateOptions chains multiple OptionsValidators into a single validator.
 func ValidateOptions(validators ...OptionsValidator) OptionsValidator {
-	return func(fs *pflag.FlagSet) error {
+	return func(f Flags) error {
 		for _, v := range validators {
 			if v != nil {
-				if err := v(fs); err != nil {
+				if err := v(f); err != nil {
 					return err
 				}
 			}
@@ -66,16 +99,16 @@ func isFlagSet(fs *pflag.FlagSet, flagName string) (bool, error) {
 
 // partitionFlags splits the given names into those that were set and those that
 // were not.
-func partitionFlags(fs *pflag.FlagSet, flags []string) (set, unset []string, err error) {
-	for _, f := range flags {
-		on, err := isFlagSet(fs, f)
+func partitionFlags(opts Flags, flags []string) (set, unset []string, err error) {
+	for _, name := range flags {
+		on, err := opts.Changed(name)
 		if err != nil {
 			return nil, nil, err
 		}
 		if on {
-			set = append(set, f)
+			set = append(set, name)
 		} else {
-			unset = append(unset, f)
+			unset = append(unset, name)
 		}
 	}
 	return set, unset, nil
@@ -83,8 +116,8 @@ func partitionFlags(fs *pflag.FlagSet, flags []string) (set, unset []string, err
 
 // MutuallyExclusive ensures at most one of the specified flags is set.
 func MutuallyExclusive(flags ...string) OptionsValidator {
-	return func(fs *pflag.FlagSet) error {
-		setFlags, _, err := partitionFlags(fs, flags)
+	return func(f Flags) error {
+		setFlags, _, err := partitionFlags(f, flags)
 		if err != nil {
 			return err
 		}
@@ -97,8 +130,8 @@ func MutuallyExclusive(flags ...string) OptionsValidator {
 
 // RequiredTogether ensures if any of the flags are set, all of them must be set.
 func RequiredTogether(flags ...string) OptionsValidator {
-	return func(fs *pflag.FlagSet) error {
-		setFlags, missingFlags, err := partitionFlags(fs, flags)
+	return func(f Flags) error {
+		setFlags, missingFlags, err := partitionFlags(f, flags)
 		if err != nil {
 			return err
 		}
@@ -111,12 +144,12 @@ func RequiredTogether(flags ...string) OptionsValidator {
 
 // RequiredWith ensures if target is set, all required flags must be set.
 func RequiredWith(target string, required ...string) OptionsValidator {
-	return func(fs *pflag.FlagSet) error {
-		on, err := isFlagSet(fs, target)
+	return func(f Flags) error {
+		on, err := f.Changed(target)
 		if err != nil || !on {
 			return err
 		}
-		_, missing, err := partitionFlags(fs, required)
+		_, missing, err := partitionFlags(f, required)
 		if err != nil {
 			return err
 		}
@@ -131,12 +164,12 @@ func RequiredWith(target string, required ...string) OptionsValidator {
 // The condition can be a bare flag name (meaning the condition flag is set),
 // or key=value format (meaning the condition flag is set to value).
 func RequiredIf(flag string, condition string) OptionsValidator {
-	return func(fs *pflag.FlagSet) error {
-		on, err := isFlagSet(fs, condition)
+	return func(f Flags) error {
+		on, err := f.Changed(condition)
 		if err != nil || !on {
 			return err
 		}
-		set, _, err := partitionFlags(fs, []string{flag})
+		set, _, err := partitionFlags(f, []string{flag})
 		if err != nil || len(set) > 0 {
 			return err
 		}
