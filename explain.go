@@ -221,10 +221,21 @@ if [ "${_clihelp_dispatcher_version:-0}" -lt {{dispatcher}} ]; then
         # presses precisely because they have not decided to run the line.
         case $word in */*) return ;; esac
         [ -n "$word" ] || return
-        case " ${_clihelp_apps:-} " in
-            *" $word "*) ;;
-            *) return ;;
-        esac
+        # The registry is a wire format shared with clihelp programs built
+        # against other library versions, so an entry carries the protocol it
+        # speaks: "name:protocol". A bare name was written before the suffix
+        # existed and means protocol 1. Reading it here is what lets a newer
+        # dispatcher refuse a call it would get wrong rather than make it.
+        local entry proto=
+        for entry in ${_clihelp_apps:-}; do
+            case $entry in
+                "$word":*) proto=${entry#*:} ;;
+                "$word") proto=1 ;;
+                *) continue ;;
+            esac
+            break
+        done
+        [ "$proto" = {{proto}} ] || return
         local out
         out=$( CLIHELP_TERM_LINES="${LINES:-}" CLIHELP_TERM_COLUMNS="${COLUMNS:-}" \
                "$word" __explain "$READLINE_LINE" 2>/dev/null ) || return
@@ -244,10 +255,16 @@ if [ "${_clihelp_dispatcher_version:-0}" -lt {{dispatcher}} ]; then
         unset _clihelp_keymap
     fi
 fi
-case " ${_clihelp_apps:-} " in
-    *" {{app}} "*) ;;
-    *) _clihelp_apps="${_clihelp_apps:-} {{app}} " ;;
-esac
+# Both forms, for one release: the suffixed entry is what this and every later
+# dispatcher reads, and the bare one keeps an older dispatcher — one another
+# program installed before the suffix existed — able to authorize this program.
+for _clihelp_entry in "{{app}}:{{proto}}" "{{app}}"; do
+    case " ${_clihelp_apps:-} " in
+        *" $_clihelp_entry "*) ;;
+        *) _clihelp_apps="${_clihelp_apps:-} $_clihelp_entry " ;;
+    esac
+done
+unset _clihelp_entry
 `
 
 const zshKeysTemplate = `# clihelp key bindings for {{app}}
@@ -264,7 +281,19 @@ if [[ ${_clihelp_dispatcher_version:-0} -lt {{dispatcher}} ]]; then
         # handled for us. A path-bearing word is not a registered program; see the
         # bash snippet.
         local word=${${(z)BUFFER}[1]}
-        if [[ -z $word || $word == */* || " ${_clihelp_apps:-} " != *" $word "* ]]; then
+        # See the bash snippet for the registry's "name:protocol" wire format.
+        local entry proto=
+        if [[ -n $word && $word != */* ]]; then
+            for entry in ${=_clihelp_apps:-}; do
+                case $entry in
+                    ("$word":*) proto=${entry#*:} ;;
+                    ("$word") proto=1 ;;
+                    (*) continue ;;
+                esac
+                break
+            done
+        fi
+        if [[ $proto != {{proto}} ]]; then
             zle run-help
             return
         fi
@@ -287,9 +316,13 @@ if [[ ${_clihelp_dispatcher_version:-0} -lt {{dispatcher}} ]]; then
         bindkey -M vicmd '^[h' _clihelp_explain
     fi
 fi
-if [[ " ${_clihelp_apps:-} " != *" {{app}} "* ]]; then
-    typeset -g _clihelp_apps="${_clihelp_apps:-} {{app}} "
-fi
+# Both forms; see the bash snippet.
+for _clihelp_entry in '{{app}}:{{proto}}' '{{app}}'; do
+    if [[ " ${_clihelp_apps:-} " != *" $_clihelp_entry "* ]]; then
+        typeset -g _clihelp_apps="${_clihelp_apps:-} $_clihelp_entry "
+    fi
+done
+unset _clihelp_entry
 `
 
 const fishKeysTemplate = `# clihelp key bindings for {{app}}
@@ -304,8 +337,21 @@ if not set -q _clihelp_dispatcher_version; or test $_clihelp_dispatcher_version 
     function __clihelp_explain
         set -l line (commandline)
         set -l word (string split -m 1 ' ' -- (string trim -l -- "$line"))[1]
-        # A path is not a registered program; see the bash snippet.
-        if test -z "$word"; or string match -q -- '*/*' $word; or not contains -- $word $_clihelp_apps
+        # A path is not a registered program, and see the bash snippet for the
+        # registry's "name:protocol" wire format.
+        set -l proto ""
+        for entry in $_clihelp_apps
+            set -l parts (string split -m 1 ':' -- $entry)
+            if test "$parts[1]" = "$word"
+                if set -q parts[2]
+                    set proto $parts[2]
+                else
+                    set proto 1
+                end
+                break
+            end
+        end
+        if test -z "$word"; or string match -q -- '*/*' $word; or test "$proto" != {{proto}}
             __fish_man_page
             return
         end
@@ -324,14 +370,26 @@ if not set -q _clihelp_dispatcher_version; or test $_clihelp_dispatcher_version 
         bind -M insert \eh __clihelp_explain
     end
 end
-contains -- {{app}} $_clihelp_apps; or set -g _clihelp_apps $_clihelp_apps {{app}}
+# Both forms; see the bash snippet.
+for _clihelp_entry in {{app}}:{{proto}} {{app}}
+    contains -- $_clihelp_entry $_clihelp_apps
+    or set -g _clihelp_apps $_clihelp_apps $_clihelp_entry
+end
+set -e _clihelp_entry
 `
 
 // keyDispatcherVersion is raised whenever the shared dispatcher changes. A
 // snippet installs its dispatcher only when nothing newer is already in place,
 // so two programs shipping different clihelp versions cannot fight over the key:
 // the newer dispatcher wins, and it serves every program in the shared registry.
-const keyDispatcherVersion = 3
+const keyDispatcherVersion = 4
+
+// explainProtocolVersion is what a program tells the shared dispatcher it
+// speaks, through its registry entry. It is not the dispatcher's own version:
+// the dispatcher is whatever the newest installed program shipped, while this
+// says how to talk to *this* program. They change independently, which is the
+// whole reason the registry carries it.
+const explainProtocolVersion = 1
 
 // GenKeyBindings writes the shell snippet that binds Alt-H to "expand this
 // command line and explain it". The binding acts only on command lines that
@@ -364,6 +422,7 @@ func GenKeyBindings(app *App, shell string, w io.Writer) error {
 	script := strings.NewReplacer(
 		"{{app}}", name,
 		"{{dispatcher}}", strconv.Itoa(keyDispatcherVersion),
+		"{{proto}}", strconv.Itoa(explainProtocolVersion),
 	).Replace(tmpl)
 	_, err = io.WriteString(w, script)
 	return err

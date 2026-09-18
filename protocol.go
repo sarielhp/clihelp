@@ -351,10 +351,13 @@ func printWrapperRegistration(w io.Writer, app *App, name string, args []string)
 	// table, and the Alt-H dispatcher's registry. Without the second the wrapper's
 	// own __explain branch is unreachable from a keystroke, which is what made the
 	// documented behaviour impossible.
+	// The registry entry carries the protocol the wrapper's __explain speaks;
+	// see the key-binding snippets for the format.
+	entry := fmt.Sprintf("%s:%d", name, explainProtocolVersion)
 	lines := map[string]string{
-		"bash": fmt.Sprintf("complete -F _%s_complete %s\n#   _clihelp_apps=\"${_clihelp_apps:-} %s \"", fn, name, name),
-		"zsh":  fmt.Sprintf("compdef _%s %s\n#   _clihelp_apps=\"${_clihelp_apps:-} %s \"", fn, name, name),
-		"fish": fmt.Sprintf("complete -c %s --wraps %s\n#   contains -- %s $_clihelp_apps; or set -g _clihelp_apps $_clihelp_apps %s", name, escapeShellArg(target), name, name),
+		"bash": fmt.Sprintf("complete -F _%s_complete %s\n#   _clihelp_apps=\"${_clihelp_apps:-} %s \"", fn, name, entry),
+		"zsh":  fmt.Sprintf("compdef _%s %s\n#   _clihelp_apps=\"${_clihelp_apps:-} %s \"", fn, name, entry),
+		"fish": fmt.Sprintf("complete -c %s --wraps %s\n#   contains -- %s $_clihelp_apps; or set -g _clihelp_apps $_clihelp_apps %s", name, escapeShellArg(target), entry, entry),
 	}
 
 	fmt.Fprintf(w, "\n# Put %s somewhere on your PATH, then register it with your shell,\n", name)

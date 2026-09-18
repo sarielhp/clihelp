@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -359,5 +360,89 @@ _describe() { print -r -- "DESCRIBE:$*" }
 	out := driveShell(t, "zsh", dir, snippet, stubs, body)
 	if !strings.Contains(out, "FILES") {
 		t.Errorf("blank-only output should count as no candidates:\n%s", out)
+	}
+}
+
+// callExplain drives the shared Alt-H dispatcher against a given registry and
+// command line, in whichever shell, and returns what it printed.
+func callExplain(t *testing.T, shell, dir, registry, line string) string {
+	t.Helper()
+	snippet := keySnippet(t, dir, shell, &App{Name: "alpha"})
+	var stubs, body string
+	switch shell {
+	case "bash":
+		stubs = bashStubs
+		body = "_clihelp_apps=" + shellSingleQuote(registry) + "\nREADLINE_LINE=" +
+			shellSingleQuote(line) + "\nREADLINE_POINT=0\n_clihelp_explain\nprintf 'LINE:%s\\n' \"$READLINE_LINE\""
+	case "zsh":
+		stubs = zshStubs
+		body = "_clihelp_apps=" + shellSingleQuote(registry) + "\nBUFFER=" +
+			shellSingleQuote(line) + "\nCURSOR=0\n_clihelp_explain\nprint -r -- \"LINE:$BUFFER\""
+	case "fish":
+		stubs = fishStubs
+		body = "set -g _clihelp_apps (string split ' ' -- " + shellSingleQuote(strings.TrimSpace(registry)) + ")\n" +
+			"set -g __buffer " + shellSingleQuote(line) + "\n__clihelp_explain\necho \"LINE:$__buffer\"\ntrue"
+	}
+	return driveShell(t, shell, dir, snippet, stubs, body)
+}
+
+// The registry is a wire format shared by every clihelp program in the shell,
+// including ones built against a different library version. Entries carry the
+// protocol they speak, so a dispatcher can tell what is on the other end before
+// calling it — and a bare name, written by a program that predates the suffix,
+// still means protocol 1.
+func TestDispatcherReadsTheRegistryProtocol(t *testing.T) {
+	for _, shell := range []string{"bash", "zsh", "fish"} {
+		t.Run(shell, func(t *testing.T) {
+			dir := t.TempDir()
+			stubProgram(t, dir, "beta")
+
+			t.Run("versioned entry", func(t *testing.T) {
+				out := callExplain(t, shell, dir, " beta:1 ", "beta run")
+				if !strings.Contains(out, "EXPANDED") {
+					t.Errorf("a versioned registry entry was not honoured:\n%s", out)
+				}
+			})
+
+			t.Run("bare entry", func(t *testing.T) {
+				out := callExplain(t, shell, dir, " beta ", "beta run")
+				if !strings.Contains(out, "EXPANDED") {
+					t.Errorf("an entry from an older program was not honoured:\n%s", out)
+				}
+			})
+
+			t.Run("protocol this dispatcher does not speak", func(t *testing.T) {
+				out := callExplain(t, shell, dir, " beta:99 ", "beta run")
+				if strings.Contains(out, "EXPANDED") {
+					t.Errorf("an unknown protocol was called anyway:\n%s", out)
+				}
+			})
+
+			t.Run("unregistered", func(t *testing.T) {
+				out := callExplain(t, shell, dir, " gamma:1 ", "beta run")
+				if strings.Contains(out, "EXPANDED") {
+					t.Errorf("an unregistered program was called:\n%s", out)
+				}
+			})
+		})
+	}
+}
+
+// Registration writes both forms for one release, so a dispatcher installed by
+// an already-present clihelp program — which knows only bare names — keeps
+// working while every new dispatcher reads the protocol.
+func TestKeyBindingRegistersBothForms(t *testing.T) {
+	for _, shell := range []string{"bash", "zsh", "fish"} {
+		t.Run(shell, func(t *testing.T) {
+			var b strings.Builder
+			if err := GenKeyBindings(&App{Name: "alpha"}, shell, &b); err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range []string{"alpha:" + strconv.Itoa(explainProtocolVersion), "alpha"} {
+				if !strings.Contains(b.String(), want) {
+					t.Errorf("%s snippet never registers %q:\n%s", shell, want, b.String())
+				}
+			}
+		})
 	}
 }
