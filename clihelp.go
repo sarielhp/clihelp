@@ -57,7 +57,7 @@ const (
 // reports it, so a setup script can ask an unknown binary whether it is a clihelp
 // program and what it was built against. tools/check.sh keeps it in step with the
 // VERSION file.
-const Version = "0.3.22"
+const Version = "0.3.23"
 
 // Required marks an Option as required.
 func Required(opt Option) Option {
