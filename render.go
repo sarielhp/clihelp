@@ -160,16 +160,30 @@ func (o Options) theme(a *App) Theme {
 // width resolves the layout width: an explicit Width wins, otherwise the
 // Writer's terminal width is used when it is a terminal file, falling back to
 // stdout, then a 70-column fallback for non-terminals.
+// termFd resolves the descriptor the output goes to and whether it is a
+// terminal.
+//
+// It asks for the capability rather than the concrete type: an application that
+// sets App.Stdout to a bufio.Writer or a colorable wrapper — a very ordinary
+// setup — used to be treated as a non-terminal by all three callers, so it never
+// paged and its width collapsed to the 70-column fallback on a 200-column
+// screen. This was written out three times with three different fallbacks.
+func (o Options) termFd() (int, bool) {
+	w := o.out()
+	f, ok := w.(interface{ Fd() uintptr })
+	if !ok {
+		return -1, false
+	}
+	fd := int(f.Fd())
+	return fd, term.IsTerminal(fd)
+}
+
 func (o Options) width() int {
 	if o.Width > 0 {
 		return o.Width
 	}
-	var fd int
-	if o.Writer == nil || o.Writer == os.Stdout {
-		fd = int(os.Stdout.Fd())
-	} else if f, ok := o.Writer.(*os.File); ok {
-		fd = int(f.Fd())
-	} else {
+	fd, isTerm := o.termFd()
+	if !isTerm {
 		return 70
 	}
 	w, _, err := term.GetSize(fd)
@@ -182,12 +196,8 @@ func (o Options) width() int {
 // height resolves the layout height: the Writer's terminal height is used
 // when it is a terminal file, falling back to stdout. Returns 0 for non-terminals.
 func (o Options) height() int {
-	var fd int
-	if o.Writer == nil || o.Writer == os.Stdout {
-		fd = int(os.Stdout.Fd())
-	} else if f, ok := o.Writer.(*os.File); ok {
-		fd = int(f.Fd())
-	} else {
+	fd, isTerm := o.termFd()
+	if !isTerm {
 		return 0
 	}
 	_, h, err := term.GetSize(fd)

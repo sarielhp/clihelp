@@ -175,7 +175,7 @@ func TestRunPagerFallbackKeepsOutput(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			got := runPager(tt.pager, tt.data, &buf)
+			got := runPager(tt.pager, tt.data, &buf, io.Discard)
 			if got != tt.want {
 				t.Errorf("runPager = %v, want %v", got, tt.want)
 			}
