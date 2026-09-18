@@ -246,7 +246,7 @@ func TestManPageRefreshedButNeverCreated(t *testing.T) {
 	t.Setenv("TERM", "xterm")
 
 	app := manApp()
-	app.AutoInstallCompletion = true
+	app.AutoRefreshIntegration = true
 	path := filepath.Join(home, ".local", "share", "man", "man1", "manapp.1")
 
 	TestExecute(app, []string{"build"}).AssertNoError(t)

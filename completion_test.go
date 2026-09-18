@@ -380,6 +380,9 @@ func TestAutoInstallCompletionOnExecute(t *testing.T) {
 	t.Setenv("TERM", "xterm-256color")
 
 	ran := false
+	// Deliberately the deprecated spelling: AutoRefreshIntegration is the name
+	// now, and an application written against the old one must keep working.
+	// TestEitherAutoRefreshFieldEnablesTheRefresh pairs the two directly.
 	app := &App{
 		Name:                  "autocli",
 		AutoInstallCompletion: true,
@@ -453,5 +456,57 @@ func TestAutoInstallCompletionKillSwitch(t *testing.T) {
 
 	if _, err := os.Stat(expectedPath); !os.IsNotExist(err) {
 		t.Errorf("expected completion file NOT to be installed when NO_AUTO_COMPLETION=1 is set")
+	}
+}
+
+// The field was renamed because the old name describes something it cannot do:
+// it has never installed anything since the unattended path was narrowed to
+// refreshing, and it refreshes the man page as well as the completion script.
+// Both spellings must mean the same thing, and neither may act on its own.
+func TestEitherAutoRefreshFieldEnablesTheRefresh(t *testing.T) {
+	for _, tt := range []struct {
+		name        string
+		set         func(*App)
+		wantRefresh bool
+	}{
+		{"the current name", func(a *App) { a.AutoRefreshIntegration = true }, true},
+		{"the deprecated name", func(a *App) { a.AutoInstallCompletion = true }, true},
+		{"both", func(a *App) { a.AutoRefreshIntegration = true; a.AutoInstallCompletion = true }, true},
+		{"neither", func(a *App) {}, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			tmpDir := t.TempDir()
+			t.Setenv("XDG_DATA_HOME", filepath.Join(tmpDir, "share"))
+			t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmpDir, "config"))
+			t.Setenv("SHELL", "/bin/zsh")
+			for _, v := range []string{"CI", "GITHUB_ACTIONS", "NO_AUTO_COMPLETION", "CLIHELP_NO_AUTO_COMPLETION"} {
+				t.Setenv(v, "")
+			}
+			t.Setenv("TERM", "xterm-256color")
+
+			app := &App{Name: "autocli", Run: func(ctx *Context) error { return nil }}
+			tt.set(app)
+
+			path := filepath.Join(tmpDir, "share", "zsh", "site-functions", "_autocli")
+			var script bytes.Buffer
+			if err := GenZshCompletion(app, &script); err != nil {
+				t.Fatal(err)
+			}
+			marker := fmt.Sprintf("clihelp-completion-version: %d", completionScriptVersion)
+			stale := strings.Replace(script.String(), marker, "clihelp-completion-version: 0", 1)
+			writeFixture(t, path, stale)
+
+			if err := app.ExecuteContext(context.Background(), []string{}); err != nil {
+				t.Fatalf("ExecuteContext failed: %v", err)
+			}
+
+			body, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatalf("the installed script is gone: %v", err)
+			}
+			if refreshed := strings.Contains(string(body), marker); refreshed != tt.wantRefresh {
+				t.Errorf("the stale script was refreshed = %v, want %v", refreshed, tt.wantRefresh)
+			}
+		})
 	}
 }

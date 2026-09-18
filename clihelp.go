@@ -160,10 +160,10 @@ type App struct {
 	NoColor bool
 	// InteractiveFallback enables prompting for missing inputs/flags interactively.
 	InteractiveFallback bool
-	// AutoInstallCompletion when true keeps an already-installed shell
-	// integration current on every ordinary run: a generated file whose version
-	// marker is stale is rewritten, and so is a completion script at the older
-	// XDG location if this library wrote it.
+	// AutoRefreshIntegration when true keeps an already-installed shell
+	// integration and man page current on every ordinary run: a generated file
+	// whose version marker is stale is rewritten, and so is a completion script
+	// at the older XDG location if this library wrote it.
 	//
 	// It never creates a file and never edits a shell startup file. This flag is
 	// the application author's choice, but the files land in the user's home
@@ -172,6 +172,22 @@ type App struct {
 	// CompletionCommand's "completion install") is for. Setting
 	// CLIHELP_NO_AUTO_COMPLETION, NO_AUTO_COMPLETION, CI, GITHUB_ACTIONS or
 	// TERM=dumb switches even the refresh off.
+	//
+	// Leaving it off means a user who upgrades the program keeps the completion
+	// script and man page they installed against the previous version, with no
+	// prompt to re-run setup and no symptom to notice; the refresh is what makes
+	// a one-time setup stay correct across upgrades.
+	AutoRefreshIntegration bool
+	// AutoInstallCompletion is the former name of AutoRefreshIntegration, and
+	// either field enables the same behaviour.
+	//
+	// Deprecated: the name says "install completion" for something that can do
+	// neither. It has not created a file since the unattended path was narrowed
+	// to refreshing what the user already installed, and it refreshes the man
+	// page as well as the completion script. An author reading the old name
+	// would reasonably expect setting it to install completions for their users,
+	// which is the misreading that produced the overreach. Use
+	// AutoRefreshIntegration.
 	AutoInstallCompletion bool
 
 	// Presentation overrides

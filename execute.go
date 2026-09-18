@@ -278,7 +278,7 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 		}
 	}
 
-	a.maybeAutoInstallCompletion(args)
+	a.maybeRefreshIntegration(args)
 
 	if handled, err := a.checkTopLevelVersion(args); handled || err != nil {
 		return err

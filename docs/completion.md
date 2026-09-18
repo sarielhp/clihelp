@@ -89,7 +89,7 @@ and a newcomer end up holding two different inodes and believing they hold the s
 Measured with the file being deleted, 478 of 480 serialized updates were lost. fish needs no
 lock and gets none, because `conf.d` is a drop-in directory and nothing shared is edited.
 
-**Keeping it current.** The generated file carries a `clihelp-integration-version` marker. When the application is upgraded and its clihelp templates change, the next run of the program rewrites the file. `App.AutoInstallCompletion` refreshes what is already installed — the generated file, and a completion script at the older XDG location if clihelp wrote it — and *never* creates a file or edits a startup file on its own. The flag is the author's choice; the files are in the user's home, so nothing there appears because someone ran an unrelated command. Installing is what `install` is for.
+**Keeping it current.** The generated file carries a `clihelp-integration-version` marker. When the application is upgraded and its clihelp templates change, the next run of the program rewrites the file. `App.AutoRefreshIntegration` refreshes what is already installed — the generated file, and a completion script at the older XDG location if clihelp wrote it — and *never* creates a file or edits a startup file on its own. The flag is the author's choice; the files are in the user's home, so nothing there appears because someone ran an unrelated command. Installing is what `install` is for.
 
 **Options.**
 
@@ -205,7 +205,7 @@ It does not replace clihelp's own Alt-H binding, which answers a different quest
 
 **Installation refuses to create a second page.** If a manual page for the program already exists — packaged by a distribution, say — `--install` stops and says where it is, because which of two pages `man` shows is not predictable and the one that loses is invisible. `--force` installs anyway. `--uninstall` removes only a page clihelp generated; a hand-written one at the same path is left alone.
 
-**The author decides how much of this is on offer.** `clihelp.ManPageCommand()` added to `App.Commands` gives a visible `myapp manpage`; without it, `__clihelp manpage` still works, because a packager is not the author. Nothing is ever installed unasked: `AutoInstallCompletion` refreshes a generated page when a clihelp upgrade changes the template, and never creates one.
+**The author decides how much of this is on offer.** `clihelp.ManPageCommand()` added to `App.Commands` gives a visible `myapp manpage`; without it, `__clihelp manpage` still works, because a packager is not the author. Nothing is ever installed unasked: `AutoRefreshIntegration` refreshes a generated page when a clihelp upgrade changes the template, and never creates one.
 
 The generator is `clihelp.GenManPage(app, w)` if you want to drive it yourself.
 

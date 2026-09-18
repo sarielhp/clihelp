@@ -2,6 +2,15 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+- **`AutoInstallCompletion` Is Now `AutoRefreshIntegration`.** The old name described something the field cannot do. It has not installed anything since the unattended path was narrowed to refreshing what the user already put there, and it refreshes the man page as well as the completion script — so an author reading `AutoInstallCompletion: true` would reasonably conclude that setting it installs completions for their users, which is exactly the misreading that produced the original overreach. Both fields are honoured and either enables the behaviour; the old one is deprecated, not removed, and a test pairs them so they cannot drift. `autoinstall.go` is `autorefresh.go`.
+- The decision to keep the behaviour on by default was re-examined and confirmed. Without it, a user who upgrades the program keeps the completion script and man page they installed against the previous version — forever, with no prompt to re-run setup and no symptom to notice, because the integration file is read at shell startup and nobody re-reads it. The refresh is what makes a one-time setup stay correct across upgrades. Measured cost on a warm cache: 6.4 µs per run, five stats and two partial reads, against a Go process start of roughly a millisecond.
+
+### Internal
+- **The Home-Directory Guard Failed a Release With Nothing Wrong.** It fingerprinted each watched file by size and modification time, so any process on the machine touching `~/.bashrc` inside the twenty seconds the suite runs failed the build — and it did, reporting the file as modified while its content was byte for byte what it had been, with none of clihelp's markers in it. What the guard protects is the user's content, so content is what it compares now: the bytes are hashed, a changed hash still fails the suite, and a modification time that moves with the bytes unchanged is printed as a note. An audit of every test that reaches a write path confirmed all of them sandbox `HOME`; the earlier `~/.bashrc` report during the v0.3.26 release had the same signature — identical content, no markers — and may have had the same cause.
+
 ## [0.3.28] - 2026-09-18
 
 ### Internal

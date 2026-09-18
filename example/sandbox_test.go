@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// The example app sets AutoInstallCompletion, and RenderCommand honours it — so
+// The example app sets AutoRefreshIntegration, and RenderCommand honours it — so
 // merely rendering a help page in a test wrote a completion script into whoever
 // ran the suite. Point every path clihelp can install into at a temp directory
 // and switch the auto path off, for the whole package, before any test runs.

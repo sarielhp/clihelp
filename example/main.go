@@ -237,7 +237,7 @@ func buildApp() *clihelp.App {
 		Pager:                     true,
 		OmitGlobalFlagsInCommands: true,
 		InteractiveFallback:       true,
-		AutoInstallCompletion:     true,
+		AutoRefreshIntegration:    true,
 		PersistentOptions:         buildPersistentOptions(&globals),
 		Examples: []clihelp.Example{
 			{Line: "podctl build episode01.wav", Description: "Compile raw audio into a release-ready podcast episode"},
