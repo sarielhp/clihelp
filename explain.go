@@ -408,7 +408,7 @@ func GenKeyBindings(app *App, shell string, w io.Writer) error {
 	case "fish":
 		tmpl = fishKeysTemplate
 	default:
-		return fmt.Errorf("unsupported shell %q (supported: %s)", shell, strings.Join(SupportedShells, ", "))
+		return fmt.Errorf("unsupported shell %q (supported: %s)", shell, strings.Join(supportedShells, ", "))
 	}
 
 	script := strings.NewReplacer(

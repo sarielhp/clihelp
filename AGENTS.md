@@ -159,7 +159,7 @@ a redirecting caller sees it, and that caller wants it.
 - **GNU-Standard Column Formatting**: Two-column command/option listings cap the description column at `DefaultMaxColIndent = 24`, and reduce it further when the terminal is too narrow to leave a usable text column. Long command or flag signatures automatically place description text on the next line, indented to the shared description column — the widest name that fits within `DefaultMaxColIndent`, plus four; `DefaultMaxColIndent` itself when no name fits.
 - **Modular Subpackages**: `github.com/sarielhp/clihelp/doc` for GitHub Markdown documentation site generation and `github.com/sarielhp/clihelp/tree` for command hierarchy visualization.
 - **Prefix Command Matching**: Added `App.AbbrevCommands` field to enable abbreviated command names (e.g. `podctl b` instead of `podctl build`).
-- **Self-Installing Shell Autocompletion**: Added `CompletionCommand()` and `InstallCompletion()` supporting Bash, Zsh, and Fish with one-command user XDG self-installation.
+- **Self-Installing Shell Autocompletion**: Added `CompletionCommand()` supporting Bash, Zsh, and Fish with one-command user XDG self-installation. The installer functions themselves are unexported: setup goes through the command, so that the "refresh only, never create" rule has one place to live.
 
 ## File Organization
 

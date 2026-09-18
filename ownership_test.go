@@ -33,7 +33,7 @@ func TestNothingOverwritesAFileClihelpDidNotWrite(t *testing.T) {
 		drop := filepath.Join(home, ".config", "fish", "conf.d", "myapp.fish")
 		writeFixture(t, drop, mine)
 
-		_, err := InstallShellIntegration(installApp(), "fish", true)
+		_, err := installShellIntegration(installApp(), "fish", true)
 		if err == nil {
 			t.Errorf("install overwrote a file clihelp never wrote")
 		}
@@ -47,7 +47,7 @@ func TestNothingOverwritesAFileClihelpDidNotWrite(t *testing.T) {
 		drop := filepath.Join(home, ".config", "fish", "conf.d", "myapp.fish")
 		writeFixture(t, drop, mine)
 
-		if _, err := UninstallShellIntegration(installApp(), "fish"); err != nil {
+		if _, err := uninstallShellIntegration(installApp(), "fish"); err != nil {
 			t.Fatal(err)
 		}
 		if got, _ := os.ReadFile(drop); string(got) != mine {
@@ -57,17 +57,17 @@ func TestNothingOverwritesAFileClihelpDidNotWrite(t *testing.T) {
 
 	t.Run("install and uninstall still work on our own fish drop-in", func(t *testing.T) {
 		home := sandboxHome(t)
-		if _, err := InstallShellIntegration(installApp(), "fish", true); err != nil {
+		if _, err := installShellIntegration(installApp(), "fish", true); err != nil {
 			t.Fatal(err)
 		}
 		drop := filepath.Join(home, ".config", "fish", "conf.d", "myapp.fish")
 		if _, err := os.Stat(drop); err != nil {
 			t.Fatalf("our own drop-in was not written: %v", err)
 		}
-		if _, err := InstallShellIntegration(installApp(), "fish", true); err != nil {
+		if _, err := installShellIntegration(installApp(), "fish", true); err != nil {
 			t.Errorf("re-installing over our own drop-in was refused: %v", err)
 		}
-		if _, err := UninstallShellIntegration(installApp(), "fish"); err != nil {
+		if _, err := uninstallShellIntegration(installApp(), "fish"); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := os.Stat(drop); !os.IsNotExist(err) {

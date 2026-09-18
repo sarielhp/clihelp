@@ -166,9 +166,9 @@ func TestInstallCompletion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.shell, func(t *testing.T) {
-			path, err := InstallCompletion(app, tt.shell)
+			path, err := installCompletion(app, tt.shell)
 			if err != nil {
-				t.Fatalf("InstallCompletion(%q) failed: %v", tt.shell, err)
+				t.Fatalf("installCompletion(%q) failed: %v", tt.shell, err)
 			}
 			if !strings.Contains(path, tt.expectedSub) || filepath.Base(path) != tt.wantFile {
 				t.Errorf("unexpected path %q, want filename %q in %q", path, tt.wantFile, tt.expectedSub)
@@ -181,9 +181,9 @@ func TestInstallCompletion(t *testing.T) {
 
 	t.Run("DefaultShellDetection", func(t *testing.T) {
 		t.Setenv("SHELL", "/bin/zsh")
-		path, err := InstallCompletion(app, "")
+		path, err := installCompletion(app, "")
 		if err != nil {
-			t.Fatalf("InstallCompletion(\"\") with SHELL=zsh failed: %v", err)
+			t.Fatalf("installCompletion(\"\") with SHELL=zsh failed: %v", err)
 		}
 		if filepath.Base(path) != "_testcli" {
 			t.Errorf("expected zsh installation, got: %s", path)
@@ -191,7 +191,7 @@ func TestInstallCompletion(t *testing.T) {
 	})
 
 	t.Run("UnsupportedShell", func(t *testing.T) {
-		_, err := InstallCompletion(app, "unknown_shell")
+		_, err := installCompletion(app, "unknown_shell")
 		if err == nil {
 			t.Fatal("expected error for unsupported shell, got nil")
 		}
@@ -321,47 +321,47 @@ func TestCompletionPathAndIsInstalled(t *testing.T) {
 
 	app := &App{Name: "mytool"}
 
-	zshPath, err := CompletionPath(app, "zsh")
+	zshPath, err := completionScriptPath(app, "zsh")
 	if err != nil {
-		t.Fatalf("CompletionPath(zsh) error: %v", err)
+		t.Fatalf("completionScriptPath(zsh) error: %v", err)
 	}
 	expectedZsh := filepath.Join(tmpDir, "share", "zsh", "site-functions", "_mytool")
 	if zshPath != expectedZsh {
 		t.Errorf("got %q, want %q", zshPath, expectedZsh)
 	}
 
-	fishPath, err := CompletionPath(app, "fish")
+	fishPath, err := completionScriptPath(app, "fish")
 	if err != nil {
-		t.Fatalf("CompletionPath(fish) error: %v", err)
+		t.Fatalf("completionScriptPath(fish) error: %v", err)
 	}
 	expectedFish := filepath.Join(tmpDir, "config", "fish", "completions", "mytool.fish")
 	if fishPath != expectedFish {
 		t.Errorf("got %q, want %q", fishPath, expectedFish)
 	}
 
-	bashPath, err := CompletionPath(app, "bash")
+	bashPath, err := completionScriptPath(app, "bash")
 	if err != nil {
-		t.Fatalf("CompletionPath(bash) error: %v", err)
+		t.Fatalf("completionScriptPath(bash) error: %v", err)
 	}
 	expectedBash := filepath.Join(tmpDir, "share", "bash-completion", "completions", "mytool")
 	if bashPath != expectedBash {
 		t.Errorf("got %q, want %q", bashPath, expectedBash)
 	}
 
-	if IsCompletionInstalled(app, "zsh") {
-		t.Errorf("expected IsCompletionInstalled to be false before install")
+	if isCompletionInstalled(app, "zsh") {
+		t.Errorf("expected isCompletionInstalled to be false before install")
 	}
 
-	installedPath, err := InstallCompletion(app, "zsh")
+	installedPath, err := installCompletion(app, "zsh")
 	if err != nil {
-		t.Fatalf("InstallCompletion error: %v", err)
+		t.Fatalf("installCompletion error: %v", err)
 	}
 	if installedPath != expectedZsh {
-		t.Errorf("InstallCompletion path = %q, want %q", installedPath, expectedZsh)
+		t.Errorf("installCompletion path = %q, want %q", installedPath, expectedZsh)
 	}
 
-	if !IsCompletionInstalled(app, "zsh") {
-		t.Errorf("expected IsCompletionInstalled to be true after install")
+	if !isCompletionInstalled(app, "zsh") {
+		t.Errorf("expected isCompletionInstalled to be true after install")
 	}
 }
 
@@ -418,8 +418,8 @@ func TestAutoInstallCompletionOnExecute(t *testing.T) {
 		t.Fatalf("a stale script was not refreshed at %q:\n%s", expectedPath, body)
 	}
 
-	if !IsCompletionInstalled(app, "zsh") {
-		t.Errorf("expected IsCompletionInstalled to be true")
+	if !isCompletionInstalled(app, "zsh") {
+		t.Errorf("expected isCompletionInstalled to be true")
 	}
 }
 

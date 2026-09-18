@@ -110,7 +110,7 @@
 //   - [GenBashCompletion]
 //   - [GenZshCompletion]
 //   - [GenFishCompletion]
-//   - [InstallCompletion]
+//   - [installCompletion]
 //   - [CompletionCommand]
 //
 // Dynamic completion is supported by setting the Option.Complete callback.

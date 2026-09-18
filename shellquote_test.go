@@ -42,7 +42,7 @@ func TestSourcingTheInstalledBlockExecutesNothing(t *testing.T) {
 	marker := filepath.Join(home, "EXECUTED")
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "cfg $(touch "+marker+")"))
 
-	if _, err := InstallShellIntegration(installApp(), "bash", true); err != nil {
+	if _, err := installShellIntegration(installApp(), "bash", true); err != nil {
 		t.Fatal(err)
 	}
 	rc, err := os.ReadFile(filepath.Join(home, ".bashrc"))
@@ -68,11 +68,11 @@ func TestGeneratorsRejectANameTheyCannotSafelyEmit(t *testing.T) {
 			if err := GenKeyBindings(app, "bash", &b); err == nil {
 				t.Errorf("GenKeyBindings accepted %q and emitted:\n%s", name, b.String())
 			}
-			if _, err := IntegrationPath(app, "bash"); err == nil {
-				t.Errorf("IntegrationPath accepted %q", name)
+			if _, err := integrationPath(app, "bash"); err == nil {
+				t.Errorf("integrationPath accepted %q", name)
 			}
-			if _, err := ManPagePath(app); err == nil {
-				t.Errorf("ManPagePath accepted %q", name)
+			if _, err := manPagePath(app); err == nil {
+				t.Errorf("manPagePath accepted %q", name)
 			}
 		})
 	}
@@ -84,8 +84,8 @@ func TestGeneratorsRejectANameTheyCannotSafelyEmit(t *testing.T) {
 		if err := GenKeyBindings(app, "bash", &b); err != nil {
 			t.Errorf("GenKeyBindings rejected the ordinary name %q: %v", name, err)
 		}
-		if _, err := IntegrationPath(app, "bash"); err != nil {
-			t.Errorf("IntegrationPath rejected the ordinary name %q: %v", name, err)
+		if _, err := integrationPath(app, "bash"); err != nil {
+			t.Errorf("integrationPath rejected the ordinary name %q: %v", name, err)
 		}
 	}
 }

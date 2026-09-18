@@ -18,7 +18,7 @@ func TestAutoPathNeverEditsAStartupFile(t *testing.T) {
 
 	app := installApp()
 	app.AutoRefreshIntegration = true
-	if _, err := InstallShellIntegration(app, "bash", true); err != nil {
+	if _, err := installShellIntegration(app, "bash", true); err != nil {
 		t.Fatal(err)
 	}
 
@@ -46,7 +46,7 @@ func TestAutoPathDoesNotCreateAStartupFile(t *testing.T) {
 
 	app := installApp()
 	app.AutoRefreshIntegration = true
-	if _, err := InstallShellIntegration(app, "zsh", true); err != nil {
+	if _, err := installShellIntegration(app, "zsh", true); err != nil {
 		t.Fatal(err)
 	}
 	// The user adopts ZDOTDIR after installing, so the startup file the auto path
@@ -70,10 +70,10 @@ func TestUninstallSurvivesAnOrdinaryRun(t *testing.T) {
 
 	app := installApp()
 	app.AutoRefreshIntegration = true
-	if _, err := InstallShellIntegration(app, "bash", true); err != nil {
+	if _, err := installShellIntegration(app, "bash", true); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := UninstallShellIntegration(app, "bash"); err != nil {
+	if _, err := uninstallShellIntegration(app, "bash"); err != nil {
 		t.Fatal(err)
 	}
 	after := homeTree(t, home)

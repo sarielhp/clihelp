@@ -33,7 +33,7 @@ When implementing or modifying applications using `clihelp`, AI assistants, codi
    Use `clihelp.PrintError(err)` at application entry points to render consistent bold-red error messages to `os.Stderr`.
 
 7. **Shell Completion Integration**:
-   When implementing completion, prefer mounting `clihelp.CompletionCommand()` for zero-boilerplate setup across `bash`, `zsh`, `fish`, and user-level self-installation (`InstallCompletion`). For manual pipelines, use `clihelp.GenBashCompletion`, `clihelp.GenZshCompletion`, `clihelp.GenFishCompletion`, and `clihelp.InstallCompletion`.
+   When implementing completion, mount `clihelp.CompletionCommand()`: the user runs one command and gets tab completion, the Alt-H key binding and the manual page together. For a build-time pipeline — a packager generating scripts into `/usr/share` — use `clihelp.GenBashCompletion`, `clihelp.GenZshCompletion`, `clihelp.GenFishCompletion` and `clihelp.GenManPage`, which write to an `io.Writer` and touch nobody's home directory.
 
 8. **Structure Concise and Extended Help**:
    Keep `Command.Description` to a concise single-sentence summary used in index tables and `-h`. Place architectural details and multi-paragraph guides in `Command.LongDescription`. Use `Note.Raw: true` or markdown code fences to output ASCII tables, diagrams, or configurations verbatim.

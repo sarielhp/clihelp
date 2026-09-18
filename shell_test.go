@@ -50,16 +50,16 @@ func TestEveryEntryPointResolvesTheShellAlike(t *testing.T) {
 
 	app := &App{Name: "myapp"}
 	entries := map[string]func(shell string) error{
-		"CompletionPath": func(s string) error {
-			_, err := CompletionPath(app, s)
+		"completionScriptPath": func(s string) error {
+			_, err := completionScriptPath(app, s)
 			return err
 		},
-		"IntegrationPath": func(s string) error {
-			_, err := IntegrationPath(app, s)
+		"integrationPath": func(s string) error {
+			_, err := integrationPath(app, s)
 			return err
 		},
-		"InstallCompletion": func(s string) error {
-			_, err := InstallCompletion(app, s)
+		"installCompletion": func(s string) error {
+			_, err := installCompletion(app, s)
 			return err
 		},
 		"GenKeyBindings": func(s string) error {
@@ -68,12 +68,12 @@ func TestEveryEntryPointResolvesTheShellAlike(t *testing.T) {
 		"GenShellIntegration": func(s string) error {
 			return GenShellIntegration(app, s, true, io.Discard)
 		},
-		"InstallShellIntegration": func(s string) error {
-			_, err := InstallShellIntegration(app, s, true)
+		"installShellIntegration": func(s string) error {
+			_, err := installShellIntegration(app, s, true)
 			return err
 		},
-		"UninstallShellIntegration": func(s string) error {
-			_, err := UninstallShellIntegration(app, s)
+		"uninstallShellIntegration": func(s string) error {
+			_, err := uninstallShellIntegration(app, s)
 			return err
 		},
 	}

@@ -22,7 +22,7 @@ func TestInstallAlsoInstallsTheManPage(t *testing.T) {
 
 	page := filepath.Join(home, ".local", "share", "man", "man1", "myapp.1")
 	if res.ManPage != page {
-		t.Errorf("InstallResult.ManPage = %q, want %q", res.ManPage, page)
+		t.Errorf("installResult.ManPage = %q, want %q", res.ManPage, page)
 	}
 	body, err := os.ReadFile(page)
 	if err != nil {

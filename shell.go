@@ -14,10 +14,10 @@ import (
 // answered in six places across this surface, with two different error messages
 // — one of which did not say what the supported shells were. resolveShell is
 // the single answer; detectShell and isSupportedShell are its parts, exported
-// only as far as SupportedShells, which callers print.
+// only as far as supportedShells, which callers print.
 
-// SupportedShells names every shell this library can generate for.
-var SupportedShells = []string{"bash", "zsh", "fish"}
+// supportedShells names every shell this library can generate for.
+var supportedShells = []string{"bash", "zsh", "fish"}
 
 // detectShell names the shell from $SHELL, or returns "" when $SHELL is unset.
 // It does not translate an unknown shell into "bash": a dash, ksh or nushell
@@ -33,7 +33,7 @@ func detectShell() string {
 
 // isSupportedShell reports whether a completion script exists for shell.
 func isSupportedShell(shell string) bool {
-	for _, s := range SupportedShells {
+	for _, s := range supportedShells {
 		if s == shell {
 			return true
 		}
@@ -52,10 +52,10 @@ func resolveShell(shell string) (string, error) {
 	// "" deserves its own sentence: "unsupported shell \"\"" told five of the
 	// six call sites' users nothing about what had gone wrong.
 	if shell == "" {
-		return "", errors.New("cannot detect the active shell: $SHELL is not set; name one of " + strings.Join(SupportedShells, ", "))
+		return "", errors.New("cannot detect the active shell: $SHELL is not set; name one of " + strings.Join(supportedShells, ", "))
 	}
 	if !isSupportedShell(shell) {
-		return "", fmt.Errorf("unsupported shell %q (supported: %s)", shell, strings.Join(SupportedShells, ", "))
+		return "", fmt.Errorf("unsupported shell %q (supported: %s)", shell, strings.Join(supportedShells, ", "))
 	}
 	return shell, nil
 }
