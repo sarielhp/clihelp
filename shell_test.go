@@ -50,12 +50,12 @@ func TestEveryEntryPointResolvesTheShellAlike(t *testing.T) {
 
 	app := &App{Name: "myapp"}
 	entries := map[string]func(shell string) error{
-		"completionScriptPath": func(s string) error {
-			_, err := completionScriptPath(app, s)
+		"CompletionPath": func(s string) error {
+			_, err := CompletionPath(app, s)
 			return err
 		},
-		"integrationPath": func(s string) error {
-			_, err := integrationPath(app, s)
+		"IntegrationPath": func(s string) error {
+			_, err := IntegrationPath(app, s)
 			return err
 		},
 		"installCompletion": func(s string) error {

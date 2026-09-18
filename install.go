@@ -29,9 +29,9 @@ const (
 	integrationMarkerFn = "clihelp-integration-version"
 )
 
-// integrationPath returns the file the shell startup line sources: one file per
+// IntegrationPath returns the file the shell startup line sources: one file per
 // shell under the application's configuration directory.
-func integrationPath(app *App, shell string) (string, error) {
+func IntegrationPath(app *App, shell string) (string, error) {
 	if app == nil {
 		return "", errors.New("integration path: app is nil")
 	}
@@ -151,7 +151,7 @@ func writeIntegrationFile(app *App, shell string, keys bool, target string) erro
 // date and touches nothing else. It is what an ordinary program run is allowed
 // to do; everything that edits a startup file needs an explicit install.
 func refreshShellIntegration(app *App, shell string, keys bool) error {
-	target, err := integrationPath(app, shell)
+	target, err := IntegrationPath(app, shell)
 	if err != nil {
 		return err
 	}
@@ -374,7 +374,7 @@ func removeBlock(contents, begin, end string) (string, bool, error) {
 // It is idempotent: re-running it rewrites the generated file and leaves the
 // startup file alone unless the block is missing or out of date.
 func installShellIntegration(app *App, shell string, keys bool) (installResult, error) {
-	target, err := integrationPath(app, shell)
+	target, err := IntegrationPath(app, shell)
 	if err != nil {
 		return installResult{}, err
 	}
@@ -452,7 +452,7 @@ func installBootstrap(app *App, shell, target string) (string, bool, error) {
 // generated file, and the block in the startup file. Nothing else in that file
 // is touched.
 func uninstallShellIntegration(app *App, shell string) (installResult, error) {
-	target, err := integrationPath(app, shell)
+	target, err := IntegrationPath(app, shell)
 	if err != nil {
 		return installResult{}, err
 	}
@@ -525,7 +525,7 @@ func uninstallShellIntegration(app *App, shell string) (installResult, error) {
 // does not end up loading two copies. A file without clihelp's marker was
 // written by someone else and is left alone.
 func removeSupersededScript(app *App, shell string) []string {
-	path, err := completionScriptPath(app, shell)
+	path, err := CompletionPath(app, shell)
 	if err != nil {
 		return nil
 	}

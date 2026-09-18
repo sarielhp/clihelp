@@ -20,7 +20,12 @@ type Option struct {
 	Deprecated  string                           // Deprecation notice
 	Required    bool                             // Required flag constraint
 	Complete    func(toComplete string) []string // Dynamic shell tab-completion callback
-	binder      func(fs *pflag.FlagSet) error    // Registers the flag on fs; returns an error on duplicate/help-flag conflicts
+	// Binder registers the flag and returns an error on a duplicate or a
+	// help-flag conflict. The constructors below fill it in; setting it by hand is
+	// the escape hatch for a pflag feature clihelp has no constructor for — an
+	// option whose value is optional, for instance, which needs NoOptDefVal. It is
+	// the one place pflag is named in this API on purpose.
+	Binder func(fs *pflag.FlagSet) error
 
 	// arity records whether this option consumes the argument that follows it.
 	// The typed constructors set it; an Option assembled by hand leaves it

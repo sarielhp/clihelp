@@ -196,7 +196,7 @@ func (a *App) printClihelpDetail(w io.Writer) {
 		return
 	}
 	fmt.Fprintf(w, ", for %s:\n", shell)
-	if path, err := integrationPath(a, shell); err == nil {
+	if path, err := IntegrationPath(a, shell); err == nil {
 		fmt.Fprintf(w, "  generated:  %s\n", path)
 	}
 	if path, owned, err := startupFile(a, shell); err == nil {

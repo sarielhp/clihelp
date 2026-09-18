@@ -59,7 +59,7 @@ func TestShellCompletionProtocol(t *testing.T) {
 							}
 							return res
 						},
-						binder: String(&podcastVal, "-p, --podcast <id>", "", "Podcast ID").binder,
+						Binder: String(&podcastVal, "-p, --podcast <id>", "", "Podcast ID").Binder,
 					},
 					Bool(&fillVal, "-f, --fill", false, "Fill gaps"),
 				},
@@ -321,35 +321,35 @@ func TestCompletionPathAndIsInstalled(t *testing.T) {
 
 	app := &App{Name: "mytool"}
 
-	zshPath, err := completionScriptPath(app, "zsh")
+	zshPath, err := CompletionPath(app, "zsh")
 	if err != nil {
-		t.Fatalf("completionScriptPath(zsh) error: %v", err)
+		t.Fatalf("CompletionPath(zsh) error: %v", err)
 	}
 	expectedZsh := filepath.Join(tmpDir, "share", "zsh", "site-functions", "_mytool")
 	if zshPath != expectedZsh {
 		t.Errorf("got %q, want %q", zshPath, expectedZsh)
 	}
 
-	fishPath, err := completionScriptPath(app, "fish")
+	fishPath, err := CompletionPath(app, "fish")
 	if err != nil {
-		t.Fatalf("completionScriptPath(fish) error: %v", err)
+		t.Fatalf("CompletionPath(fish) error: %v", err)
 	}
 	expectedFish := filepath.Join(tmpDir, "config", "fish", "completions", "mytool.fish")
 	if fishPath != expectedFish {
 		t.Errorf("got %q, want %q", fishPath, expectedFish)
 	}
 
-	bashPath, err := completionScriptPath(app, "bash")
+	bashPath, err := CompletionPath(app, "bash")
 	if err != nil {
-		t.Fatalf("completionScriptPath(bash) error: %v", err)
+		t.Fatalf("CompletionPath(bash) error: %v", err)
 	}
 	expectedBash := filepath.Join(tmpDir, "share", "bash-completion", "completions", "mytool")
 	if bashPath != expectedBash {
 		t.Errorf("got %q, want %q", bashPath, expectedBash)
 	}
 
-	if isCompletionInstalled(app, "zsh") {
-		t.Errorf("expected isCompletionInstalled to be false before install")
+	if IsCompletionInstalled(app, "zsh") {
+		t.Errorf("expected IsCompletionInstalled to be false before install")
 	}
 
 	installedPath, err := installCompletion(app, "zsh")
@@ -360,8 +360,8 @@ func TestCompletionPathAndIsInstalled(t *testing.T) {
 		t.Errorf("installCompletion path = %q, want %q", installedPath, expectedZsh)
 	}
 
-	if !isCompletionInstalled(app, "zsh") {
-		t.Errorf("expected isCompletionInstalled to be true after install")
+	if !IsCompletionInstalled(app, "zsh") {
+		t.Errorf("expected IsCompletionInstalled to be true after install")
 	}
 }
 
@@ -418,8 +418,8 @@ func TestAutoInstallCompletionOnExecute(t *testing.T) {
 		t.Fatalf("a stale script was not refreshed at %q:\n%s", expectedPath, body)
 	}
 
-	if !isCompletionInstalled(app, "zsh") {
-		t.Errorf("expected isCompletionInstalled to be true")
+	if !IsCompletionInstalled(app, "zsh") {
+		t.Errorf("expected IsCompletionInstalled to be true")
 	}
 }
 

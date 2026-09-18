@@ -246,7 +246,7 @@ func TestAutoInstallNeverCreatesACompletionScript(t *testing.T) {
 	app := installApp()
 	app.AutoRefreshIntegration = true
 
-	script, err := completionScriptPath(app, "bash")
+	script, err := CompletionPath(app, "bash")
 	if err != nil {
 		t.Fatal(err)
 	}

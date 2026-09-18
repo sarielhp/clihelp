@@ -75,14 +75,14 @@ func TestAutoInstallSkipsShellsWithoutAScript(t *testing.T) {
 }
 
 func TestCompletionEntryPointsRejectANilApp(t *testing.T) {
-	if _, err := completionScriptPath(nil, "bash"); err == nil {
-		t.Errorf("completionScriptPath(nil) returned no error")
+	if _, err := CompletionPath(nil, "bash"); err == nil {
+		t.Errorf("CompletionPath(nil) returned no error")
 	}
 	if _, err := installCompletion(nil, "bash"); err == nil {
 		t.Errorf("installCompletion(nil) returned no error")
 	}
-	if isCompletionInstalled(nil, "bash") {
-		t.Errorf("isCompletionInstalled(nil) reported an installed script")
+	if IsCompletionInstalled(nil, "bash") {
+		t.Errorf("IsCompletionInstalled(nil) reported an installed script")
 	}
 }
 
@@ -105,8 +105,8 @@ func TestInstallCompletionWritesCompleteScripts(t *testing.T) {
 			if !strings.Contains(string(data), "podcli") {
 				t.Errorf("the installed %s script looks truncated:\n%s", shell, data)
 			}
-			if !isCompletionInstalled(app, shell) {
-				t.Errorf("isCompletionInstalled(%q) = false right after installing", shell)
+			if !IsCompletionInstalled(app, shell) {
+				t.Errorf("IsCompletionInstalled(%q) = false right after installing", shell)
 			}
 			// The atomic write must not leave its temporary file behind.
 			entries, _ := os.ReadDir(filepath.Dir(path))
@@ -250,7 +250,7 @@ func TestInstalledScriptIsRecognizedAsCurrent(t *testing.T) {
 				t.Fatal(err)
 			}
 			// A second auto-install pass must leave the file alone.
-			if !isCompletionInstalled(app, shell) || !completionIsCurrent(app, shell) {
+			if !IsCompletionInstalled(app, shell) || !completionIsCurrent(app, shell) {
 				t.Fatalf("%s script not recognized after installing", shell)
 			}
 			after, err := os.Stat(path)

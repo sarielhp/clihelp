@@ -68,11 +68,11 @@ func TestGeneratorsRejectANameTheyCannotSafelyEmit(t *testing.T) {
 			if err := GenKeyBindings(app, "bash", &b); err == nil {
 				t.Errorf("GenKeyBindings accepted %q and emitted:\n%s", name, b.String())
 			}
-			if _, err := integrationPath(app, "bash"); err == nil {
-				t.Errorf("integrationPath accepted %q", name)
+			if _, err := IntegrationPath(app, "bash"); err == nil {
+				t.Errorf("IntegrationPath accepted %q", name)
 			}
-			if _, err := manPagePath(app); err == nil {
-				t.Errorf("manPagePath accepted %q", name)
+			if _, err := ManPagePath(app); err == nil {
+				t.Errorf("ManPagePath accepted %q", name)
 			}
 		})
 	}
@@ -84,8 +84,8 @@ func TestGeneratorsRejectANameTheyCannotSafelyEmit(t *testing.T) {
 		if err := GenKeyBindings(app, "bash", &b); err != nil {
 			t.Errorf("GenKeyBindings rejected the ordinary name %q: %v", name, err)
 		}
-		if _, err := integrationPath(app, "bash"); err != nil {
-			t.Errorf("integrationPath rejected the ordinary name %q: %v", name, err)
+		if _, err := IntegrationPath(app, "bash"); err != nil {
+			t.Errorf("IntegrationPath rejected the ordinary name %q: %v", name, err)
 		}
 	}
 }

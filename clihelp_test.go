@@ -338,7 +338,7 @@ func TestOptionDeprecation(t *testing.T) {
 						Flags:       "-f, --file PATH",
 						Description: "Input file path",
 						Deprecated:  "Use --input instead",
-						binder: func(fs *pflag.FlagSet) error {
+						Binder: func(fs *pflag.FlagSet) error {
 							fs.StringVarP(&file, "file", "f", "", "Input file path")
 							return nil
 						},
@@ -505,8 +505,8 @@ func TestAuditHelper(t *testing.T) {
 				Name:        "build",
 				Description: "Build",
 				Options: []Option{
-					{Flags: "-v, --verbose", Description: "v1", binder: func(fs *pflag.FlagSet) error { return nil }},
-					{Flags: "--verbose", Description: "v2", binder: func(fs *pflag.FlagSet) error { return nil }},
+					{Flags: "-v, --verbose", Description: "v1", Binder: func(fs *pflag.FlagSet) error { return nil }},
+					{Flags: "--verbose", Description: "v2", Binder: func(fs *pflag.FlagSet) error { return nil }},
 				},
 			},
 		},

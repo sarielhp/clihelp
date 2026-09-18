@@ -276,8 +276,8 @@ func GenFishCompletion(app *App, w io.Writer) error {
 	return err
 }
 
-// completionScriptPath returns the target installation path for the completion script.
-func completionScriptPath(app *App, shell string) (string, error) {
+// CompletionPath returns the target installation path for the completion script.
+func CompletionPath(app *App, shell string) (string, error) {
 	if app == nil {
 		return "", errors.New("completion path: app is nil")
 	}
@@ -324,13 +324,13 @@ func completionScriptPath(app *App, shell string) (string, error) {
 	return filepath.Join(targetDir, fileName), nil
 }
 
-// isCompletionInstalled checks if the shell completion script is already installed
+// IsCompletionInstalled checks if the shell completion script is already installed
 // in the user's standard XDG directory for the given shell (or detected active shell).
-func isCompletionInstalled(app *App, shell string) bool {
+func IsCompletionInstalled(app *App, shell string) bool {
 	if app == nil {
 		return false
 	}
-	path, err := completionScriptPath(app, shell)
+	path, err := CompletionPath(app, shell)
 	if err != nil {
 		return false
 	}
@@ -342,7 +342,7 @@ func isCompletionInstalled(app *App, shell string) bool {
 // If shell is empty, it detects the active shell via the SHELL environment variable.
 // Returns the absolute file path where the completion script was written.
 func installCompletion(app *App, shell string) (string, error) {
-	targetPath, err := completionScriptPath(app, shell)
+	targetPath, err := CompletionPath(app, shell)
 	if err != nil {
 		return "", err
 	}

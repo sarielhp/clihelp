@@ -350,8 +350,8 @@ func (a *App) hasCommandNamed(name string) bool {
 
 func bindAndMark(fs *pflag.FlagSet, opts []Option) error {
 	for _, opt := range opts {
-		if opt.binder != nil {
-			if err := opt.binder(fs); err != nil {
+		if opt.Binder != nil {
+			if err := opt.Binder(fs); err != nil {
 				return err
 			}
 		}

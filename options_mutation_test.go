@@ -107,7 +107,7 @@ func TestAliasFlagNamesAreDistinctPerOption(t *testing.T) {
 		String(&a, "-y, -Y <v>", "", "first"),
 		String(&b, "-z, -Z <v>", "", "second"),
 	} {
-		if err := opt.binder(fs); err != nil {
+		if err := opt.Binder(fs); err != nil {
 			t.Fatalf("binding %q failed: %v", opt.Flags, err)
 		}
 	}
@@ -124,7 +124,7 @@ func TestAliasFlagNamesAreDistinctPerOption(t *testing.T) {
 func TestSyntheticAliasNamesAreHidden(t *testing.T) {
 	fs := pflag.NewFlagSet("app", pflag.ContinueOnError)
 	var tag []string
-	if err := StringSlice(&tag, "--tag <v>, -t, -T", nil, "Tag it.").binder(fs); err != nil {
+	if err := StringSlice(&tag, "--tag <v>, -t, -T", nil, "Tag it.").Binder(fs); err != nil {
 		t.Fatal(err)
 	}
 	visible := map[string]bool{}
@@ -146,7 +146,7 @@ func TestSyntheticAliasNamesAreHidden(t *testing.T) {
 func TestEverySpellingSharesOneIdentity(t *testing.T) {
 	fs := pflag.NewFlagSet("app", pflag.ContinueOnError)
 	var tag []string
-	if err := StringSlice(&tag, "--tag <v>, --label, -t, -T", nil, "Tag it.").binder(fs); err != nil {
+	if err := StringSlice(&tag, "--tag <v>, --label, -t, -T", nil, "Tag it.").Binder(fs); err != nil {
 		t.Fatal(err)
 	}
 	fs.VisitAll(func(f *pflag.Flag) {
@@ -179,7 +179,7 @@ func TestToggleNeedsNoValue(t *testing.T) {
 	} {
 		fs := pflag.NewFlagSet("app", pflag.ContinueOnError)
 		on := false
-		if err := BoolToggle(&on, "--[no-]color, -c", true, "Colour.").binder(fs); err != nil {
+		if err := BoolToggle(&on, "--[no-]color, -c", true, "Colour.").Binder(fs); err != nil {
 			t.Fatal(err)
 		}
 		if err := fs.Parse(args); err != nil {
@@ -212,7 +212,7 @@ func TestPrimaryFlagCarriesTheGroupAnnotation(t *testing.T) {
 			if strings.Contains(tt.name, "toggle") {
 				opt = BoolToggle(&on, tt.spec, true, "Colour.")
 			}
-			if err := opt.binder(fs); err != nil {
+			if err := opt.Binder(fs); err != nil {
 				t.Fatal(err)
 			}
 			f := fs.Lookup(tt.primary)

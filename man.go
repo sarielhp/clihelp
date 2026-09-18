@@ -352,10 +352,10 @@ func manEscape(s string) string {
 // from one a distribution packaged.
 const manMarker = "clihelp-manpage-version"
 
-// manPagePath returns where a generated manual page is installed for this user.
+// ManPagePath returns where a generated manual page is installed for this user.
 // $XDG_DATA_HOME/man is on man's default search path, so nothing has to be
 // configured for it to be found.
-func manPagePath(app *App) (string, error) {
+func ManPagePath(app *App) (string, error) {
 	if app == nil {
 		return "", errors.New("man page path: app is nil")
 	}
@@ -381,7 +381,7 @@ func manPagePath(app *App) (string, error) {
 // because which of two pages man(1) shows is not something a program can
 // predict, and the one that loses is invisible. force installs anyway.
 func installManPage(app *App, force bool) (string, error) {
-	target, err := manPagePath(app)
+	target, err := ManPagePath(app)
 	if err != nil {
 		return "", err
 	}
@@ -406,7 +406,7 @@ func installManPage(app *App, force bool) (string, error) {
 
 // uninstallManPage removes a page clihelp generated, and leaves any other alone.
 func uninstallManPage(app *App) (string, error) {
-	target, err := manPagePath(app)
+	target, err := ManPagePath(app)
 	if err != nil {
 		return "", err
 	}
@@ -475,7 +475,7 @@ func manPageIsCurrent(path string) bool {
 // template changes, and never creates one: installing a page is the user's
 // decision, taken by running "__clihelp manpage --install".
 func (a *App) refreshManPage() {
-	path, err := manPagePath(a)
+	path, err := ManPagePath(a)
 	if err != nil || !isGeneratedManPage(path) || manPageIsCurrent(path) {
 		return
 	}
