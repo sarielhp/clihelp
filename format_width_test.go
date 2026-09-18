@@ -78,7 +78,7 @@ func TestStandardFlagRowsSurviveSimilarFlags(t *testing.T) {
 		Commands: []Command{{Name: "run", Description: "Run it"}},
 	}
 	o, buf := captureOptions(90)
-	app.RenderFlags(o)
+	app.renderFlagsPage(o)
 	out := strip(buf.String())
 	for _, want := range []string{"--version", "--help"} {
 		if !strings.Contains(out, want) {

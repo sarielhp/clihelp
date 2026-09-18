@@ -118,9 +118,9 @@
 // # Help Topics & Paged Manual
 //
 // In addition to subcommand help (<command> -h), clihelp automatically routes specialized help topics:
-//   - [App.RenderFlags] (app help flags): Displays categorized global options.
-//   - [App.RenderMan] (app help man): Displays an exhaustive reference manual, paged through $PAGER when App.Pager or Options.Pager is set.
-//   - [App.RenderHelpTopics] (app help topics): Lists available help topics.
+//   - the renderFlagsPage page (app help flags): Displays categorized global options.
+//   - the renderManPage page (app help man): Displays an exhaustive reference manual, paged through $PAGER when App.Pager or Options.Pager is set.
+//   - the renderTopicsPage page (app help topics): Lists available help topics.
 //
 // Set [App.OmitGlobalFlagsInCommands] to true to omit verbose global flag tables from individual subcommand screens.
 //

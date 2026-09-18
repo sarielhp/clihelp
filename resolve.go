@@ -99,13 +99,13 @@ func (a *App) handleRootHelpTopic(topic string) (bool, error) {
 	}
 	switch {
 	case topic == "flags" || topic == "options" || topic == "opts" || topic == "flag" || (a.AbbrevCommands && (strings.HasPrefix("flags", topic) || strings.HasPrefix("options", topic))):
-		a.RenderFlags(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+		a.renderFlagsPage(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
 		return true, nil
 	case topic == "man" || topic == "all" || topic == "full" || topic == "manual" || (a.AbbrevCommands && (strings.HasPrefix("man", topic) || strings.HasPrefix("manual", topic))):
-		a.RenderMan(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+		a.renderManPage(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
 		return true, nil
 	case topic == "topics" || topic == "help" || (a.AbbrevCommands && strings.HasPrefix("topics", topic)):
-		a.RenderHelpTopics(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+		a.renderTopicsPage(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
 		return true, nil
 	case topic == "v" || topic == "-v" || topic == "version" || topic == "--version" || (a.AbbrevCommands && strings.HasPrefix("version", topic)):
 		if a.Version == "" {

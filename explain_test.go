@@ -82,7 +82,7 @@ func TestExplainFitsTwoThirdsOfTheScreen(t *testing.T) {
 		t.Run(strings.Repeat("x", 0)+itoa(rows), func(t *testing.T) {
 			var buf bytes.Buffer
 			budget := explainBudget(rows)
-			app.Explain(&buf, "prog x ye", 80, budget)
+			app.explainLine(&buf, "prog x ye", 80, budget)
 
 			lines := strings.Split(strings.TrimRight(buf.String(), "\n"), "\n")
 			if len(lines) > budget {
@@ -101,7 +101,7 @@ func TestExplainFitsTwoThirdsOfTheScreen(t *testing.T) {
 func TestExplainSaysWhereTheRestIs(t *testing.T) {
 	app := explainApp()
 	var buf bytes.Buffer
-	app.Explain(&buf, "prog x ye", 80, explainBudget(12))
+	app.explainLine(&buf, "prog x ye", 80, explainBudget(12))
 	out := buf.String()
 	if !strings.Contains(out, "more lines") {
 		t.Fatalf("a truncated explanation should say how much was cut:\n%s", out)
@@ -117,7 +117,7 @@ func TestExplainShortHelpIsNotTruncated(t *testing.T) {
 		Commands: []Command{{Name: "run", Description: "Run it", Run: func(*Context) error { return nil }}},
 	}
 	var buf bytes.Buffer
-	app.Explain(&buf, "prog run", 80, explainBudget(40))
+	app.explainLine(&buf, "prog run", 80, explainBudget(40))
 	out := buf.String()
 	if strings.Contains(out, "more lines") {
 		t.Errorf("short help should not be truncated:\n%s", out)

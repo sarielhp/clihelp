@@ -493,7 +493,7 @@ func TestResolutionMutatesNothing(t *testing.T) {
 		{"ValidateExamples", func(a *App) { _ = a.validateExamples() }},
 		{"RenderGlobal", func(a *App) { a.RenderGlobal(Options{Writer: io.Discard, Width: 80}) }},
 		{"RenderCommand", func(a *App) { a.RenderCommand(Options{Writer: io.Discard, Width: 80}, "search") }},
-		{"RenderMan", func(a *App) { a.RenderMan(Options{Writer: io.Discard, Width: 80}) }},
+		{"RenderMan", func(a *App) { a.renderManPage(Options{Writer: io.Discard, Width: 80}) }},
 		{"__complete", func(a *App) { TestExecute(a, []string{"__complete", "search", ""}) }},
 		{"__explain", func(a *App) { TestExecute(a, []string{"__explain", "mail search inv"}) }},
 	} {

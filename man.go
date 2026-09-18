@@ -16,7 +16,7 @@ import (
 // GenManPage writes a roff manual page for app: one page for the program, with
 // a subsection for every command.
 //
-// This is a file for man(1), distinct from App.RenderMan, which renders the same
+// This is a file for man(1), distinct from App.renderManPage, which renders the same
 // material to a terminal with colors and hyperlinks in it. A generated page
 // installed under $XDG_DATA_HOME/man is what makes zsh's run-help and fish's
 // __fish_man_page — both bound to Alt-H by default — answer for a program that

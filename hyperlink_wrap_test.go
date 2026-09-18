@@ -70,7 +70,7 @@ func TestExplainNeverLeavesAHyperlinkOpen(t *testing.T) {
 		Run: func(*Context) error { return nil },
 	}}}
 	var buf bytes.Buffer
-	app.Explain(&buf, "demo sync", 40, 6)
+	app.explainLine(&buf, "demo sync", 40, 6)
 	if n := openOSC(buf.String()); n != 0 {
 		t.Errorf("Explain left %d hyperlink(s) open:\n%q", n, buf.String())
 	}
