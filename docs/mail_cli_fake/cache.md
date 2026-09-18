@@ -17,7 +17,7 @@ mail_cli cache <subcommand> [args...]
 
 | Command | Description |
 |---------|-------------|
-| prune \[days\] | Prune cached emails and scores older than [days] (default: 30). |
+| [prune \[days\]](cache-prune.md) | Prune cached emails and scores older than [days] (default: 30). |
 | [reset](cache-reset.md) | Reset per-account cache — removes all cached emails, scores, labels, and indexes for the current account. |
 
 ## Flags

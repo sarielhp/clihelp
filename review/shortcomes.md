@@ -1,5 +1,14 @@
 # Architectural Review: Proposed Features & Core Roadmaps
 
+> **Status, 2026-09-17.** Everything under "Should Be Done" below has shipped:
+> `Option.Deprecated` (`clihelp.go`, `man.go`), the declarative option validators
+> (`validation.go`), `TestExecute` and `Audit` (`testing.go`),
+> `InteractiveFallback` (`execute.go`) and the tiered `-h` / `--help` / `-H`
+> help (`ExtendedHelpFlag`). That half is kept for the reasoning, not as a
+> roadmap. The "Should Not Be Done" half is still live: it is the record of
+> seven designs that were considered and declined, and the reasons they were.
+> See also `suggestions/rejected/`.
+
 To keep `clihelp` lightweight, coherent, and idiomatic to Go, we must strictly filter out feature bloat. A good library does one thing well: command routing, POSIX flag binding, and beautiful help rendering. 
 
 Below is a highly critical division of all discussed features into **Should Be Done** (improving core functionality without adding API complexity) and **Should Not Be Done** (preventing API bloat, redundant paradigms, or out-of-scope features).

@@ -15,12 +15,14 @@ completion <subcommand>
 
 ## Subcommands
 
-| clihelp.Command | Description |
+| Command | Description |
 |---------|-------------|
 | [bash](completion-bash.md) | Generate Bash tab-completion script |
 | [zsh](completion-zsh.md) | Generate Zsh tab-completion script |
 | [fish](completion-fish.md) | Generate Fish tab-completion script |
-| [install](completion-install.md) | Install tab-completion script to standard user directory |
+| [keys](completion-keys.md) | Print shell key bindings (Alt-H expands the command line and explains it) |
+| [install](completion-install.md) | Set this program up: tab completion, the Alt-H key binding and the manual page |
+| [uninstall](completion-uninstall.md) | Remove the installed tab completion and key binding |
 
 ## Flags
 
@@ -41,7 +43,7 @@ completion <subcommand>
 
 ## Shell Tip
 
-Tip: <Tab> to complete, Ctrl-D to list choices, Alt-H for instant command help.
+Tip: <Tab> to complete, Ctrl-D to list choices. Run 'completion keys' and source the result from your shell's rc file to bind Alt-H, which expands the command line and shows the help for the command it names.
 
 ---
 

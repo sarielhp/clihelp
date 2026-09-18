@@ -17,7 +17,7 @@ mail_cli rule del <email|title>
 
 | Parameter | Description |
 |-----------|-------------|
-| `<email|title>` | The sender email address or subject prefix of the rule to remove. |
+| `<email\|title>` | The sender email address or subject prefix of the rule to remove. |
 
 ## Flags
 

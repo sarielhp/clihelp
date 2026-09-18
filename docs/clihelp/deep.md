@@ -15,7 +15,7 @@ podctl deep [options] <subcommand> — This is a **very long usage line** for th
 
 ## Subcommands
 
-| clihelp.Command | Description |
+| Command | Description |
 |---------|-------------|
 | [alpha](deep-alpha.md) | This is the [alpha command](https://example.com/deep/alpha) at depth 2 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
 | [beta](deep-beta.md) | This is the [beta command](https://example.com/deep/beta) at depth 2 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |

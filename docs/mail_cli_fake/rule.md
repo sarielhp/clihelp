@@ -19,14 +19,14 @@ mail_cli rule -import <file>
 
 | Command | Description |
 |---------|-------------|
-| add \<email> \<lbl> | Add an auto-labeling rule by sender. |
-| add\_by\_title \<title> \<lbl> | Add an auto-labeling rule by subject prefix. |
-| add\_domain \<msg\_id> \[lbl\] | Add an auto-labeling rule for all emails from a sender's domain. |
-| del \<email\|title> | Remove an auto-labeling rule. |
-| list \[-a, --all\] | List custom routing rules. |
+| [add \<email> \<lbl>](rule-add.md) | Add an auto-labeling rule by sender. |
+| [add\_by\_title \<title> \<lbl>](rule-add-by-title.md) | Add an auto-labeling rule by subject prefix. |
+| [add\_domain \<msg\_id> \[lbl\]](rule-add-domain.md) | Add an auto-labeling rule for all emails from a sender's domain. |
+| [del \<email\|title>](rule-del.md) | Remove an auto-labeling rule. |
+| [list \[-a, --all\]](rule-list.md) | List custom routing rules. |
 | [update](rule-update.md) | Sync rules from blacklisted senders. |
-| export \[force\] | Export local rules to mail server filters. |
-| export --sieve \<f> | Export rules as a Sieve script file. |
+| [export \[force\]](rule-export.md) | Export local rules to mail server filters. |
+| [export --sieve \<f>](rule-export.md) | Export rules as a Sieve script file. |
 
 ## Flags
 

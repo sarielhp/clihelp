@@ -17,8 +17,8 @@ mail_cli blacklist <subcommand> [args...]
 
 | Command | Description |
 |---------|-------------|
-| add \<email> | Add an email address to the blacklist. |
-| del \<email> | Remove an email address from the blacklist. |
+| [add \<email>](blacklist-add.md) | Add an email address to the blacklist. |
+| [del \<email>](blacklist-del.md) | Remove an email address from the blacklist. |
 | list | List all blacklisted email addresses. |
 
 ## Flags

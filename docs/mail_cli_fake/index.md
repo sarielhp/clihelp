@@ -10,17 +10,17 @@ has_children: true
 | Command | Description |
 |---------|-------------|
 | [account](account.md) | Manage and list configured mail accounts. |
-| [archive (arc)](archive.md) | Move message(s) by ID from their current folder to the Archive or Received folder. Or archive all messages in Inbox (default) or the specified label (by prefix). |
-| [blacklist (blist)](blacklist.md) | Manage the personal sender blacklist to instantly classify messages as spam. |
+| [archive](archive.md) | Move message(s) by ID from their current folder to the Archive or Received folder. Or archive all messages in Inbox (default) or the specified label (by prefix). |
+| [blacklist](blacklist.md) | Manage the personal sender blacklist to instantly classify messages as spam. |
 | [cache](cache.md) | Manage the local email download cache. |
-| [caladd (calendar add-all)](caladd.md) | Scan the inbox for messages containing .ics attachments, and add them to the calendar if they are not already present. |
+| [caladd](caladd.md) | Scan the inbox for messages containing .ics attachments, and add them to the calendar if they are not already present. |
 | [calendar](calendar.md) | Manage calendar events extracted from email attachments. |
 | [color](color.md) | Test terminal 24-bit true-color and 256-color support |
 | [config](config.md) | Show or manage configuration options. |
 | [download](download.md) | Download all messages in the specified label (which must match a unique label) to a local mbox file. |
 | [filter](filter.md) | Manage remote filters on Gmail. |
 | [labels](labels.md) | Manage and organize folders/labels. |
-| [learn-ham (learn\_ham)](learn-ham.md) | Train Bogofilter on ham (non-spam) emails in a folder. The folder must be an exact match and cannot have subfolders. |
+| [learn-ham](learn-ham.md) | Train Bogofilter on ham (non-spam) emails in a folder. The folder must be an exact match and cannot have subfolders. |
 | [migrate](migrate.md) | Copy configuration and credentials to a remote machine via SSH/SCP |
 | [rule](rule.md) | Manage auto-labeling rules for matching senders or subject prefixes. |
 | [scan](scan.md) | Scan all folders starting with the given label prefix (case-insensitive) for spam. |
@@ -32,7 +32,7 @@ has_children: true
 | [tui](tui.md) | Open the interactive terminal email browser. With an optional label_prefix argument, open the TUI with the matching label as the initial folder. The prefix is matched case-insensitively as a substring against the full label path. If exactly one label matches, the TUI opens on that label. If multiple match, all matching labels are printed and the program exits. |
 | [unspam](unspam.md) | Mark a message as not being spam: train bogofilter as ham and move it from Spam back to Inbox on the server. |
 | [upload](upload.md) | Upload all email messages from a local mbox file to the specified target label/folder on the server. |
-| [whitelist (wlist)](whitelist.md) | Manage the personal sender whitelist to bypass spam checks. |
+| [whitelist](whitelist.md) | Manage the personal sender whitelist to bypass spam checks. |
 
 ## Shortcut Commands
 

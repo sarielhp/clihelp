@@ -492,7 +492,11 @@ func TestRenderIndex(t *testing.T) {
 		"# podctl",
 		"A podcast distribution toolkit.",
 		"## Commands",
-		"| clihelp.Command | Description |",
+		// A "Command -> clihelp.Command" rename, applied when doc became a
+		// subpackage, reached two Markdown table headers inside string literals
+		// and this golden string with them — so the published docs grew a column
+		// called "clihelp.Command" and the test agreed.
+		"| Command | Description |",
 		"| [build](build.md) |",
 		"| [config](config.md) |",
 		"## Global Flags",
@@ -601,5 +605,44 @@ func TestRenderCommandPageLongDescriptionAndRawNotes(t *testing.T) {
 	expectedCodeBlock := "```\nhost: localhost\nport: 8080\n```"
 	if !strings.Contains(out, expectedCodeBlock) {
 		t.Errorf("expected raw note wrapped in fenced code block, got:\n%s", out)
+	}
+}
+
+// The page's subcommand list and the terminal help's have to be the same list.
+// They were not: clihelp prefers an explicit SubcommandEntries over walking the
+// Subcommands tree — that field exists to document subcommands the tree does not
+// carry — and the copy of that helper made when this became a subpackage lost
+// the preference, so entries that had no Command behind them vanished from the
+// docs while `--help` went on showing them.
+func TestSubcommandTableMatchesTheTerminalHelp(t *testing.T) {
+	cmd := clihelp.Command{
+		Name:        "whitelist",
+		Description: "Manage the whitelist.",
+		UsageLine:   "app whitelist <subcommand>",
+		SubcommandEntries: []clihelp.Param{
+			{Name: "add <email>", Description: "Add an address."},
+			{Name: "del <email>", Description: "Remove an address."},
+			{Name: "list", Description: "List every address."},
+		},
+		Subcommands: []clihelp.Command{
+			{Name: "add", Description: "Add an address.", Run: func(*clihelp.Context) error { return nil }},
+			{Name: "del", Description: "Remove an address.", Run: func(*clihelp.Context) error { return nil }},
+		},
+	}
+	app := &clihelp.App{Name: "app", Commands: []clihelp.Command{cmd}}
+	page := renderCommandPage(app, cmdNode{path: []string{"whitelist"}, cmd: cmd})
+
+	// Every documented entry appears, including the one with no Command behind it.
+	// The angle brackets are escaped for markdown, as they are everywhere else.
+	for _, want := range []string{`add \<email>`, `del \<email>`, "| list |"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the subcommand table is missing %q:\n%s", want, page)
+		}
+	}
+	// The two that do have pages are still linked, by their command word.
+	for _, want := range []string{"(whitelist-add.md)", "(whitelist-del.md)"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the subcommand table lost the link %q:\n%s", want, page)
+		}
 	}
 }

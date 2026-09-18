@@ -17,8 +17,8 @@ mail_cli whitelist <subcommand> [args...]
 
 | Command | Description |
 |---------|-------------|
-| add \<email> | Add an email address to the whitelist. |
-| del \<email> | Remove an email address from the whitelist. |
+| [add \<email>](whitelist-add.md) | Add an email address to the whitelist. |
+| [del \<email>](whitelist-del.md) | Remove an email address from the whitelist. |
 | list | List all whitelisted email addresses. |
 
 ## Flags

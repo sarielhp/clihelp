@@ -16,7 +16,7 @@ podctl deep alpha alpha_two [options] [arguments...] — This is a **very long u
 
 ## Subcommands
 
-| clihelp.Command | Description |
+| Command | Description |
 |---------|-------------|
 | [alpha\_two\_a](deep-alpha-alpha-two-alpha-two-a.md) | This is the [alpha_two_a command](https://example.com/deep/alpha/alpha_two/alpha_two_a) at depth 4 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
 | [alpha\_two\_b](deep-alpha-alpha-two-alpha-two-b.md) | This is the [alpha_two_b command](https://example.com/deep/alpha/alpha_two/alpha_two_b) at depth 4 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |

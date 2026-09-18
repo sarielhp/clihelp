@@ -16,7 +16,7 @@ podctl deep beta beta_one [options] [arguments...] — This is a **very long usa
 
 ## Subcommands
 
-| clihelp.Command | Description |
+| Command | Description |
 |---------|-------------|
 | [beta\_one\_a](deep-beta-beta-one-beta-one-a.md) | This is the [beta_one_a command](https://example.com/deep/beta/beta_one/beta_one_a) at depth 4 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
 | [beta\_one\_b](deep-beta-beta-one-beta-one-b.md) | This is the [beta_one_b command](https://example.com/deep/beta/beta_one/beta_one_b) at depth 4 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |

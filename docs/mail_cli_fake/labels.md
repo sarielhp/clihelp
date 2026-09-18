@@ -18,12 +18,12 @@ mail_cli labels <subcommand> [args...]
 | Command | Description |
 |---------|-------------|
 | list \[-a, --all\] | List labels/folders. |
-| create \<lbl> | Create a new label. |
+| [create \<lbl>](labels-create.md) | Create a new label. |
 | [print](labels-print.md) | Print all labels/folders, one per line (full path only). |
-| rename \<old> \<new> | Rename a label and move all its emails. |
+| [rename \<old> \<new>](labels-rename.md) | Rename a label and move all its emails. |
 | fix | Fix nested folder parent hierarchies. |
-| del \<lbl> | Delete a label. |
-| search \<str> | Search labels by substring (matches full path). |
+| [del \<lbl>](labels-del.md) | Delete a label. |
+| [search \<str>](labels-search.md) | Search labels by substring (matches full path). |
 | [cache](labels-cache.md) | Manage the labels cache. |
 
 ## Flags

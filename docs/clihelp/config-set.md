@@ -16,7 +16,7 @@ podctl config set <attribute> <value> [options]
 
 ## Subcommands
 
-| clihelp.Command | Description |
+| Command | Description |
 |---------|-------------|
 | [space](config-set-space.md) | Set maximum disk space allocation for temporary cache and build artifacts. Configurable in megabytes or gigabytes with an optional automatic cleanup policy. |
 

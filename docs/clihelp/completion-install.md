@@ -5,12 +5,12 @@ parent: 'podctl completion'
 
 # podctl completion install
 
-Install tab-completion script to standard user directory
+Set this program up: tab completion, the Alt-H key binding and the manual page
 
 ## Usage
 
 ```
-completion install [<shell>]
+completion install [--no-keys] [--no-man] [<shell>]
 ```
 
 ## Parameters
@@ -30,10 +30,17 @@ completion install [<shell>]
 | `-v, --verbose` | Enable verbose output logs |
 | `-s, --silent` | Suppress non-error output |
 | `--no-color` | Disable ANSI color output |
+| `--no-keys` | Install tab completion only, leaving Alt-H alone |
+| `--no-man` | Skip the manual page |
 
 ## Examples
 
-- `completion install zsh` — Install completions to ~/.local/share/zsh/site-functions
+- `completion install` — Set up the active shell
+- `completion install --no-keys zsh` — Set up Zsh completion without the Alt-H binding
+
+## What It Writes
+
+One generated file under this application's configuration directory, one permanent line in the shell's startup file that sources it, and a manual page under the user's data directory. The line never changes; the generated file is rewritten whenever the application is upgraded. On fish nothing shared is touched at all, because conf.d is a drop-in directory. Run 'completion uninstall' to remove all of it.
 
 ---
 

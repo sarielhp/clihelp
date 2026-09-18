@@ -4,7 +4,12 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [0.3.20] - unreleased
 
+### Fixed
+- **The Generated Docs Disagreed With `--help` About Subcommands** - `clihelp` prefers an explicit `SubcommandEntries` over walking the `Subcommands` tree, which is the point of that field: it documents subcommands the tree does not carry. When `doc` became a subpackage the helper was copied without that preference, so a documented-only entry — `mail_cli whitelist list` — appeared in the terminal help and was missing from the generated page. The two lists agree again, and entries that do have a page are still linked, matched on the command word so that `add <email>` finds `whitelist-add.md`.
+- **A Generated Table Header Read `clihelp.Command`** - a `Command` → `clihelp.Command` rename, applied when `doc` became a subpackage, reached two Markdown table headers inside string literals. It also reached the golden string in the test that would have caught it, so the test agreed with the mangled output. Both are corrected.
+
 ### Internal
+- `docs/clihelp/` and `docs/mail_cli_fake/` are regenerated. They had drifted from the example apps, which is how the two defects above surfaced: the fix for stale generated documentation is to regenerate it, and regenerating showed the generator was wrong.
 - **A Failed Release Left the Tree Half-Bumped, and Said Nothing.** `tools/bump-version.sh` writes the new version into `VERSION`, `example/main.go` and `clihelp.go` before running the check, because the check verifies they agree — but it discarded the check's output to `/dev/null` and, on failure, left all three modified with nothing committed. The next run then bumped again from there and skipped a version outright, with no message anywhere to suggest looking. The version files are restored on any failure up to the commit, the check's output is kept and its last 25 lines printed with the path to the rest, and each step after the commit reports for itself with the command to finish by hand — a tag or a push that fails no longer looks like a tag or a push that worked. Both paths were exercised in a throwaway clone.
 - The race-detector timeout goes from 120s to 300s in `tools/check.sh` and the `test` target. 120s is comfortable against a warm build cache and not obviously so against a cold one, which is the state a release runs in most often.
 

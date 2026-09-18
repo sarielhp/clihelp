@@ -9,7 +9,7 @@ has_children: true
 
 ## Commands
 
-| clihelp.Command | Description |
+| Command | Description |
 |---------|-------------|
 | [build](build.md) | Compile, encode, and package raw audio into MP3 podcast episodes. Supports configurable bitrate, loudness normalization, and embedded ID3 tags for distribution across Apple Podcasts, Spotify, and Google Podcasts. |
 | [serve](serve.md) | Start a local HTTP development server for RSS feeds and audio files. Includes live-reload support, CORS headers for cross-origin testing, and a built-in web dashboard for previewing feed metadata before deploying to production. |
@@ -38,7 +38,7 @@ has_children: true
 
 ## Version
 
-0.3.5
+0.3.19
 
 ## About
 

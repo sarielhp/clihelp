@@ -8,7 +8,7 @@ Welcome to the `clihelp` documentation hub.
 
 - [Execution Lifecycle, Routing & Context](lifecycle-and-routing.md) — Pipeline order, lifecycle hooks, abort semantics, `clihelp.Context`, subcommands, and argument validation.
 - [Flag & Option Specification Reference](flags-and-options.md) — Flag spec syntax, constructors table, toggle pairs, custom value types, and the help collision trap.
-- [Shell Autocompletion](completion.md) — Bash, Zsh, Fish script generators, dynamic completion callbacks, and live testing.
+- [Shell Integration](completion.md) — One-command setup and exactly which files it writes, the Alt-H key binding, manual pages, wrapper scripts, the reserved `__clihelp` verbs, Bash/Zsh/Fish generators, dynamic completion callbacks, and live testing.
 - [GitHub Markdown Documentation Generator](markdown-generation.md) — Automatic Markdown help tree generation with SHA-256 caching.
 - [Recipes & Common Patterns](recipes-and-patterns.md) — Signal cancellation, unit testing commands, dynamic completion, command tree rendering, custom theming, and command abbreviations.
 - [AI Coding Agent Guidelines](ai-guidelines.md) — Best practices for LLM assistants constructing CLIs with `clihelp`.
