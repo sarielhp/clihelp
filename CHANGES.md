@@ -2,7 +2,7 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
-## [0.3.20] - unreleased
+## [0.3.20] - 2026-09-17
 
 ### Fixed
 - **The Generated Docs Disagreed With `--help` About Subcommands** - `clihelp` prefers an explicit `SubcommandEntries` over walking the `Subcommands` tree, which is the point of that field: it documents subcommands the tree does not carry. When `doc` became a subpackage the helper was copied without that preference, so a documented-only entry — `mail_cli whitelist list` — appeared in the terminal help and was missing from the generated page. The two lists agree again, and entries that do have a page are still linked, matched on the command word so that `add <email>` finds `whitelist-add.md`.
