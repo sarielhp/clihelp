@@ -17,22 +17,15 @@ func renderOptionsGrouped(w io.Writer, th Theme, o Options, termWidth int, opts 
 		if f.Hidden {
 			continue
 		}
-		desc := f.Description
-		if f.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
-			desc = desc + " (default: " + f.DefaultText + ")"
-		}
-		if f.Required {
-			desc = desc + " (required)"
-		}
-		if f.Deprecated != "" {
-			desc = desc + " (deprecated: " + f.Deprecated + ")"
-		}
-		params = append(params, Param{Name: f.Flags, Description: desc})
+		params = append(params, Param{Name: f.Flags, Description: decorateOptionDescription(f)})
 		groups = append(groups, f.Group)
 	}
 	if len(params) == 0 {
 		return
 	}
+	// See normalizeGroups: RenderMan reaches here with the raw list, so an
+	// ungrouped flag used to be printed under the previous group's heading.
+	groups = normalizeGroups(groups, "Other Flags")
 	indent := colIndent(params)
 	prev := ""
 

@@ -111,12 +111,22 @@ func (o Options) out() io.Writer {
 	return os.Stdout
 }
 
+// theme resolves the theme for one render: the defaults, then the app's theme,
+// then the caller's on top.
+//
+// Options.Theme used to *replace* App.Theme rather than layer onto it, so an
+// application that set a theme once and then passed any per-render Options.Theme
+// silently lost every field it had not repeated — including Separator, and with
+// it the whole title block.
 func (o Options) theme(a *App) Theme {
 	th := defaultTheme()
-	src := o.Theme
-	if src == nil && a != nil {
-		src = a.Theme
+	if a != nil {
+		th = applyTheme(th, a.Theme)
 	}
+	return applyTheme(th, o.Theme)
+}
+
+func applyTheme(th Theme, src *Theme) Theme {
 	if src == nil {
 		return th
 	}
@@ -153,7 +163,9 @@ func (o Options) theme(a *App) Theme {
 	if src.ExampleDesc != nil {
 		th.ExampleDesc = src.ExampleDesc
 	}
-	th.Separator = src.Separator
+	if src.Separator {
+		th.Separator = true
+	}
 	return th
 }
 
@@ -227,6 +239,7 @@ func (a *App) renderCommandGrouped(w io.Writer, th Theme, o Options, termWidth i
 	if len(params) == 0 {
 		return
 	}
+	groups = normalizeGroups(groups, "Other Commands")
 	indent := colIndent(params)
 	prev := ""
 
@@ -235,7 +248,12 @@ func (a *App) renderCommandGrouped(w io.Writer, th Theme, o Options, termWidth i
 		if textWidth <= 0 {
 			textWidth = 40
 		}
-		return visualLen(p.Description) > textWidth || strings.Contains(p.Description, "\n")
+		// Measure what is drawn, not the markdown it came from. inline() only
+		// ever shrinks visible width, so measuring the source was a systematic
+		// false positive: one link in one description put a blank line between
+		// every entry in the list, none of which wrapped.
+		rendered := inline(p.Description)
+		return visualLen(rendered) > textWidth || strings.Contains(rendered, "\n")
 	}
 
 	anyMultiLine := false
@@ -287,20 +305,32 @@ func (a *App) usageLine() string {
 	}
 }
 
+// decorateOptionDescription appends the suffixes an option's description
+// carries in every listing: its default, whether it is required, and whether it
+// is deprecated.
+//
+// These twelve lines existed twice — here and in renderOptionsGrouped — and only
+// the other copy was tested, so the default value could vanish from every -h and
+// --help flag table while `help flags` went on showing it. The cross-package
+// guard cannot see a copy made inside one package.
+func decorateOptionDescription(opt Option) string {
+	desc := opt.Description
+	if opt.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
+		desc += " (default: " + opt.DefaultText + ")"
+	}
+	if opt.Required {
+		desc += " (required)"
+	}
+	if opt.Deprecated != "" {
+		desc += " (deprecated: " + opt.Deprecated + ")"
+	}
+	return desc
+}
+
 func optionsToParams(options []Option) []Param {
 	params := make([]Param, 0, len(options))
 	for _, opt := range options {
-		desc := opt.Description
-		if opt.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
-			desc = desc + " (default: " + opt.DefaultText + ")"
-		}
-		if opt.Required {
-			desc = desc + " (required)"
-		}
-		if opt.Deprecated != "" {
-			desc = desc + " (deprecated: " + opt.Deprecated + ")"
-		}
-		params = append(params, Param{Name: opt.Flags, Description: desc})
+		params = append(params, Param{Name: opt.Flags, Description: decorateOptionDescription(opt)})
 	}
 	return params
 }
@@ -409,6 +439,36 @@ func (a *App) RenderGlobal(o Options) {
 	})
 }
 
+// normalizeGroups gives ungrouped entries a heading of their own, but only when
+// something else is grouped.
+//
+// A heading was printed when the group value changed, and `prev` was updated
+// only inside that branch — so an entry declaring no group printed no heading
+// and did not reset `prev`, which put it under the previous group's heading and
+// then swallowed the heading when that group resumed. The output said something
+// false about two entries at once. RenderFlags already avoided this through
+// normalizeFlagGroups; the other two call sites never got it.
+func normalizeGroups(groups []string, fallback string) []string {
+	grouped := false
+	for _, g := range groups {
+		if g != "" {
+			grouped = true
+			break
+		}
+	}
+	if !grouped {
+		return groups
+	}
+	out := make([]string, len(groups))
+	for i, g := range groups {
+		if g == "" {
+			g = fallback
+		}
+		out[i] = g
+	}
+	return out
+}
+
 func renderCommandTitle(w io.Writer, th Theme, o Options, cmd *Command, termWidth, sepW int) {
 	if !th.Separator && th.TitlePrefix == "" {
 		return
@@ -429,7 +489,11 @@ func (a *App) buildDefaultUsage(cmd *Command, path []string) string {
 	}
 	fullPath := strings.Join(append([]string{appName(a)}, path...), " ")
 	hasFlags := len(a.collectOptions(path, cmd)) > 0
-	hasSubs := len(cmd.Subcommands) > 0
+	// SubcommandList, not cmd.Subcommands: a command that documents its
+	// subcommands through SubcommandEntries used to get "[args]" in its usage
+	// line above a populated "Subcommands:" list. The same
+	// copy-without-the-preference that SubcommandList's own comment records.
+	hasSubs := len(SubcommandList(*cmd)) > 0
 	switch {
 	case hasSubs && hasFlags:
 		return fmt.Sprintf("%s [flags] <subcommand> [args]", fullPath)

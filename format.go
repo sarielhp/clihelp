@@ -332,10 +332,37 @@ func FirstSentence(s string) string {
 	if idx := strings.Index(s, "\n"); idx != -1 {
 		s = strings.TrimSpace(s[:idx])
 	}
-	if idx := strings.Index(s, ". "); idx != -1 {
+	if idx := sentenceBreak(s); idx != -1 {
 		return s[:idx+1]
 	}
 	return s
+}
+
+// sentenceBreak finds the first ". " that is not inside a markdown construct,
+// or -1.
+//
+// Cutting at the first ". " full stop left raw markup in the help: a version
+// number in a URL ("…/v1. 2/y"), an abbreviation in a code span ("`a. b`") or
+// an emphasised phrase ("**a. b**") all contain one, and the truncated result
+// was then rendered as literal "[it](http://x/v1." on screen.
+func sentenceBreak(s string) int {
+	code, emphasis, link := false, false, 0
+	for i := 0; i < len(s); i++ {
+		switch {
+		case s[i] == '`':
+			code = !code
+		case !code && i+1 < len(s) && s[i] == '*' && s[i+1] == '*':
+			emphasis = !emphasis
+			i++
+		case !code && s[i] == '[':
+			link++
+		case !code && s[i] == ')' && link > 0:
+			link--
+		case !code && !emphasis && link == 0 && s[i] == '.' && i+1 < len(s) && s[i+1] == ' ':
+			return i
+		}
+	}
+	return -1
 }
 
 // firstSentence is an internal alias for FirstSentence.

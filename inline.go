@@ -19,6 +19,12 @@ const (
 	sgrCodeOff   = "\x1b[39m"
 )
 
+// isASCIIPunct reports whether b is one of the characters CommonMark allows a
+// backslash to escape.
+func isASCIIPunct(b byte) bool {
+	return strings.IndexByte("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", b) >= 0
+}
+
 // sanitizeControl replaces the control bytes a terminal would act on.
 //
 // Everything this package renders is a string the application's author wrote,
@@ -110,7 +116,12 @@ func renderInline(w io.Writer, s string, showURLs ...bool) {
 	s = sanitizeControl(s)
 	for i := 0; i < len(s); {
 		// backslash escape
-		if s[i] == '\\' && i+1 < len(s) {
+		// CommonMark: a backslash escapes ASCII punctuation and nothing else.
+		// Escaping anything deleted the backslash from a Windows path or a
+		// regex — "C:\\temp\\x" rendered as "C:tempx" — which is the very bug
+		// examples.go's comment records as the reason example lines were taken
+		// out of this renderer. Descriptions never got the same treatment.
+		if s[i] == '\\' && i+1 < len(s) && isASCIIPunct(s[i+1]) {
 			w.Write([]byte{s[i+1]})
 			i += 2
 			continue
@@ -126,6 +137,11 @@ func renderInline(w io.Writer, s string, showURLs ...bool) {
 		}
 		// link [text](url)
 		if text, url, advance, ok := parseMarkdownLink(s, i); ok {
+			// "[](url)" rendered zero visible characters, so the description was
+			// silently blank and the link had no label to click.
+			if text == "" {
+				text = url
+			}
 			if show {
 				fmt.Fprintf(w, "%s (%s)", text, url)
 			} else {
