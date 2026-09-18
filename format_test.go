@@ -28,6 +28,7 @@ func TestReflowHonorsWidth(t *testing.T) {
 	var buf bytes.Buffer
 	reflow(&buf, color.New(color.FgWhite), 20, 2, "", longText)
 	maxLen := 0
+	requireRendered(t, buf.String())
 	for _, line := range strings.Split(strings.TrimRight(buf.String(), "\n"), "\n") {
 		if l := len(strip(line)); l > maxLen {
 			maxLen = l
@@ -44,6 +45,7 @@ func TestReflowMultibyteIsRuneAware(t *testing.T) {
 	longText := strings.Repeat("界 ", 30)
 	var buf bytes.Buffer
 	reflow(&buf, color.New(color.FgWhite), 10, 0, "", longText)
+	requireRendered(t, buf.String())
 	for _, line := range strings.Split(strings.TrimRight(buf.String(), "\n"), "\n") {
 		if n := len([]rune(strip(line))); n > 10 {
 			t.Fatalf("line exceeded 10 visible chars (got %d): %q", n, strip(line))
@@ -95,6 +97,7 @@ func TestRenderCommandReflowAtWidth60(t *testing.T) {
 
 	app.RenderCommand(o, "build")
 	output := strip(buf.String())
+	requireRendered(t, output)
 
 	maxLine := 0
 	for _, line := range strings.Split(strings.TrimRight(output, "\n"), "\n") {
@@ -139,6 +142,7 @@ func TestRenderCommandReflowAtWidth100(t *testing.T) {
 
 	app.RenderCommand(o, "build")
 	output := strip(buf.String())
+	requireRendered(t, output)
 
 	expectedMax := 100
 	maxLine := 0

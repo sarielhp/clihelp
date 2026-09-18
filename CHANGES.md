@@ -2,6 +2,14 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [Unreleased]
+
+### Internal
+- **Thirteen Tests That Could Not Fail.** Six mutation surveys all landed between 29% and 32%, and the recurring cause was not missing tests but tests present and inert. A scan for them found four that contained nothing capable of failing: `TestExecuteGlobalFlagsBound` **logged** the two values it existed to check and asserted only that `Execute` returned no error, so the global flags could have stopped binding to their targets entirely; `FuzzBindFlagSpec`'s comment said "a second bind of the same spec must be refused, not panic" and then discarded both results, so every name-collision check in `options.go` could have been deleted with a million executions still green — that was one of the four mutations the `options.go` survey could not score; `TestPrintError` called it twice and never looked at the output, and, having no `Stderr` of its own, printed `Error: sample error` into the middle of every run of the suite; and `TestHelpFlagsInExamplesActuallyRun` checked only the error, so a help flag that quietly printed nothing passed as working.
+- **Nine more asserted properties of output without asserting there was output.** Every one is of the form "no line does X", and every one holds vacuously of no output at all. This was measured, not guessed: `reflowMargin` — the function that writes every wrapped line in this library — was made to return without writing, and the width, hyperlink-balance and whitespace properties all still passed; the same was true of `RenderCommand` made to render nothing. `requireRendered` now sits in the two shared assertion helpers and in the tests that loop over lines themselves, and with it all nine fail as they should.
+- **`TestEveryTestCanFail` makes the class self-policing.** It parses every `_test.go` file in the library and its subpackages and fails on a test function containing no `t.Error`/`t.Fatal`, no assertion helper, and no call to another test helper that can itself fail — the transitive rule, so that a test written as three named steps is not called inert. The exception list is empty and adding to it requires a written reason, like `sharedHelperExceptions` beside it. The precedent is `TestSharedHelperExceptionsAreSorted`, which used `t.Logf` where it meant `t.Errorf`, could not fail, and on being fixed immediately caught that the list it guards was unsorted.
+- The new assertion in `FuzzBindFlagSpec` was checked over 1.22 million executions before being kept, and it holds.
+
 ## [0.3.29] - 2026-09-18
 
 ### Internal

@@ -464,6 +464,7 @@ func TestStdoutCarriesOnlyMachineReadableOutput(t *testing.T) {
 
 			res := runProto(t, bareApp(), tt.args...)
 			res.AssertNoError(t)
+			requireRendered(t, res.Stdout)
 			for _, line := range strings.Split(strings.TrimSpace(res.Stdout), "\n") {
 				if line == "" {
 					continue

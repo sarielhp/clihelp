@@ -56,9 +56,17 @@ func FuzzBindFlagSpec(f *testing.F) {
 		for _, opt := range options {
 			fs := pflag.NewFlagSet("fuzz", pflag.ContinueOnError)
 			fs.SetOutput(io.Discard)
-			_ = opt.Binder(fs)
-			// A second bind of the same spec must be refused, not panic.
-			_ = opt.Binder(fs)
+			if err := opt.Binder(fs); err != nil {
+				continue // the spec was rejected, which is a legitimate answer
+			}
+			// A second bind of the same spec must be refused, not panic — and
+			// this was only a comment: both results were discarded, so every
+			// name-collision check in options.go could have been removed with
+			// the fuzzer still green.
+			if err := opt.Binder(fs); err == nil {
+				t.Errorf("binding %q twice was accepted; the second registration "+
+					"silently shadows or duplicates the first", spec)
+			}
 		}
 	})
 }

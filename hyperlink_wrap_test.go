@@ -16,6 +16,7 @@ func openOSC(line string) int {
 
 func assertEveryLineIsBalanced(t *testing.T, out string) {
 	t.Helper()
+	requireRendered(t, out)
 	for i, line := range strings.Split(strings.TrimRight(out, "\n"), "\n") {
 		if n := openOSC(line); n != 0 {
 			t.Errorf("line %d leaves %d hyperlink(s) open: %q", i, n, line)

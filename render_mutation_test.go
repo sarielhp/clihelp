@@ -49,6 +49,7 @@ func TestAnOverWideLineHoldsOnlyOneWord(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
 			reflow(&buf, color.New(color.FgWhite), tt.width, tt.indent, tt.prefix, tt.text)
+			requireRendered(t, buf.String())
 			for _, line := range strings.Split(strings.TrimRight(buf.String(), "\n"), "\n") {
 				if VisualWidth(line) <= tt.width {
 					continue
