@@ -17,6 +17,51 @@ import (
 // *not* preserved — a rename installs a new inode — and an interrupt between the
 // write and the rename can leave one .tmp-* sibling.
 func writeFileAtomically(path string, data []byte, mode os.FileMode) error {
+	return writeFileAtomicallyWith(realFileOps(), path, data, mode)
+}
+
+// tempFile is the part of *os.File this writer uses. It exists so the failure
+// points below can be driven from a test.
+type tempFile interface {
+	Name() string
+	Write(p []byte) (int, error)
+	Sync() error
+	Close() error
+}
+
+// fileOps is the seam.
+//
+// Every syscall in this function can fail, and each failure has a contract
+// attached — an error returned, the original file untouched, no temporary left
+// behind. None of that was testable while os was called directly, so none of it
+// was tested: the contract in the comment above was a claim, not a checked
+// property. Passing the operations in costs one indirection and makes each
+// failure reachable from a test. There is no package-level variable to swap,
+// because a mutable global would be visible to every other test in the package.
+type fileOps struct {
+	createTemp func(dir, pattern string) (tempFile, error)
+	chmod      func(name string, mode os.FileMode) error
+	rename     func(oldpath, newpath string) error
+	remove     func(name string) error
+	syncDir    func(name string)
+}
+
+func realFileOps() fileOps {
+	return fileOps{
+		createTemp: func(dir, pattern string) (tempFile, error) { return os.CreateTemp(dir, pattern) },
+		chmod:      os.Chmod,
+		rename:     os.Rename,
+		remove:     func(name string) error { return os.Remove(name) },
+		syncDir: func(name string) {
+			if dir, err := os.Open(name); err == nil {
+				_ = dir.Sync()
+				dir.Close()
+			}
+		},
+	}
+}
+
+func writeFileAtomicallyWith(ops fileOps, path string, data []byte, mode os.FileMode) error {
 	if refuseForeignOwner(path) {
 		return fmt.Errorf("refusing to write %q as root: it belongs to another user", path)
 	}
@@ -30,12 +75,12 @@ func writeFileAtomically(path string, data []byte, mode os.FileMode) error {
 		path = resolved
 	}
 
-	f, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".tmp-*")
+	f, err := ops.createTemp(filepath.Dir(path), filepath.Base(path)+".tmp-*")
 	if err != nil {
 		return err
 	}
 	tmp := f.Name()
-	defer os.Remove(tmp) // no-op once the rename has succeeded
+	defer func() { _ = ops.remove(tmp) }() // no-op once the rename has succeeded
 
 	if _, err := f.Write(data); err != nil {
 		f.Close()
@@ -52,16 +97,13 @@ func writeFileAtomically(path string, data []byte, mode os.FileMode) error {
 	if err := f.Close(); err != nil {
 		return err
 	}
-	if err := os.Chmod(tmp, mode); err != nil {
+	if err := ops.chmod(tmp, mode); err != nil {
 		return err
 	}
 	preserveOwner(path, tmp)
-	if err := os.Rename(tmp, path); err != nil {
+	if err := ops.rename(tmp, path); err != nil {
 		return err
 	}
-	if dir, err := os.Open(filepath.Dir(path)); err == nil {
-		_ = dir.Sync()
-		dir.Close()
-	}
+	ops.syncDir(filepath.Dir(path))
 	return nil
 }

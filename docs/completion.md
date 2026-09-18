@@ -81,6 +81,14 @@ The generated file holds both halves — the completion registration *and* the A
 
 **Nothing runs at shell startup.** The startup line is a file test and a `source` — no command substitution, no `eval`, nothing that invokes the program. The line names a fixed path and never changes again; upgrades rewrite the file it points at, not your config.
 
+**One more file.** Editing a startup file is a read-modify-write, and two programs
+installing at once contend for it, so the edit is serialized with an advisory lock on a
+companion file — `~/.bashrc.clihelp-lock`, empty and mode 0600. It is deliberately never
+deleted: `flock` is held on an inode rather than a name, so removing the file lets a waiter
+and a newcomer end up holding two different inodes and believing they hold the same lock.
+Measured with the file being deleted, 478 of 480 serialized updates were lost. fish needs no
+lock and gets none, because `conf.d` is a drop-in directory and nothing shared is edited.
+
 **Keeping it current.** The generated file carries a `clihelp-integration-version` marker. When the application is upgraded and its clihelp templates change, the next run of the program rewrites the file. `App.AutoInstallCompletion` refreshes what is already installed — the generated file, and a completion script at the older XDG location if clihelp wrote it — and *never* creates a file or edits a startup file on its own. The flag is the author's choice; the files are in the user's home, so nothing there appears because someone ran an unrelated command. Installing is what `install` is for.
 
 **Options.**

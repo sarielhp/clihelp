@@ -16,6 +16,14 @@ import (
 // is not fatal: the caller proceeds unlocked, which is exactly the behaviour
 // that existed before. A non-clihelp writer is not serialized either, and cannot
 // be.
+//
+// The lock file is deliberately never removed. flock is held on an *inode*, not
+// on a name, so unlinking it after unlocking opened the classic window: a waiter
+// already blocked on the old inode acquires it just as a newcomer's O_CREATE
+// makes a fresh inode and locks that instead. Two writers then believe they hold
+// the same lock, and the read-modify-write below loses whole blocks — measured
+// at 2 of 8, with every caller reporting success. An empty 0600 file beside the
+// startup file is the price of the lock actually being one.
 func lockFile(path string) (func(), error) {
 	f, err := os.OpenFile(path+".clihelp-lock", os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
@@ -28,6 +36,5 @@ func lockFile(path string) (func(), error) {
 	return func() {
 		_ = syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
 		f.Close()
-		_ = os.Remove(path + ".clihelp-lock")
 	}, nil
 }
