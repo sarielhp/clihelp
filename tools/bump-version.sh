@@ -16,7 +16,17 @@ versioned=(VERSION example/main.go clihelp.go)
 # nothing committed. The next run then bumped again from there and skipped a
 # version outright — and since the failure was silent, there was nothing to
 # suggest looking. Put them back, whatever fails, up until the commit lands.
-restore() { git checkout -- "${versioned[@]}" 2>/dev/null || true; }
+# Only the two generated directories, and only if they were clean when we
+# started: reverting docs/ wholesale would throw away hand-written edits to
+# docs/completion.md and its neighbours, which live in the same tree.
+generated=(docs/clihelp docs/mail_cli_fake)
+generated_were_clean=1
+[ -n "$(git status --porcelain -- "${generated[@]}")" ] && generated_were_clean=0
+
+restore() {
+    git checkout -- "${versioned[@]}" 2>/dev/null || true
+    [ "$generated_were_clean" = 1 ] && git checkout -- "${generated[@]}" 2>/dev/null || true
+}
 trap restore ERR
 
 log=$(mktemp -t clihelp-bump-XXXXXX)
@@ -24,6 +34,25 @@ log=$(mktemp -t clihelp-bump-XXXXXX)
 echo "$new" > VERSION
 ruby -pi -e "sub(/Version:\s+\"[^\"]+\"/, %Q{Version:        \"$new\"})" example/main.go
 ruby -pi -e "sub(/const Version = \"[^\"]+\"/, %Q{const Version = \"$new\"})" clihelp.go
+
+# The generated documentation embeds App.Version, so it is stale the moment the
+# version changes. Nothing used to regenerate it at release, which left the docs
+# one version behind every time. Regenerate before the check, so the check sees
+# the tree that is about to be committed.
+if ! CLIHELP_GEN=1 CLIHELP_NO_AUTO_COMPLETION=1 go run ./example > "$log" 2>&1; then
+    restore
+    trap - ERR
+    echo "bump aborted at $new: regenerating docs/clihelp failed. Version files restored." >&2
+    tail -n 25 "$log" >&2
+    exit 1
+fi
+if ! CLIHELP_GEN=1 CLIHELP_NO_AUTO_COMPLETION=1 go run ./example/mail_cli_fake >> "$log" 2>&1; then
+    restore
+    trap - ERR
+    echo "bump aborted at $new: regenerating docs/mail_cli_fake failed. Version files restored." >&2
+    tail -n 25 "$log" >&2
+    exit 1
+fi
 
 # The check's output went to /dev/null, so a release that failed here reported
 # nothing but "Error 1" — no failing step, no test name, nothing to act on.
@@ -37,7 +66,7 @@ if ! bash tools/check.sh > "$log" 2>&1; then
     exit 1
 fi
 
-git add "${versioned[@]}"
+git add "${versioned[@]}" "${generated[@]}"
 git commit -q -m "chore: bump version to $new"
 # Past here the version is committed; restoring the files would empty the very
 # commit just made, so the trap comes off and each step reports for itself.
