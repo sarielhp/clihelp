@@ -473,9 +473,13 @@ func validateExampleTokens(app *App, targetCmd *Command, ancestors []*Command, r
 	}
 	fs := pflag.NewFlagSet(cmdName, pflag.ContinueOnError)
 
-	var helpReq bool
-	fs.BoolVarP(&helpReq, "help", "h", false, "help")
-	_ = fs.MarkHidden("help")
+	// The same binder the real flag set uses, rather than this function's own
+	// idea of what the help flags are. They had drifted: the real set binds
+	// --help-concise with -h, and --help with -H when App.ExtendedHelpFlag is
+	// on, while this bound only --help with -h. An example using a help flag the
+	// application really accepts was reported as "invalid flag in example" — by
+	// Audit, which the README recommends running in CI.
+	_ = app.bindHelpFlags(fs, cmdName)
 
 	allOptions := app.collectAllActiveOptions(targetCmd, ancestors)
 	// Scratch binding: validating an example must not write through the pointers

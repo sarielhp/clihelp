@@ -88,8 +88,10 @@
 //   - Boolean toggle pairs: "--[no-]cache" (registers both --cache and --no-cache)
 //   - Value hints / placeholders: "<file>", "PATH", "[value]"
 //
-// Caution: Do not manually register "-h" or "--help" flags in your Options slices.
-// [App.Execute] automatically manages help flag registration and help rendering.
+// Caution: Do not manually register "-h", "--help", "--help-concise", or — when
+// [App.ExtendedHelpFlag] is set — "-H" in your Options slices. [App.Execute]
+// registers all of them and renders the help itself; a collision is reported
+// when the option is bound.
 //
 // # Positional Argument Validators
 //
