@@ -2,7 +2,7 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
-## [Unreleased]
+## [0.3.29] - 2026-09-18
 
 ### Internal
 - **The Rendering Path Judged by Mutation: 27 of 38, Then 38 of 38.** `render.go`, `format.go` and `inline.go` are the largest surface never put under mutation, and they were the one case where the result was genuinely uncertain: they already have a deep review behind them (v0.3.19–0.3.22) and are covered by golden-output assertions from `example/` and `example/mail_cli_fake`, whose oracle is a second renderer. If goldens were worth more than targeted tests, this is where it would show. **It does not.** The escape rate was 29%, indistinguishable from `install.go`/`man.go` at 29% and `doc/`/`tree/` at 32%. A golden test pins what the sample output happens to exercise; it says nothing about the branch beside it.
