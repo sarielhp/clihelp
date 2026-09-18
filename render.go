@@ -282,7 +282,7 @@ func (a *App) renderCommandGrouped(w io.Writer, th Theme, o Options, termWidth i
 		return
 	}
 	groups = normalizeGroups(groups, "Other Commands")
-	indent := colIndent(params)
+	indent := colIndentFor(params, termWidth, minTextColumns)
 	prev := ""
 
 	isMultiLine := func(p Param) bool {
@@ -379,7 +379,7 @@ func optionsToParams(options []Option) []Param {
 
 func renderOptionList(w io.Writer, th Theme, o Options, termWidth int, options []Option) {
 	params := optionsToParams(options)
-	indent := colIndent(params)
+	indent := colIndentFor(params, termWidth, minTextColumns)
 	for _, p := range params {
 		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description), th.Flag)
 	}
@@ -405,7 +405,7 @@ func (a *App) renderGlobalShortcuts(w io.Writer, th Theme, o Options, termWidth 
 		return
 	}
 	th.Accent.Fprintln(w, "Shortcut Commands:")
-	indent := colIndent(params)
+	indent := colIndentFor(params, termWidth, minTextColumns)
 	for _, p := range params {
 		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description), th.Subcommand)
 	}
@@ -442,11 +442,15 @@ func (a *App) RenderGlobal(o Options) {
 			th := o.theme(a)
 			termWidth := o.width()
 
-			th.Hdr.Fprint(w, "Usage:  ")
-			// inline(), as RenderCommand and RenderMan already do: App.UsageLine was
-			// rendered on two of the four paths, so the same app showed raw ** here
-			// and a URL the author had written as a link.
-			fmt.Fprintln(w, o.inline(a.usageLine()))
+			// "Usage:" is the prefix column, so a long usage line wraps under
+			// itself instead of overflowing. It was the one line in the page that
+			// was never wrapped, which is what made a narrow terminal unreadable.
+			//
+			// inline(), as RenderCommand and RenderMan already do: App.UsageLine
+			// was rendered on two of the four paths, so the same app showed raw
+			// ** here and a URL the author had written as a link.
+			reflowMargin(w, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 0, 8,
+				"Usage:", o.inline(a.usageLine()), th.Hdr)
 
 			if a.Description != "" {
 				fmt.Fprintln(w)
@@ -526,7 +530,9 @@ func renderCommandTitle(w io.Writer, th Theme, o Options, cmd *Command, termWidt
 	if th.Separator {
 		separator(w, th, sepW)
 	}
-	reflow(w, th.Accent, wrapWidth(termWidth, 2, o.maxContent()), 2, "", th.TitlePrefix+title(cmd))
+	// The title lives inside the rule, so it gets the rule's width — not the rule's
+	// width plus its own indent, which let it overhang by two columns.
+	reflow(w, th.Accent, sepW, 2, "", th.TitlePrefix+title(cmd))
 	if th.Separator {
 		separator(w, th, sepW)
 	}
@@ -576,7 +582,7 @@ func renderCommandParams(w io.Writer, th Theme, o Options, termWidth int, params
 		return
 	}
 	th.Hdr.Fprintln(w, "\nParameters:")
-	indent := colIndent(params)
+	indent := colIndentFor(params, termWidth, minTextColumns)
 	for _, p := range params {
 		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description))
 	}
@@ -741,8 +747,8 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 			renderCommandTitle(w, th, o, cmd, termWidth, sepW)
 
 			usage := a.buildDefaultUsage(cmd, path)
-			th.Hdr.Fprint(w, "Usage:  ")
-			fmt.Fprintln(w, o.inline(usage))
+			reflowMargin(w, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 0, 8,
+				"Usage:", o.inline(usage), th.Hdr) // see RenderGlobal
 
 			desc := cmd.Description
 			if !o.Concise && cmd.LongDescription != "" {

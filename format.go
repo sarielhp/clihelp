@@ -1,6 +1,7 @@
 package clihelp
 
 import (
+	"fmt"
 	"io"
 	"regexp"
 	"strings"
@@ -43,7 +44,13 @@ func visualLen(s string) int {
 // cost nothing, and a wide rune costs two. Every layout decision in this library
 // and its subpackages has to measure the same way, or columns do not line up.
 func VisualWidth(s string) int {
-	return runewidth.StringWidth(expandTabs(StripANSI(s)))
+	// ToValidUTF8 makes the measurement additive over a whitespace join, which
+	// reflowWords depends on: it accumulates per-word widths and compares the sum
+	// to the line width, and runewidth's grapheme segmentation made a stray byte
+	// measure differently on its own than in context, pushing a line one column
+	// past the width it was given. A terminal draws one replacement glyph for
+	// such a byte, which is what this now measures.
+	return runewidth.StringWidth(expandTabs(strings.ToValidUTF8(StripANSI(s), "\uFFFD")))
 }
 
 // tabStop is the column interval a terminal advances a tab to.
@@ -97,16 +104,24 @@ func splitLines(text string) []string {
 // padPrefix lays prefix out in its own column, padded to indent display
 // columns. fmt's "%-*s" pads by rune count, so a wide (CJK) name — two columns
 // per rune — pushed its description out of line with every other row.
-func padPrefix(prefix string, indent int) string {
-	pad := indent - 2 - visualLen(prefix)
+// padPrefix lays the prefix out in its own column: margin columns of leading
+// space, the prefix, then padding to indent.
+//
+// The margin used to be hardcoded at two. Only the description column could be
+// moved, so RenderMan's nested Parameters and Flags lists — which add 6 to the
+// indent to sit inside their command — put their names at column 2, outdented
+// from their own headings, with the extra six columns appearing as a wider gap
+// instead.
+func padPrefix(prefix string, margin, indent int) string {
+	pad := indent - margin - visualLen(prefix)
 	if pad < 0 {
 		pad = 0
 	}
-	return "  " + prefix + strings.Repeat(" ", pad)
+	return strings.Repeat(" ", margin) + prefix + strings.Repeat(" ", pad)
 }
 
-func formatPrefix(w io.Writer, c *color.Color, prefixColor *color.Color, indent int, prefix string, noWords bool) (string, int, bool) {
-	prefixDisplay := "  " + prefix
+func formatPrefix(w io.Writer, c *color.Color, prefixColor *color.Color, margin, indent int, prefix string, noWords bool) (string, int, bool) {
+	prefixDisplay := strings.Repeat(" ", margin) + prefix
 	if prefixColor != nil {
 		prefixDisplay = prefixColor.Sprint(prefixDisplay)
 	}
@@ -121,7 +136,7 @@ func formatPrefix(w io.Writer, c *color.Color, prefixColor *color.Color, indent 
 		c.Fprintln(w, prefixDisplay)
 		return "", 0, true
 	}
-	prefixStr := padPrefix(prefix, indent)
+	prefixStr := padPrefix(prefix, margin, indent)
 	if prefixColor != nil {
 		prefixStr = prefixColor.Sprint(prefixStr)
 	}
@@ -157,27 +172,37 @@ func openHyperlink(s string) string {
 // by line — App.Explain's budget, or `myapp --help | head` — dropped the
 // terminator for good, and the terminal went on hyperlinking every cell it drew
 // afterwards, the shell prompt included, after the program had exited.
-func emitLine(w io.Writer, c *color.Color, line string) string {
-	// Trailing spaces are invisible until someone selects the line, or diffs it,
-	// or pastes it. The padded prefix column produces them on every row whose
-	// description is empty.
-	line = strings.TrimRight(line, " ")
-	if url := openHyperlink(line); url != "" {
-		c.Fprintln(w, line+osc8+oscEnd)
-		return osc8 + url + oscEnd
+func emitLine(w io.Writer, c *color.Color, lead, text string) string {
+	// The lead — a coloured prefix, or plain indent — is written as it is, and
+	// only the text is wrapped in the ambient colour.
+	//
+	// Colouring the whole line at once was wrong: fatih/color closes a nested
+	// colour with a full SGR reset, not with the outer colour, so the prefix's
+	// closer killed the body colour for the rest of that row while the
+	// continuation rows — which have no nested colour — kept it. Every flags
+	// table had its first description line uncoloured and its wrapped remainder
+	// coloured.
+	text = strings.TrimRight(text, " ")
+	reopen := ""
+	if url := openHyperlink(lead + text); url != "" {
+		text += osc8 + oscEnd
+		reopen = osc8 + url + oscEnd
 	}
-	c.Fprintln(w, line)
-	return ""
+	if text == "" {
+		fmt.Fprintln(w, strings.TrimRight(lead, " "))
+		return reopen
+	}
+	fmt.Fprintln(w, lead+c.Sprint(text))
+	return reopen
 }
 
 func reflowWords(w io.Writer, c *color.Color, width, indent int, initialStr string, initialLen int, words []string) {
 	indentStr := strings.Repeat(" ", indent)
+	lead := initialStr
 	var cur strings.Builder
-	cur.WriteString(initialStr)
 	curLen := initialLen
 	wrote := false
 	lineHasWords := initialLen > indent
-	reopen := ""
 	for _, word := range words {
 		wlen := visualLen(word)
 		space := 0
@@ -189,9 +214,9 @@ func reflowWords(w io.Writer, c *color.Color, width, indent int, initialStr stri
 		// word flushed a line holding only the indent — or only the padded
 		// prefix — and a zero-width word left the next one glued to it.
 		if lineHasWords && curLen+space+wlen > width {
-			reopen = emitLine(w, c, cur.String())
+			reopen := emitLine(w, c, lead, cur.String())
+			lead = indentStr
 			cur.Reset()
-			cur.WriteString(indentStr)
 			cur.WriteString(reopen) // zero width, so curLen is unchanged by it
 			cur.WriteString(word)
 			curLen = indent + wlen
@@ -211,7 +236,7 @@ func reflowWords(w io.Writer, c *color.Color, width, indent int, initialStr stri
 	// zero-width space — still belongs to a row that has a prefix to show, so
 	// the test is whether anything was written, not how wide it came out.
 	if wrote || curLen > indent {
-		emitLine(w, c, cur.String())
+		emitLine(w, c, lead, cur.String())
 	}
 }
 
@@ -264,14 +289,14 @@ func detectListPrefix(s string) (string, bool) {
 // column and following lines are indented to align it. When text starts with a
 // list prefix (bullet or numbered list), continuation lines use hanging indents
 // aligned to the list item text (indent + visualLen(listPrefix)).
-func reflowSegment(w io.Writer, c *color.Color, prefixColor *color.Color, width, indent int, prefix, text string) {
+func reflowSegment(w io.Writer, c *color.Color, prefixColor *color.Color, width, margin, indent int, prefix, text string) {
 	listPrefix, isList := detectListPrefix(text)
 	if isList {
 		remText := text[len(listPrefix):]
 		words := strings.Fields(remText)
 		hangingIndent := indent + visualLen(listPrefix)
 		if prefix != "" {
-			initialStr, initialLen, done := formatPrefix(w, c, prefixColor, indent, prefix, false)
+			initialStr, initialLen, done := formatPrefix(w, c, prefixColor, margin, indent, prefix, false)
 			if done {
 				return
 			}
@@ -295,7 +320,7 @@ func reflowSegment(w io.Writer, c *color.Color, prefixColor *color.Color, width,
 
 	words := strings.Fields(text)
 	if prefix != "" {
-		initialStr, initialLen, done := formatPrefix(w, c, prefixColor, indent, prefix, len(words) == 0)
+		initialStr, initialLen, done := formatPrefix(w, c, prefixColor, margin, indent, prefix, len(words) == 0)
 		if done {
 			return
 		}
@@ -314,7 +339,13 @@ func reflowSegment(w io.Writer, c *color.Color, prefixColor *color.Color, width,
 // and following lines are indented to align it. Width is measured in visible
 // characters, so ANSI escape codes and multi-byte runes are ignored when
 // deciding where to wrap.
+// reflow lays text out at the default two-column margin. reflowMargin takes one
+// explicitly, for lists nested inside another section.
 func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string, prefixColors ...*color.Color) {
+	reflowMargin(w, c, width, 2, indent, prefix, text, prefixColors...)
+}
+
+func reflowMargin(w io.Writer, c *color.Color, width, margin, indent int, prefix, text string, prefixColors ...*color.Color) {
 	var prefixColor *color.Color
 	if len(prefixColors) > 0 {
 		prefixColor = prefixColors[0]
@@ -324,14 +355,14 @@ func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string,
 	// one split it across two rows while the width was computed on the whole
 	// thing. Same class as the tree/firstSentence defect already fixed.
 	prefix = strings.Join(strings.Fields(prefix), " ")
-	if prefix != "" && indent < 2 {
-		indent = 2
+	if prefix != "" && indent < margin {
+		indent = margin
 	}
 	if strings.TrimSpace(text) == "" {
 		if prefix != "" {
 			// The prefix is the name of something — a command, a flag — and it
 			// has to be listed whether or not it came with a description.
-			formatPrefix(w, c, prefixColor, indent, prefix, true)
+			formatPrefix(w, c, prefixColor, margin, indent, prefix, true)
 		}
 		return
 	}
@@ -346,7 +377,7 @@ func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string,
 		}
 		if seg == "" && i+1 < len(segments) {
 			if prefix != "" {
-				prefixStr := padPrefix(prefix, indent)
+				prefixStr := padPrefix(prefix, margin, indent)
 				if prefixColor != nil {
 					prefixStr = prefixColor.Sprint(prefixStr)
 				}
@@ -360,7 +391,7 @@ func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string,
 		if seg == "" {
 			continue
 		}
-		reflowSegment(w, c, prefixColor, width, indent, prefix, seg)
+		reflowSegment(w, c, prefixColor, width, margin, indent, prefix, seg)
 		prefix = ""
 	}
 }
@@ -534,6 +565,33 @@ func appName(a *App) string {
 
 // colIndent returns the indent (max visible width + 4, capped at DefaultMaxColIndent)
 // so that entries line up cleanly without excessive horizontal spacing.
+// colIndentFor is colIndent, reduced so that at least minText columns are left
+// for the description.
+//
+// colIndent knows nothing about the terminal, so a 13-column flag name at width
+// 20 left about three columns for the text and every word took its own line.
+// Explain feeds the shell's real $COLUMNS, so a narrow pane reaches this. A name
+// that no longer fits the reduced column takes formatPrefix's own-line branch,
+// which is already the tested behaviour for a name wider than its column.
+func colIndentFor(params []Param, termWidth, minText int) int {
+	indent := colIndent(params)
+	if termWidth <= 0 {
+		return indent
+	}
+	// On a terminal too narrow to give minText away, split the difference rather
+	// than starve one side.
+	if half := termWidth / 2; minText > half {
+		minText = half
+	}
+	if limit := termWidth - minText; limit >= 6 && indent > limit {
+		return limit
+	}
+	return indent
+}
+
+// minTextColumns is the narrowest description column worth wrapping into.
+const minTextColumns = 20
+
 func colIndent(params []Param) int {
 	maxW := 0
 	for _, p := range params {

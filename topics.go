@@ -26,7 +26,7 @@ func renderOptionsGrouped(w io.Writer, th Theme, o Options, termWidth int, opts 
 	// See normalizeGroups: RenderMan reaches here with the raw list, so an
 	// ungrouped flag used to be printed under the previous group's heading.
 	groups = normalizeGroups(groups, "Other Flags")
-	indent := colIndent(params)
+	indent := colIndentFor(params, termWidth, minTextColumns)
 	prev := ""
 
 	for i, p := range params {
@@ -158,8 +158,8 @@ func (a *App) RenderFlags(o Options) {
 		th := o.theme(a)
 		termWidth := o.width()
 
-		th.Hdr.Fprint(w, "Usage:  ")
-		fmt.Fprintln(w, o.inline(a.usageLine())) // see RenderGlobal
+		reflowMargin(w, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 0, 8,
+			"Usage:", o.inline(a.usageLine()), th.Hdr) // see RenderGlobal
 
 		fmt.Fprintln(w)
 		th.Body.Fprintln(w, "Global flags available to all commands:")
@@ -265,9 +265,10 @@ func (a *App) renderManTopics(w io.Writer, th Theme, o Options, termWidth int) {
 		{Name: "flags", Description: "Show all global flags and persistent options"},
 		{Name: "man", Description: "Display this complete reference manual (paged)"},
 	}
-	indent := colIndent(topics) + 4
+	// margin 4: the topic list sits under the sentence introducing it.
+	indent := colIndent(topics) + 2
 	for _, t := range topics {
-		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, t.Name, o.inline(t.Description), th.Subcommand)
+		reflowMargin(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), 4, indent, t.Name, o.inline(t.Description), th.Subcommand)
 	}
 }
 
@@ -293,9 +294,11 @@ func (a *App) renderManCommands(w io.Writer, th Theme, o Options, termWidth int,
 		if len(c.Parameters) > 0 {
 			fmt.Fprintln(w)
 			th.Hdr.Fprintln(w, "      Parameters:")
-			indent := colIndent(c.Parameters) + 6
+			// margin 6: these sit inside the command they belong to, level with
+			// the "Parameters:" heading above them.
+			indent := colIndent(c.Parameters) + 4
 			for _, p := range c.Parameters {
-				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description))
+				reflowMargin(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), 6, indent, p.Name, o.inline(p.Description))
 			}
 		}
 
@@ -317,9 +320,9 @@ func (a *App) renderManCommands(w io.Writer, th Theme, o Options, termWidth int,
 				}
 				optParams = append(optParams, Param{Name: opt.Flags, Description: desc})
 			}
-			indent := colIndent(optParams) + 6
+			indent := colIndent(optParams) + 4
 			for _, p := range optParams {
-				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description), th.Flag)
+				reflowMargin(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), 6, indent, p.Name, o.inline(p.Description), th.Flag)
 			}
 		}
 

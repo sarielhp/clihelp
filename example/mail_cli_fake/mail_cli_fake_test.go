@@ -57,8 +57,8 @@ func oracleSplitLines(text string) []string {
 	return out
 }
 
-func oracleFormatPrefix(out io.Writer, c, prefixColor *color.Color, indent int, prefix string, noWords bool) (string, int, bool) {
-	prefixDisplay := "  " + prefix
+func oracleFormatPrefix(out io.Writer, c, prefixColor *color.Color, margin, indent int, prefix string, noWords bool) (string, int, bool) {
+	prefixDisplay := strings.Repeat(" ", margin) + prefix
 	if prefixColor != nil {
 		prefixDisplay = prefixColor.Sprint(prefixDisplay)
 	}
@@ -73,28 +73,44 @@ func oracleFormatPrefix(out io.Writer, c, prefixColor *color.Color, indent int, 
 		c.Fprintln(out, prefixDisplay)
 		return "", 0, true
 	}
-	prefixStr := "  " + padRight(prefix, indent-2)
+	prefixStr := strings.Repeat(" ", margin) + padRight(prefix, indent-margin)
 	if prefixColor != nil {
 		prefixStr = prefixColor.Sprint(prefixStr)
 	}
 	return prefixStr, oracleVisualLen(prefixStr), false
 }
 
+// oracleReflowWords mirrors clihelp's reflowWords. Two properties it did not
+// mirror, both of which it silently pinned as correct until they were fixed:
+// the lead is written outside the ambient colour, because a nested colour closes
+// with a full SGR reset and killed the body colour for the rest of the row; and
+// "does this line hold anything yet" is a boolean, not a width comparison, which
+// is what stopped an over-long first word flushing a line of pure padding.
 func oracleReflowWords(out io.Writer, c *color.Color, width, indent int, initialStr string, initialLen int, words []string) {
 	indentStr := strings.Repeat(" ", indent)
+	lead := initialStr
 	var current strings.Builder
-	current.WriteString(initialStr)
 	curLen := initialLen
+	lineHasWords := initialLen > indent
+	wrote := false
+	emit := func() {
+		text := strings.TrimRight(current.String(), " ")
+		if text == "" {
+			fmt.Fprintln(out, strings.TrimRight(lead, " "))
+			return
+		}
+		fmt.Fprintln(out, lead+c.Sprint(text))
+	}
 	for _, word := range words {
 		wlen := oracleVisualLen(word)
 		space := 0
-		if curLen > indent {
+		if lineHasWords {
 			space = 1
 		}
-		if curLen+space+wlen > width {
-			c.Fprintln(out, current.String())
+		if lineHasWords && curLen+space+wlen > width {
+			emit()
+			lead = indentStr
 			current.Reset()
-			current.WriteString(indentStr)
 			current.WriteString(word)
 			curLen = indent + wlen
 		} else {
@@ -105,16 +121,22 @@ func oracleReflowWords(out io.Writer, c *color.Color, width, indent int, initial
 			current.WriteString(word)
 			curLen += wlen
 		}
+		lineHasWords = true
+		wrote = true
 	}
-	if curLen > indent {
-		c.Fprintln(out, current.String())
+	if wrote || curLen > indent {
+		emit()
 	}
 }
 
 func oracleReflowSegment(out io.Writer, c *color.Color, prefixColor *color.Color, width, indent int, prefix, text string) {
+	oracleReflowSegmentMargin(out, c, prefixColor, width, 2, indent, prefix, text)
+}
+
+func oracleReflowSegmentMargin(out io.Writer, c *color.Color, prefixColor *color.Color, width, margin, indent int, prefix, text string) {
 	words := strings.Fields(text)
 	if prefix != "" {
-		initialStr, initialLen, done := oracleFormatPrefix(out, c, prefixColor, indent, prefix, len(words) == 0)
+		initialStr, initialLen, done := oracleFormatPrefix(out, c, prefixColor, margin, indent, prefix, len(words) == 0)
 		if done {
 			return
 		}
@@ -131,6 +153,26 @@ func oracleReflowSegment(out io.Writer, c *color.Color, prefixColor *color.Color
 // oracleVisualLen returns the visible width of s, ignoring ANSI escape codes.
 func oracleVisualLen(s string) int {
 	return len([]rune(stripansi.Strip(s)))
+}
+
+// oracleReflowIndent is oracleReflow with an explicit margin, which the prefix
+// column needs now that a nested list can sit inside another section.
+func oracleReflowIndent(out io.Writer, c *color.Color, prefixColor *color.Color, margin, indent int, prefix, text string) {
+	width := oracleWidth()
+	if width > 80 {
+		width = 80
+	}
+	// Segment by line, as oracleReflow does: an author who writes a multi-line
+	// UsageLine means those lines, and flattening them into one flow is what the
+	// first version of this helper did.
+	for _, seg := range oracleSplitLines(strings.TrimSpace(text)) {
+		if seg == "" {
+			continue
+		}
+		oracleReflowSegmentMargin(out, c, prefixColor, width, margin, indent, prefix, seg)
+		prefix = ""
+		margin = indent
+	}
 }
 
 func oracleReflow(out io.Writer, c *color.Color, prefixColor *color.Color, indent int, prefix, text string) {
@@ -248,8 +290,9 @@ func oracleRenderOptions(out io.Writer, heading string, opts []clihelp.Option) {
 
 func oracleDetailedUsage(out io.Writer, a *clihelp.App, path []string, cmd *clihelp.Command) {
 	usage := oracleDefaultUsage(a, path, cmd)
-	oHdr.Fprint(out, "Usage:  ")
-	io.WriteString(out, clihelp.Inline(usage)+"\n")
+	// "Usage:" is the prefix column now, so a long usage line wraps under
+	// itself rather than overflowing the terminal.
+	oracleReflowIndent(out, oBody, oHdr, 0, 8, "Usage:", clihelp.Inline(usage))
 	if cmd.Description != "" {
 		io.WriteString(out, "\n")
 		oracleReflow(out, oBody, nil, 0, "", cmd.Description)
@@ -296,8 +339,8 @@ func oracleDetailedUsage(out io.Writer, a *clihelp.App, path []string, cmd *clih
 }
 
 func oracleGlobalUsage(out io.Writer, a *clihelp.App) {
-	oHdr.Fprint(out, "Usage:  ")
-	io.WriteString(out, a.Name+" [flags] <command> [args]\n\n")
+	oracleReflowIndent(out, oBody, oHdr, 0, 8, "Usage:", a.Name+" [flags] <command> [args]")
+	io.WriteString(out, "\n")
 	if a.Description != "" {
 		oracleReflow(out, oBody, nil, 0, "", a.Description)
 		io.WriteString(out, "\n")

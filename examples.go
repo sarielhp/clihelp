@@ -294,12 +294,16 @@ func writeExampleLine(w io.Writer, th Theme, indent int, colored string) {
 		fmt.Fprintln(w)
 		return
 	}
-	line := strings.Repeat(" ", indent) + colored
+	// The indent stays outside the colour, as it does everywhere else since
+	// emitLine stopped wrapping a whole line: a nested colour closes with a full
+	// SGR reset, so anything wrapped around already-coloured text ends up
+	// colouring only the part before the first nested sequence.
+	indentStr := strings.Repeat(" ", indent)
 	if th.Body != nil {
-		th.Body.Fprintln(w, line)
+		fmt.Fprintln(w, indentStr+th.Body.Sprint(colored))
 		return
 	}
-	fmt.Fprintln(w, line)
+	fmt.Fprintln(w, indentStr+colored)
 }
 
 func cleanExampleCommandLine(line string) string {
