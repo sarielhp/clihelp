@@ -2,6 +2,33 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.22] - 2026-09-18
+
+Fixes from the deep review of the terminal rendering path
+(`review/findings-2026-09-18-rendering.md`) — about 2,000 lines that neither previous
+review had opened. Every finding is closed. Each fix ships with a regression test whose
+teeth were checked against the unfixed behaviour.
+
+### Security
+- **An Author String Could Steer the User's Terminal** - every string an application supplies — descriptions, usage lines, notes, headings, parameter names — was copied to the terminal byte for byte, ESC included, and the author's URL was interpolated straight into clihelp's own OSC 8 payload. A description containing `\x1b[2J` cleared the screen mid-help, `\x1b[?25l` hid the cursor for good, `\x1b[?1049h` switched to the alternate buffer, and an ST or BEL inside a URL closed clihelp's own escape so that everything after it executed. The `?`-marker forms were worse than passthrough: the stripper could not match them, so they reached the terminal *and* corrupted the column arithmetic. These are not always compile-time literals — descriptions come from config files, embedded JSON and translation catalogues, `__clihelp` exists so a packager can set up a program whose author mounted nothing, and the completion generator pushes the same strings into a generated shell script. Control bytes other than newline and tab are now replaced, and a URL is percent-encoded before it enters an escape.
+
+### Fixed
+- **The Pager Has Never Paged** - `os/exec` hands a child a descriptor only when `Stdout` is an `*os.File`, and the destination was wrapped in a counting writer, so the pager always got a pipe, saw a non-terminal stdout and degraded to `cat`. `App.Pager`, `Options.Pager`, the `-R` plumbing and the help text promising a paged manual amounted to a fork and an extra copy. The counting writer was added deliberately, with a comment and a regression test, to tell "the pager never ran" from "it ran and quit" — a correct fix for a real bug that silently disabled the feature it was protecting, and nothing noticed because no test starts a terminal.
+- **A Pager That Printed Nothing Swallowed the Help** - `PAGER=true` exits 0 having written nothing, which was reported as success, so the fallback was skipped and the user saw no help at all. `PAGER=""` — the conventional way to disable paging — launched `less` anyway, as did `PAGER=cat`.
+- **Paging Counted Newlines, Not Screen Rows** - a page of twenty logical lines that each wrap to three occupies sixty rows and counted as twenty, so help that overflowed the screen printed unpaged. A `$PAGER` that backgrounds anything held the output pipe open and hung the program with no bound. Ctrl-C killed the parent and orphaned a pager that traps SIGINT, which kept the terminal and wrote over the shell prompt.
+- **A Wrapped Hyperlink Was Left Open** - the wrapper splits the rendered string, and the per-line reset that `fatih/color` appends is an SGR reset, which does not close an OSC 8 hyperlink. Anything that truncates by line then dropped the terminator — `Alt-H` does exactly that — and the terminal went on hyperlinking every cell it drew, including the shell prompt, after the program had exited.
+- **`-h` Ignored Its Own 24-Line Promise** - stated in `README.md`, `llms.txt`, `docs/flags-and-options.md` and twice in the cobra comparison, where it is the library's claimed differentiator. A command with thirty flags rendered 92 lines, byte-identical to `--help`, and `RenderGlobal` ignored the concise tier entirely. The bound is enforced now, with `Options.ConciseMaxLines` to change or remove it.
+- **Output Said Something False About Grouped Commands** - a command declaring no `Group` was printed under the previous group's heading, and the return to that group printed no heading. The same for flags in the manual page. Ungrouped entries now get a heading of their own.
+- **Colour Died at the First Nested Sequence** - every nested colour closes with a full SGR reset, so wrapping a whole line in the body colour meant the prefix's closer killed it for the rest of that row while the wrapped continuations kept it: every flags table had its first description line uncoloured. Colour is applied to the text, not the line.
+- **Escapes Survived `NO_COLOR`** - the theme's colours vanish when output is not a terminal, but the inline renderer's own escapes did not, so a redirected help page was not plain text. `Options.NoColor` and `App.NoColor` make it a per-render and per-application choice; the example app's own `--no-color` flag was bound and never read.
+- **Narrow Terminals Were Unreadable** - the usage line was never wrapped at all, and the description column never looked at the terminal, so a 13-column flag name at width 20 left about three columns for the text. Both are fixed, and the manual page's nested lists no longer sit outdented from their own headings.
+- **Smaller Corrections** - `Options.Theme` layers onto `App.Theme` rather than replacing it; `Usage:` promises `<subcommand>` when subcommands are documented declaratively; a link's blank-line decision is made on what is drawn; `FirstSentence` no longer cuts inside markdown; a backslash escapes only punctuation, so `C:\temp\x` survives; `[](url)` falls back to the URL as its label; a manual-page heading renders its markdown; a tab measures the columns a terminal advances; a line of spaces is still a paragraph break; a heading is not printed with no rows under it; the link parser is no longer quadratic.
+
+### Internal
+- `acarl005/stripansi` is gone. The test suite used it as its default stripper — the one `StripANSI`'s doc comment exists to warn about, which does not merely miss an OSC 8 sequence but eats seven bytes out of the middle of it.
+- The rendering path gains its first property tests: that a rendered line fits the width it was given, measured in display columns rather than runes, at five widths including 20 and 40, which no test had ever rendered at. Emoji, ZWJ sequences and combining marks appear in a test for the first time.
+- `tools/check.sh` was red when the review started, from a guard test committed an hour earlier: `go/parser.ParseDir` is deprecated and staticcheck is fatal there. The review gate treats staticcheck as advisory, which is the gap it lived in.
+
 ## [0.3.21] - 2026-09-18
 
 ### Fixed
