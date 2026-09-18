@@ -134,3 +134,98 @@ all). Retiring it and moving these to `internal/` are one piece of work.
 I did not check whether the 19 names a real application uses are the *right* 19
 — that is a design question about `Command` and `Option`, not a surface
 question, and it wants a second opinion rather than an audit.
+
+---
+
+# Addendum — how much further it can go
+
+The counts above use `go doc` lines, which include struct fields. The callable
+surface is cleaner to reason about:
+
+| | count |
+|---|---|
+| Exported functions and methods | 74 |
+| Exported types | 14 |
+| Exported consts and vars | 3 |
+| **Total nameable, callable API** | **91** |
+
+Two measurements narrow it much further than the first pass did.
+
+**Forty-nine of the 91 are used only by the library's own tests** — not by
+`doc/`, not by `tree/`, not by a consumer. That alone proves nothing: the demo
+application is one application, and `MinimumNArgs` being unused there is not
+evidence nobody wants it. What matters is the split inside those 49.
+
+**Twenty-three of them the library calls itself**, which is the real signal: a
+function the library invokes internally and no consumer invokes at all is an
+implementation detail that happens to start with a capital letter.
+
+## B1 — The installer family is the help command's internals, exposed
+
+```
+InstallCompletion   InstallShellIntegration   UninstallShellIntegration
+InstallManPage      UninstallManPage          InstallResult
+CompletionPath      IntegrationPath           ManPagePath
+IsCompletionInstalled
+```
+
+Ten names. Every one reads or writes inside the **user's** home directory, and
+every one is called by the library itself, from `__clihelp` and
+`CompletionCommand()`. That is the supported route: the author mounts one
+command, the user runs it once.
+
+Exporting them offers a second way in that nothing supervises. The rule that the
+unattended path may only refresh files that already exist is enforced in
+`autorefresh.go`; a consumer calling `InstallShellIntegration` directly gets none
+of it, and can edit a startup file from inside an ordinary program run. Making
+these unexported turns a documented rule into one the type system keeps.
+
+The packager's genuine need is served by the other half, which stays exported:
+`GenBashCompletion`, `GenZshCompletion`, `GenFishCompletion`, `GenManPage`,
+`GenShellIntegration`, `GenKeyBindings`, `GenWrapperScript` all write to an
+`io.Writer`. Generating a script into `/usr/share` at build time is a packager's
+job; writing into `$HOME` is not.
+
+## B2 — Four of the seven render entry points are the help system's internals
+
+`RenderMan`, `RenderFlags`, `RenderHelpTopics` are each called by the library to
+serve `help man`, `help flags` and `help`. No consumer calls them; a consumer
+reaches all three through the help command. `RenderGlobalFlags` is an alias of
+one of them. Unexport the first three, delete the fourth, and the render surface
+becomes `RenderGlobal`, `RenderCommand` and the `Render` dispatcher — three, from
+seven.
+
+`Explain` is the same shape: it exists for the `__explain` protocol call, the
+library calls it, and no consumer does.
+
+## B3 — Four names for "check the examples", two for "audit"
+
+`ValidateExample`, `App.ValidateExamples`, `App.CheckExample` and
+`App.ValidateAllExamples` are one job. `Audit` already validates examples as part
+of its traversal, and `Audit` is what the README tells people to run. Keep
+`Audit` and `ValidateAllExamples`; the other three go, along with
+`AuditWithOptions` and `AuditOptions` folded into `Audit(app, opts ...AuditOption)`.
+
+## The projected surface
+
+| Cut | Names |
+|---|---|
+| Test helpers move to `clihelp/clihelptest` (A1) | 7 |
+| Installer family unexported (B1) | 10 |
+| Text and measurement helpers move to `internal/` (A4) | 11 |
+| Help-system renderers unexported or deleted (B2) | 4 |
+| Example-validation and audit collapse (B3) | 5 |
+| `Explain`, `SupportedShells` unexported | 2 |
+| **Total** | **39 of 91** |
+
+That leaves about **52**: the five data types an author fills in, ten `Option`
+constructors, twelve validators, seven `Gen*` writers for packagers, the two
+mountable commands, and a dozen methods on `App`. It reads as a library rather
+than as a library with an installer, a renderer and a test framework attached.
+
+Three more are arguable and I would not do them without a reason:
+`App.CollectOptions` (called twice internally, once by `doc/`, never by a
+consumer — it is really part of the internal helper set), `App.PrintError` (a
+consumer rarely needs it, since `Execute` already prints what it returns), and
+the `Render` dispatcher itself, which exists to choose between two functions the
+caller could choose between.
