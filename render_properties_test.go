@@ -13,8 +13,24 @@ import (
 // been asserting. They counted runes or bytes instead, which tolerates a 40%
 // overshoot on CJK text — the library measures 界 as two columns and one test's
 // comment claimed it was one.
+// requireRendered fails when there is nothing to make an assertion about.
+//
+// Every property this file checks is of the form "no line in the output does X",
+// and every one of them holds vacuously of no output at all: reflowMargin — the
+// function that writes every wrapped line in this library — could be made to
+// return without writing anything and the width, balance and whitespace
+// properties all still passed. A property about output has to be paired with the
+// fact that there was output.
+func requireRendered(t *testing.T, out string) {
+	t.Helper()
+	if strings.TrimSpace(StripANSI(out)) == "" {
+		t.Fatalf("nothing was rendered, so every property below holds vacuously: %q", out)
+	}
+}
+
 func assertFitsWidth(t *testing.T, out string, width int) {
 	t.Helper()
+	requireRendered(t, out)
 	inExamples := false
 	for _, line := range strings.Split(strings.TrimRight(out, "\n"), "\n") {
 		// Example command lines are emitted verbatim on purpose, so that one can

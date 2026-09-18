@@ -519,10 +519,28 @@ func TestExecuteCustomHelpSubcommandOnNestedCommand(t *testing.T) {
 }
 
 func TestPrintError(t *testing.T) {
-	// Ensure calling PrintError with nil or an error does not panic
-	app := &App{}
+	// This checked only that neither call panicked, so PrintError could have
+	// become a no-op with it green — and, having no Stderr of its own, it printed
+	// "Error: sample error" into the middle of every run of the suite.
+	var buf bytes.Buffer
+	app := &App{Stderr: &buf}
+
 	app.PrintError(nil)
+	if buf.Len() != 0 {
+		t.Errorf("PrintError(nil) wrote %q", buf.String())
+	}
+
 	app.PrintError(errors.New("sample error"))
+	got := StripANSI(buf.String())
+	if !strings.Contains(got, "sample error") {
+		t.Errorf("the error text did not reach stderr: %q", got)
+	}
+	if !strings.HasPrefix(got, "Error: ") {
+		t.Errorf("the error was not labelled: %q", got)
+	}
+	if !strings.HasSuffix(buf.String(), "\n") {
+		t.Errorf("the error was not terminated by a newline: %q", buf.String())
+	}
 }
 func TestExecuteNestedHelpNoCustomCommandNoDoubleRender(t *testing.T) {
 	var outBuf bytes.Buffer

@@ -22,6 +22,7 @@ func plainColor() *color.Color {
 func TestNoWhitespaceOnlyLines(t *testing.T) {
 	var buf bytes.Buffer
 	reflow(&buf, plainColor(), 40, 2, "", "https://example.com/an/extremely/long/path/that/never/fits and more")
+	requireRendered(t, buf.String())
 	for i, line := range strings.Split(strings.TrimRight(buf.String(), "\n"), "\n") {
 		if line != "" && strings.TrimSpace(line) == "" {
 			t.Errorf("line %d is %d columns of whitespace and nothing else", i, len(line))

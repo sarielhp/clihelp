@@ -287,6 +287,7 @@ func TestExecuteHelpUnknown(t *testing.T) {
 func TestExecuteGlobalFlagsBound(t *testing.T) {
 	var globalVerbose bool
 	var globalQuiet bool
+	ran := false
 
 	app := &App{
 		Name: "testapp",
@@ -298,11 +299,17 @@ func TestExecuteGlobalFlagsBound(t *testing.T) {
 			{
 				Name: "build",
 				Run: func(ctx *Context) error {
-					if globalVerbose {
-						t.Log("Verbose flag was set")
+					ran = true
+					// The binding is asserted here, inside the handler, because
+					// that is where an application reads a global flag. Both
+					// values were merely logged before, so the flags could have
+					// stopped binding to their targets entirely with this test
+					// green — it checked only that Execute returned no error.
+					if !globalVerbose {
+						t.Error("--verbose was given and the bound variable is false")
 					}
 					if globalQuiet {
-						t.Log("Quiet flag was set")
+						t.Error("--quiet was not given and the bound variable is true")
 					}
 					return nil
 				},
@@ -310,10 +317,11 @@ func TestExecuteGlobalFlagsBound(t *testing.T) {
 		},
 	}
 
-	// Test that GlobalFlags are parsed
-	err := app.ExecuteContext(context.Background(), []string{"build", "--verbose"})
-	if err != nil {
+	if err := app.ExecuteContext(context.Background(), []string{"build", "--verbose"}); err != nil {
 		t.Errorf("ExecuteContext with global flag should succeed, got error: %v", err)
+	}
+	if !ran {
+		t.Error("the command handler never ran, so nothing above was checked")
 	}
 }
 

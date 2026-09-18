@@ -76,9 +76,15 @@ func TestHelpFlagsInExamplesActuallyRun(t *testing.T) {
 	} {
 		app := &App{Name: "myapp", ExtendedHelpFlag: tt.extended,
 			Commands: []Command{{Name: "build", Description: "Build it.", Run: nopRun}}}
-		silentApp(app)
+		out := silentApp(app)
 		if err := app.Execute(tt.args); err != nil {
 			t.Errorf("`myapp %s` failed at run time: %v", strings.Join(tt.args, " "), err)
+		}
+		// "Did not error" was the whole assertion, so a help flag that quietly
+		// printed nothing passed as working. What the user asked for is the help
+		// page, so that is what is checked.
+		if body := StripANSI(out.String()); !strings.Contains(body, "Build it.") {
+			t.Errorf("`myapp %s` printed no help:\n%s", strings.Join(tt.args, " "), body)
 		}
 	}
 }

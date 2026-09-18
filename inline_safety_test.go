@@ -87,6 +87,7 @@ func TestVerbatimPathsAreSanitised(t *testing.T) {
 	}}}
 	var buf bytes.Buffer
 	app.RenderCommand(Options{Writer: &buf, Extended: true}, "run")
+	requireRendered(t, buf.String())
 	for _, line := range strings.Split(buf.String(), "\n") {
 		if strings.ContainsRune(line, '\r') {
 			t.Errorf("a carriage return survives into output: %q", line)
