@@ -195,7 +195,7 @@ func TestAutoInstallRefreshesButNeverCreates(t *testing.T) {
 	t.Setenv("TERM", "xterm")
 
 	app := installApp()
-	app.AutoInstallCompletion = true
+	app.AutoRefreshIntegration = true
 
 	TestExecute(app, []string{"build"}).AssertNoError(t)
 	if _, err := os.Stat(filepath.Join(home, ".config", "myapp", "shell", "bash")); !os.IsNotExist(err) {
@@ -244,7 +244,7 @@ func TestAutoInstallNeverCreatesACompletionScript(t *testing.T) {
 	t.Setenv("TERM", "xterm")
 
 	app := installApp()
-	app.AutoInstallCompletion = true
+	app.AutoRefreshIntegration = true
 
 	script, err := CompletionPath(app, "bash")
 	if err != nil {

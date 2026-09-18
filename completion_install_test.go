@@ -44,9 +44,9 @@ func TestAutoInstallSkipsShellsWithoutAScript(t *testing.T) {
 	t.Setenv("TERM", "xterm")
 
 	app := &App{
-		Name:                  "ksh-app",
-		AutoInstallCompletion: true,
-		Commands:              []Command{{Name: "run", Description: "Run it", Run: func(*Context) error { return nil }}},
+		Name:                   "ksh-app",
+		AutoRefreshIntegration: true,
+		Commands:               []Command{{Name: "run", Description: "Run it", Run: func(*Context) error { return nil }}},
 	}
 
 	// The refresh is what the shell gate has to hold back, since the auto path

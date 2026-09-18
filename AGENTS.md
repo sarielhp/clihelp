@@ -184,7 +184,7 @@ a redirecting caller sees it, and that caller wants it.
 | `completion.go` | The `__complete` protocol, dynamic completion, and the three script generators |
 | `completion_templates.go` | The generated bash, zsh and fish completion scripts, as shell source |
 | `completion_command.go` | The optional `completion` command and the install/uninstall report |
-| `autoinstall.go` | `AutoInstallCompletion`: the only unattended writer, allowed to refresh and never to create |
+| `autorefresh.go` | `AutoRefreshIntegration`: the only unattended writer, allowed to refresh and never to create |
 | `atomicwrite.go` | `writeFileAtomically` — symlink-resolving, fsynced, owner-preserving replace |
 | `shell.go` | `resolveShell` — the one answer to "which shell, and can we write for it?" |
 | `versions.go` | Every version number stamped into a generated artifact, in one place |

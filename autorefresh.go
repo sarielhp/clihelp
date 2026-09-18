@@ -12,11 +12,12 @@ import (
 // without being asked, so it lives apart from the explicit installers in
 // install.go and is held to a much narrower rule: it may refresh a file that
 // already exists and carries clihelp's marker, and it may do nothing else.
-// See App.AutoInstallCompletion.
+// See App.AutoRefreshIntegration.
 
-// maybeAutoInstallCompletion checks and installs completions silently if enabled.
-func (a *App) maybeAutoInstallCompletion(args []string) {
-	if a == nil || !a.AutoInstallCompletion {
+// maybeRefreshIntegration brings an already-installed integration up to date,
+// silently, if the author asked for it.
+func (a *App) maybeRefreshIntegration(args []string) {
+	if a == nil || !(a.AutoRefreshIntegration || a.AutoInstallCompletion) {
 		return
 	}
 	// Never run during an internal protocol call — a setup call must not have an
@@ -54,7 +55,7 @@ func (a *App) maybeAutoInstallCompletion(args []string) {
 	// grew its one-file integration, or by a packager — is kept current, and
 	// that is all. This path runs on every ordinary program run, unasked, and
 	// bringing a file into existence in someone's home directory is not a
-	// decision it gets to make: AutoInstallCompletion is the *author's* choice,
+	// decision it gets to make: AutoRefreshIntegration is the *author's* choice,
 	// while the file lands in the *user's* home. It used to create one here, so
 	// running a program for the first time installed something nobody had asked
 	// for. Creating is what "completion install" is for.

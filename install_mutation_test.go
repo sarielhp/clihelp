@@ -111,7 +111,7 @@ func TestUninstalledMarkerIsHonoured(t *testing.T) {
 		t.Setenv(v, "")
 	}
 	t.Setenv("TERM", "xterm")
-	app.AutoInstallCompletion = true
+	app.AutoRefreshIntegration = true
 	TestExecute(app, []string{"build"}).AssertNoError(t)
 	if _, err := os.Stat(target); err == nil {
 		t.Error("the automatic path restored an integration the user had removed")

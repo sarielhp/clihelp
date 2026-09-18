@@ -144,7 +144,7 @@ func TestProtocolCallsDoNotAutoInstall(t *testing.T) {
 	t.Setenv("TERM", "xterm")
 
 	app := bareApp()
-	app.AutoInstallCompletion = true
+	app.AutoRefreshIntegration = true
 	var out bytes.Buffer
 	app.Stdout = &out
 	for _, args := range [][]string{{"__clihelp", "version"}, {"__complete", ""}, {"__explain", "bare build"}} {

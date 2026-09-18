@@ -17,7 +17,7 @@ func TestAutoPathNeverEditsAStartupFile(t *testing.T) {
 	autoEnv(t)
 
 	app := installApp()
-	app.AutoInstallCompletion = true
+	app.AutoRefreshIntegration = true
 	if _, err := InstallShellIntegration(app, "bash", true); err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestAutoPathDoesNotCreateAStartupFile(t *testing.T) {
 	t.Setenv("SHELL", "/bin/zsh")
 
 	app := installApp()
-	app.AutoInstallCompletion = true
+	app.AutoRefreshIntegration = true
 	if _, err := InstallShellIntegration(app, "zsh", true); err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestUninstallSurvivesAnOrdinaryRun(t *testing.T) {
 	autoEnv(t)
 
 	app := installApp()
-	app.AutoInstallCompletion = true
+	app.AutoRefreshIntegration = true
 	if _, err := InstallShellIntegration(app, "bash", true); err != nil {
 		t.Fatal(err)
 	}

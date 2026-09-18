@@ -20,7 +20,7 @@ func TestNothingOverwritesAFileClihelpDidNotWrite(t *testing.T) {
 		writeFixture(t, script, mine)
 
 		app := installApp()
-		app.AutoInstallCompletion = true
+		app.AutoRefreshIntegration = true
 		TestExecute(app, []string{"build"}).AssertNoError(t)
 
 		if got, _ := os.ReadFile(script); string(got) != mine {
