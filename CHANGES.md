@@ -2,6 +2,11 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.26] - 2026-09-18
+
+### Internal
+- **The Test Suite Wrote to the Developer's Own `~/.bashrc`, and the Guard Caught It Mid-Release.** `shell_test.go` calls `InstallShellIntegration` and `UninstallShellIntegration` — asking each entry point to reject a shell it cannot write for — and was the only one of the seven test files reaching a write path that did not sandbox `HOME`. It normally returns before writing, which is why nine attempts to reproduce it failed, and why it survived until a `make bump` happened to catch it. The file was not damaged: no block was added and it still parses. It sandboxes now, and the package's `TestMain` sandboxes `HOME` for every test rather than trusting each one to remember — the fingerprint is the alarm, this is the lock. The alarm only reports afterwards, and afterwards turned out to be from inside a release.
+
 ## [0.3.25] - 2026-09-18
 
 ### Internal

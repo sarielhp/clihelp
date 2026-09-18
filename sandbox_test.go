@@ -73,7 +73,34 @@ func TestMain(m *testing.M) {
 		os.Exit(m.Run())
 	}
 	before := homeFingerprint(home)
+
+	// Sandbox the whole package, not just the tests that remember to. The
+	// fingerprint below is the alarm; this is the lock. A test that reaches a
+	// write path without calling sandboxHome used to land in the developer's own
+	// home directory, and the alarm only told us afterwards — once, from inside a
+	// release, which is a poor moment to find out. Tests that need a home of
+	// their own still call sandboxHome, which layers on top of this.
+	shared, mkErr := os.MkdirTemp("", "clihelp-package-home")
+	if mkErr == nil {
+		for k, v := range map[string]string{
+			"HOME":            shared,
+			"XDG_CONFIG_HOME": filepath.Join(shared, ".config"),
+			"XDG_DATA_HOME":   filepath.Join(shared, ".local", "share"),
+			"ZDOTDIR":         "",
+		} {
+			if setErr := os.Setenv(k, v); setErr != nil {
+				panic(setErr)
+			}
+		}
+	}
+
 	code := m.Run()
+
+	// os.Exit below skips deferred calls, so the shared home is removed here.
+	if shared != "" {
+		_ = os.RemoveAll(shared)
+	}
+
 	if diff := fingerprintDiff(before, homeFingerprint(home)); len(diff) > 0 {
 		fmt.Fprintf(os.Stderr, "\nthe test suite modified the real home directory:\n  %s\n",
 			strings.Join(diff, "\n  "))

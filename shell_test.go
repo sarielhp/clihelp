@@ -42,6 +42,12 @@ func TestResolveShell(t *testing.T) {
 // reported an undetectable shell as `unsupported shell ""`, which says nothing
 // about $SHELL being unset — the actual problem, and one the user can fix.
 func TestEveryEntryPointResolvesTheShellAlike(t *testing.T) {
+	// Two of these entry points write files when they succeed. They are only
+	// asked to fail here, but a test that can reach a write path sandboxes,
+	// because the cost of being wrong about "only asked to fail" is the
+	// developer's own ~/.bashrc.
+	sandboxHome(t)
+
 	app := &App{Name: "myapp"}
 	entries := map[string]func(shell string) error{
 		"CompletionPath": func(s string) error {
