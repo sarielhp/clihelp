@@ -217,7 +217,7 @@ An unrecognized flag and `--` both end command resolution, so unknown flags are 
   ```text
   Run 'podctl help build' (or --help) for extended documentation and examples.
   ```
-* **Extended Help (`--help`, `help <cmd>`, or `-H`):** Renders the full `Command.LongDescription`, positional parameters, all flag descriptions, detailed examples, and all `Notes` sections. Automatically paged via `$PAGER` when output exceeds the screen height.
+* **Extended Help (`--help`, `help <cmd>`, or `-H`):** Renders the full `Command.LongDescription`, positional parameters, all flag descriptions, detailed examples, and all `Notes` sections. Paged via `$PAGER` when `App.Pager` or `Options.Pager` is set and the output does not fit the screen.
 * **Opt-in `-H` Flag (`App.ExtendedHelpFlag`):** Set `ExtendedHelpFlag: true` on your `App` struct to treat `-H` as a single-letter shortcut for extended help on all commands.
 * **Preformatted Notes (`Note.Raw`):** Set `Raw: true` on any `clihelp.Note` (or wrap content in markdown code fences) to output ASCII tables, config snippets, or diagrams verbatim without line wrapping or whitespace collapsing.
 
@@ -292,10 +292,10 @@ Descriptions and notes support markdown-like inline formatting:
 ### Width & wrapping
 
 - Terminal width is auto-detected with a **70-column fallback** for non-TTY output.
-- Content wraps at `indent + MaxContentWidth` columns (default `MaxContentWidth` is 80), so indented lists gain extra horizontal room without exceeding the terminal width. Set `Options.MaxContentWidth` to change the content cap.
+- Content wraps at `min(terminal width, indent + MaxContentWidth)` columns (default `MaxContentWidth` is 80), so indented lists gain extra horizontal room without exceeding the terminal. The description column is also reduced on a narrow terminal so that a usable text column remains; a name wider than the terminal is placed on its own line, and an example command line is never wrapped, so those two can still run over. Set `Options.MaxContentWidth` to change the content cap.
 - **Hanging list indentation:** Bullet lists (`- `, `* `, `• `) and numbered lists (`1. `, `2. `, etc.) automatically wrap continuation lines with hanging indents aligned to the list item text.
 - **Verbatim notes & code blocks:** Use `Note.Raw: true` or markdown code fences (```` ``` ````) to preserve ASCII diagrams, preformatted spacing, and tables without line reflow or space collapsing.
-- Command lists can be grouped with `Command.Group`; a group heading is rendered when the group value changes.
+- Command lists can be grouped with `Command.Group`; each group is listed under its heading, and commands with no `Group` are collected under `Other Commands` when any other command is grouped.
 
 ---
 

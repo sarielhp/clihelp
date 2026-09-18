@@ -431,12 +431,43 @@ staticcheck baseline, or `make check` should be the only gate anyone reports on.
 
 ## Status
 
-Nothing in this document is fixed except **H7**, which was my own regression from
-`df321f9` and is corrected in `1998c13` together with the `t.Logf` test that could not
-fail. The fix pass is a separate decision.
+**Every finding in this document is fixed**, on branch
+`fix/rendering-review-2026-09-18`, one commit per block of the roadmap, each with
+regression tests whose teeth were checked against the unfixed behaviour. `make check` and
+`make audit` are green.
+
+Two deviations from the roadmap as written, both recorded here rather than quietly:
+
+- **H6 was answered by its second half, not its first.** The roadmap suggested
+  parameterising `example/mail_cli_fake`'s oracle on width and running it at 40/70/100. I
+  tried that and reverted it: the oracle is a second renderer, and making it agree at
+  every width means maintaining it as one, which is the opposite of the finding. The five
+  behaviours it uniquely guarded are asserted in the library's own tests now
+  (`TestGlobalHelpListsShortcutsAndConfig`), `oracleWidth` is a variable rather than a
+  literal, and the comparison still runs at one width with a comment saying why.
+- **L15's dead exported code was kept and tested, not deleted.** `DisplayNameWithArgs`,
+  `commandArgs`, `RenderGlobalFlags` and `CheckExample` have no caller in this module, but
+  this is a published module with a `retract` directive already in `go.mod`, and removing
+  exported symbols to tidy an internal audit is not a trade worth making.
+
+Things the fix pass found that the review did not:
+
+- **`writeExampleLine` had the same nested-colour defect as `reflowWords`**, and only
+  surfaced once the latter was fixed and the oracle disagreed.
+- **The oracle flattened a multi-line `UsageLine` into one flow**, which the real renderer
+  has never done. It had no line segmentation at all in the path the usage line takes.
+- **`emitLine` in the first draft sanitised inside `splitLines`**, which also runs on
+  already-rendered text — so the sanitiser destroyed this package's own escapes and
+  exposed the URLs. `TestExampleAppNoBareMarkdownAndNoVisibleURLs` caught it in the first
+  run after the change, which is the test doing exactly its job.
+- **Under `NoColor`, spelling a link out as `text (url)` was the wrong plain form.** It
+  changes the width of every line containing a link and puts a bare URL in help output,
+  which this repository already has a test forbidding. The label alone is the right answer;
+  `man.go` asks for the spelled-out form explicitly because a manual page cannot
+  hyperlink.
 
 Every high finding was re-verified by the author with an independent runnable proof in a
-throwaway module outside the repository; the proofs are in the session scratchpad and use
+throwaway module outside the repository before any fix was written; the proofs are in the session scratchpad and use
 only the exported API, so they transfer into the repository almost verbatim. Findings
 marked **verified** in the medium/low table were reproduced the same way. The rest are
 recorded as the reviewer reported them, with the mechanism confirmed by reading the cited
