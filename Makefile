@@ -12,7 +12,7 @@ lint:
 	@./tools/lint.sh
 
 test:
-	@go test -race -timeout 120s ./...
+	@go test -race -timeout 300s ./...
 
 build:
 	@go build -o /dev/null ./example

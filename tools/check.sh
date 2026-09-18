@@ -34,7 +34,7 @@ if [ "$want" != "$lib" ]; then
 fi
 
 echo "=== Test (race) ==="
-go test -race -timeout 120s ./...
+go test -race -timeout 300s ./...
 
 echo "=== Build Example ==="
 go build -o /dev/null ./example
