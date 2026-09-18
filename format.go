@@ -43,7 +43,34 @@ func visualLen(s string) int {
 // cost nothing, and a wide rune costs two. Every layout decision in this library
 // and its subpackages has to measure the same way, or columns do not line up.
 func VisualWidth(s string) int {
-	return runewidth.StringWidth(StripANSI(s))
+	return runewidth.StringWidth(expandTabs(StripANSI(s)))
+}
+
+// tabStop is the column interval a terminal advances a tab to.
+const tabStop = 8
+
+// expandTabs replaces tabs with the spaces a terminal would draw.
+//
+// runewidth measures a tab as zero columns while a terminal advances to the next
+// stop, so a tab in a Param.Name or a list marker desynchronised the hanging
+// indent from what was actually on screen.
+func expandTabs(s string) string {
+	if !strings.ContainsRune(s, '\t') {
+		return s
+	}
+	var b strings.Builder
+	col := 0
+	for _, r := range s {
+		if r == '\t' {
+			pad := tabStop - col%tabStop
+			b.WriteString(strings.Repeat(" ", pad))
+			col += pad
+			continue
+		}
+		b.WriteRune(r)
+		col += runewidth.RuneWidth(r)
+	}
+	return b.String()
 }
 
 // splitLines splits text on '\n', preserving empty segments so consecutive
@@ -131,6 +158,10 @@ func openHyperlink(s string) string {
 // terminator for good, and the terminal went on hyperlinking every cell it drew
 // afterwards, the shell prompt included, after the program had exited.
 func emitLine(w io.Writer, c *color.Color, line string) string {
+	// Trailing spaces are invisible until someone selects the line, or diffs it,
+	// or pastes it. The padded prefix column produces them on every row whose
+	// description is empty.
+	line = strings.TrimRight(line, " ")
 	if url := openHyperlink(line); url != "" {
 		c.Fprintln(w, line+osc8+oscEnd)
 		return osc8 + url + oscEnd
@@ -145,20 +176,26 @@ func reflowWords(w io.Writer, c *color.Color, width, indent int, initialStr stri
 	cur.WriteString(initialStr)
 	curLen := initialLen
 	wrote := false
+	lineHasWords := initialLen > indent
 	reopen := ""
 	for _, word := range words {
 		wlen := visualLen(word)
 		space := 0
-		if curLen > indent {
+		if lineHasWords {
 			space = 1
 		}
-		if curLen+space+wlen > width {
+		// "does this line already hold something" is a fact about the line, not
+		// about its width. Testing the width instead meant an over-long first
+		// word flushed a line holding only the indent — or only the padded
+		// prefix — and a zero-width word left the next one glued to it.
+		if lineHasWords && curLen+space+wlen > width {
 			reopen = emitLine(w, c, cur.String())
 			cur.Reset()
 			cur.WriteString(indentStr)
 			cur.WriteString(reopen) // zero width, so curLen is unchanged by it
 			cur.WriteString(word)
 			curLen = indent + wlen
+			lineHasWords = true
 		} else {
 			if space > 0 {
 				cur.WriteString(" ")
@@ -166,6 +203,7 @@ func reflowWords(w io.Writer, c *color.Color, width, indent int, initialStr stri
 			}
 			cur.WriteString(word)
 			curLen += wlen
+			lineHasWords = true
 		}
 		wrote = true
 	}
@@ -281,6 +319,11 @@ func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string,
 	if len(prefixColors) > 0 {
 		prefixColor = prefixColors[0]
 	}
+	// One line, always. The prefix is a name — a command, a flag, a parameter —
+	// and the column arithmetic below measures it as a single token; a newline in
+	// one split it across two rows while the width was computed on the whole
+	// thing. Same class as the tree/firstSentence defect already fixed.
+	prefix = strings.Join(strings.Fields(prefix), " ")
 	if prefix != "" && indent < 2 {
 		indent = 2
 	}
@@ -294,6 +337,13 @@ func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string,
 	}
 	segments := splitLines(strings.Trim(text, "\r\n"))
 	for i, seg := range segments {
+		// A line of spaces is a blank line. Testing for exact emptiness meant a
+		// paragraph break pasted from an editor that leaves indentation behind
+		// fell through to the word reflow, which found no words and returned
+		// silently — so the break vanished.
+		if strings.TrimSpace(seg) == "" {
+			seg = ""
+		}
 		if seg == "" && i+1 < len(segments) {
 			if prefix != "" {
 				prefixStr := padPrefix(prefix, indent)
@@ -303,7 +353,7 @@ func reflow(w io.Writer, c *color.Color, width, indent int, prefix, text string,
 				c.Fprintln(w, prefixStr)
 				prefix = ""
 			} else {
-				c.Fprintln(w, strings.Repeat(" ", indent))
+				c.Fprintln(w) // not indent columns of trailing spaces
 			}
 			continue
 		}

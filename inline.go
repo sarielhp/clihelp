@@ -206,17 +206,35 @@ func renderInline(w io.Writer, s string, flags ...bool) {
 	}
 }
 
+// maxLinkSpan bounds the search for the "]" and for the ")" that closes a URL.
+//
+// Without it the scan ran to the end of the string for every "[", so a string
+// full of broken links — "[a](" repeated, which is what a truncated translation
+// catalogue entry looks like — cost O(n²): 128KB of it took most of a second
+// with the terminal waiting. CommonMark bounds a link destination too, and a
+// real URL is short.
+//
+// The tempting shortcut — "a scan that ran off the end means every later one
+// will too" — is wrong: "[x](a(b)[y](b)" is a counterexample, where the first
+// scan fails through the end of the string and the second succeeds.
+const maxLinkSpan = 2048
+
 func parseMarkdownLink(s string, i int) (text, url string, advance int, ok bool) {
 	if s[i] != '[' {
 		return "", "", 0, false
 	}
-	cb := strings.IndexByte(s[i+1:], ']')
+	hay := s[i+1:]
+	if len(hay) > maxLinkSpan {
+		hay = hay[:maxLinkSpan]
+	}
+	cb := strings.IndexByte(hay, ']')
 	if cb < 0 || i+1+cb+1 >= len(s) || s[i+1+cb+1] != '(' {
 		return "", "", 0, false
 	}
 	depth := 1
 	ue := -1
-	for j := i + 1 + cb + 2; j < len(s); j++ {
+	limit := min(len(s), i+1+cb+2+maxLinkSpan)
+	for j := i + 1 + cb + 2; j < limit; j++ {
 		if s[j] == '(' {
 			depth++
 		} else if s[j] == ')' {

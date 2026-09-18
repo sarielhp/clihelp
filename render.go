@@ -385,11 +385,13 @@ func renderOptionList(w io.Writer, th Theme, o Options, termWidth int, options [
 	}
 }
 
+// renderGlobalShortcuts lists the shortcut commands, if any are visible.
+//
+// The heading used to be printed from the unfiltered count, so an application
+// whose every shortcut is hidden printed "Shortcut Commands:" and nothing under
+// it. renderGlobalFlagsSection, two functions down, has always had the right
+// order: filter, return if empty, then print the heading.
 func (a *App) renderGlobalShortcuts(w io.Writer, th Theme, o Options, termWidth int) {
-	if len(a.Shortcuts) == 0 {
-		return
-	}
-	th.Accent.Fprintln(w, "Shortcut Commands:")
 	params := make([]Param, 0, len(a.Shortcuts))
 	for _, s := range a.Shortcuts {
 		if !s.Hidden {
@@ -399,6 +401,10 @@ func (a *App) renderGlobalShortcuts(w io.Writer, th Theme, o Options, termWidth 
 			})
 		}
 	}
+	if len(params) == 0 {
+		return
+	}
+	th.Accent.Fprintln(w, "Shortcut Commands:")
 	indent := colIndent(params)
 	for _, p := range params {
 		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description), th.Subcommand)
