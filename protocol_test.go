@@ -23,9 +23,9 @@ func bareApp() *App {
 	}
 }
 
-func runProto(t *testing.T, app *App, args ...string) *TestResult {
+func runProto(t *testing.T, app *App, args ...string) *testResult {
 	t.Helper()
-	return TestExecute(app, args)
+	return testExecute(app, args)
 }
 
 func TestClihelpVerbsWithoutCompletionCommand(t *testing.T) {
@@ -302,7 +302,7 @@ func TestManPageCommandIsOptional(t *testing.T) {
 	app := bareApp()
 	app.Commands = append(app.Commands, ManPageCommand())
 
-	res := TestExecute(app, []string{"manpage"})
+	res := testExecute(app, []string{"manpage"})
 	res.AssertNoError(t)
 	res.AssertStdoutContains(t, `.TH "BARE" 1`)
 

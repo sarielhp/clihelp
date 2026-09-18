@@ -21,7 +21,7 @@ func TestNothingOverwritesAFileClihelpDidNotWrite(t *testing.T) {
 
 		app := installApp()
 		app.AutoRefreshIntegration = true
-		TestExecute(app, []string{"build"}).AssertNoError(t)
+		testExecute(app, []string{"build"}).AssertNoError(t)
 
 		if got, _ := os.ReadFile(script); string(got) != mine {
 			t.Errorf("an ordinary program run overwrote a hand-written completion script:\n%s", got)

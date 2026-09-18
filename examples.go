@@ -439,11 +439,11 @@ func tokenizeCommandLine(trimmed, line string) ([]string, error) {
 	return s.tokens, nil
 }
 
-// SplitExampleCommandLine parses a shell command string into separate argument tokens,
+// splitExampleCommandLine parses a shell command string into separate argument tokens,
 // properly handling single quotes, double quotes, escape characters, prompt prefixes,
 // and inline comments. If the command contains pipes or operators, the primary command
 // segment before the pipe is tokenized for CLI validation.
-func SplitExampleCommandLine(line string) ([]string, error) {
+func splitExampleCommandLine(line string) ([]string, error) {
 	trimmed := cleanExampleCommandLine(line)
 	if trimmed == "" {
 		return nil, nil
@@ -532,7 +532,7 @@ func validateExample(app *App, ex Example, cmd *Command) error {
 			continue
 		}
 
-		tokens, err := SplitExampleCommandLine(l)
+		tokens, err := splitExampleCommandLine(l)
 		if err != nil {
 			return fmt.Errorf("example syntax error in %q: %w", rawLine, err)
 		}

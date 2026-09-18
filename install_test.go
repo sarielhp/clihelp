@@ -197,7 +197,7 @@ func TestAutoInstallRefreshesButNeverCreates(t *testing.T) {
 	app := installApp()
 	app.AutoRefreshIntegration = true
 
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 	if _, err := os.Stat(filepath.Join(home, ".config", "myapp", "shell", "bash")); !os.IsNotExist(err) {
 		t.Errorf("auto-install created a shell integration nobody asked for")
 	}
@@ -220,7 +220,7 @@ func TestAutoInstallRefreshesButNeverCreates(t *testing.T) {
 	if err := os.WriteFile(path, []byte(stale), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 	body, _ := os.ReadFile(path)
 	if !strings.Contains(string(body), integrationVersion()) {
 		t.Errorf("a stale integration was not refreshed:\n%s", body)
@@ -251,7 +251,7 @@ func TestAutoInstallNeverCreatesACompletionScript(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 	if _, err := os.Stat(script); !os.IsNotExist(err) {
 		t.Errorf("an ordinary run created %s", script)
 	}
@@ -274,7 +274,7 @@ func TestAutoInstallNeverCreatesACompletionScript(t *testing.T) {
 		"clihelp-completion-version: 0", 1)
 	writeFixture(t, script, stale)
 
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 	got, err := os.ReadFile(script)
 	if err != nil {
 		t.Fatal(err)

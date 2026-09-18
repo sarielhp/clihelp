@@ -29,7 +29,7 @@ func TestAutoPathNeverEditsAStartupFile(t *testing.T) {
 	}
 	makeIntegrationStale(t, filepath.Join(home, ".config", "myapp", "shell", "bash"))
 
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 
 	if got, _ := os.ReadFile(rc); string(got) != userOnly {
 		t.Errorf("an ordinary program run edited the startup file:\n%s", got)
@@ -55,7 +55,7 @@ func TestAutoPathDoesNotCreateAStartupFile(t *testing.T) {
 	t.Setenv("ZDOTDIR", zdot)
 	makeIntegrationStale(t, filepath.Join(home, ".config", "myapp", "shell", "zsh"))
 
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 
 	if _, err := os.Stat(filepath.Join(zdot, ".zshrc")); !os.IsNotExist(err) {
 		t.Errorf("an ordinary program run created a startup file")
@@ -78,7 +78,7 @@ func TestUninstallSurvivesAnOrdinaryRun(t *testing.T) {
 	}
 	after := homeTree(t, home)
 
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 
 	if got := homeTree(t, home); strings.Join(got, ",") != strings.Join(after, ",") {
 		t.Errorf("an ordinary run resurrected artifacts after uninstall:\nafter uninstall: %v\nafter one run:   %v", after, got)

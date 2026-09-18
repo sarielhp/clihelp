@@ -62,13 +62,13 @@ func TestAutoInstallSkipsShellsWithoutAScript(t *testing.T) {
 	writeFixture(t, script, stale)
 
 	t.Setenv("SHELL", "/bin/ksh")
-	TestExecute(app, []string{"run"}).AssertNoError(t)
+	testExecute(app, []string{"run"}).AssertNoError(t)
 	if got, _ := os.ReadFile(script); strings.Contains(string(got), marker) {
 		t.Errorf("a ksh user's run refreshed a bash script")
 	}
 
 	t.Setenv("SHELL", "/bin/bash")
-	TestExecute(app, []string{"run"}).AssertNoError(t)
+	testExecute(app, []string{"run"}).AssertNoError(t)
 	if got, _ := os.ReadFile(script); !strings.Contains(string(got), marker) {
 		t.Errorf("a bash user's stale script was not refreshed:\n%s", got)
 	}

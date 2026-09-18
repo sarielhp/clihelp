@@ -20,7 +20,7 @@ func TestCompletionRecordsAreOneLinePerCandidate(t *testing.T) {
 				Run: func(*Context) error { return nil }},
 		},
 	}
-	res := TestExecute(app, []string{"__complete", ""})
+	res := testExecute(app, []string{"__complete", ""})
 	res.AssertNoError(t)
 
 	lines := strings.Split(strings.TrimRight(res.Stdout, "\n"), "\n")

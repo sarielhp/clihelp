@@ -214,8 +214,8 @@ func TestCommandArgs(t *testing.T) {
 
 func TestDisplayNameWithArgs(t *testing.T) {
 	cmd := Command{Name: "set", Aliases: []string{"s"}, Parameters: []Param{{Name: "<key>"}}}
-	if got, want := DisplayNameWithArgs(cmd), "set (s) <key>"; got != want {
-		t.Errorf("DisplayNameWithArgs = %q, want %q", got, want)
+	if got, want := displayNameWithArgs(cmd), "set (s) <key>"; got != want {
+		t.Errorf("displayNameWithArgs = %q, want %q", got, want)
 	}
 }
 

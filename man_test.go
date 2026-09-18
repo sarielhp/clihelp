@@ -249,7 +249,7 @@ func TestManPageRefreshedButNeverCreated(t *testing.T) {
 	app.AutoRefreshIntegration = true
 	path := filepath.Join(home, ".local", "share", "man", "man1", "manapp.1")
 
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("a manual page was installed unasked")
 	}
@@ -263,7 +263,7 @@ func TestManPageRefreshedButNeverCreated(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 	if !manPageIsCurrent(path) {
 		t.Errorf("a stale generated page was not refreshed")
 	}

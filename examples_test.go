@@ -99,17 +99,17 @@ func TestSplitExampleCommandLine(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := SplitExampleCommandLine(tt.input)
+			got, err := splitExampleCommandLine(tt.input)
 			if (err != nil) != tt.wantErr {
-				t.Fatalf("SplitExampleCommandLine(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+				t.Fatalf("splitExampleCommandLine(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
 			}
 			if !tt.wantErr {
 				if len(got) != len(tt.want) {
-					t.Fatalf("SplitExampleCommandLine(%q) = %v (len %d), want %v (len %d)", tt.input, got, len(got), tt.want, len(tt.want))
+					t.Fatalf("splitExampleCommandLine(%q) = %v (len %d), want %v (len %d)", tt.input, got, len(got), tt.want, len(tt.want))
 				}
 				for i := range got {
 					if got[i] != tt.want[i] {
-						t.Errorf("SplitExampleCommandLine(%q)[%d] = %q, want %q", tt.input, i, got[i], tt.want[i])
+						t.Errorf("splitExampleCommandLine(%q)[%d] = %q, want %q", tt.input, i, got[i], tt.want[i])
 					}
 				}
 			}
@@ -615,9 +615,9 @@ func TestExampleTokenizerHandlesOperatorsAndRedirections(t *testing.T) {
 		{"plain line", "app run --flag value", []string{"app", "run", "--flag", "value"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := SplitExampleCommandLine(tt.line)
+			got, err := splitExampleCommandLine(tt.line)
 			if err != nil {
-				t.Fatalf("SplitExampleCommandLine(%q): %v", tt.line, err)
+				t.Fatalf("splitExampleCommandLine(%q): %v", tt.line, err)
 			}
 			if strings.Join(got, "|") != strings.Join(tt.want, "|") {
 				t.Errorf("tokens = %v, want %v", got, tt.want)
