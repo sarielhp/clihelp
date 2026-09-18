@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 )
 
 // filterCommandsByPrefix returns all non-hidden commands whose Name or any
@@ -29,7 +30,20 @@ func filterCommandsByPrefix(cmds []Command, prefix string) []*Command {
 	return result
 }
 
-func isHelpToken(arg string, cmds []Command, abbrev bool) bool {
+// isHelpToken reports whether arg asks for help at this level rather than naming
+// something.
+//
+// "help" is universal wherever it can be: a node with subcommands can always be
+// asked to explain itself, which is the git-like convention. Its abbreviations
+// are not, and neither is the bare "h" — a node with no subcommands takes
+// positional arguments, and swallowing them there made the word unreachable. A
+// leaf command could not be handed "help", "hel" or "h" at all, with no escape,
+// because this runs before the "--" branch.
+//
+// The old shape also reserved "h" unconditionally, ahead of the guard two lines
+// below, so with AbbrevCommands on and a command "hello" the shorter
+// abbreviation rendered help while the longer one ran the command.
+func isHelpToken(arg string, cmds []Command, abbrev bool, atRoot bool) bool {
 	if arg == "" {
 		return false // an empty argument is a prefix of everything, and names nothing
 	}
@@ -37,15 +51,23 @@ func isHelpToken(arg string, cmds []Command, abbrev bool) bool {
 	if cmd != nil {
 		return false
 	}
-	if arg == "help" || arg == "h" {
+	// "help" itself is universal wherever there is something to explain: the
+	// application's own page at the root, and a group's page below it.
+	if arg == "help" && (atRoot || len(cmds) > 0) {
 		return true
 	}
-	if abbrev && strings.HasPrefix("help", arg) {
-		if len(filterCommandsByPrefix(cmds, arg)) == 0 {
-			return true
-		}
+	if !atRoot && len(cmds) == 0 {
+		// A leaf takes positional arguments and has nothing below it to
+		// document, so the word belongs to the command. "app echo --help" and
+		// "app help echo" both still work; swallowing the argument bought a
+		// third way to reach the same page at the price of a word an echo- or
+		// grep-shaped command could never be given.
+		return false
 	}
-	return false
+	if len(filterCommandsByPrefix(cmds, arg)) > 0 {
+		return false // it names something here, and that is more specific
+	}
+	return arg == "h" || (abbrev && strings.HasPrefix("help", arg))
 }
 
 func (a *App) lookupCommandPath(path []string) (*Command, []string) {
@@ -69,6 +91,12 @@ func (a *App) lookupCommandPath(path []string) (*Command, []string) {
 	return found, resolvedPath
 }
 func (a *App) handleRootHelpTopic(topic string) (bool, error) {
+	if topic == "" {
+		// Every topic below is matched by prefix, and "" is a prefix of all of
+		// them, so an unset shell variable used to render the flags reference —
+		// but only when AbbrevCommands happened to be on.
+		return false, fmt.Errorf("unknown help topic %q", topic)
+	}
 	switch {
 	case topic == "flags" || topic == "options" || topic == "opts" || topic == "flag" || (a.AbbrevCommands && (strings.HasPrefix("flags", topic) || strings.HasPrefix("options", topic))):
 		a.RenderFlags(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
@@ -149,10 +177,29 @@ func matchAbbrevCommand(currentCommands []Command, arg string) (*Command, error)
 	return nil, nil
 }
 
+// findSubcommandPaths names the deep commands called target, for the "did you
+// mean" message.
+//
+// Hidden ancestry counts. The check used to be on the visited node alone, so a
+// visible subcommand under a hidden parent was offered with the hidden parent's
+// name spelled out — which is the exact invocation, for the commands authors
+// hide precisely because they are deprecated, internal or destructive. Walk is
+// pre-order, so a hidden parent is always recorded before its children.
 func (a *App) findSubcommandPaths(target string) []string {
 	var matches []string
+	var hidden []string
 	_ = a.Walk(func(path []string, cmd *Command) error {
-		if cmd.Hidden || len(path) <= 1 {
+		joined := strings.Join(path, " ")
+		for _, prefix := range hidden {
+			if strings.HasPrefix(joined, prefix+" ") {
+				return nil // an ancestor is hidden, so this is not reachable either
+			}
+		}
+		if cmd.Hidden {
+			hidden = append(hidden, joined)
+			return nil
+		}
+		if len(path) <= 1 {
 			return nil
 		}
 		if strings.EqualFold(cmd.Name, target) {
@@ -412,10 +459,11 @@ func (a *App) resolveCommandPath(args []string, currentCommands []Command) (reso
 		// Resolution only reports that help was asked for; rendering it here
 		// would make every caller that merely resolves — completion, example
 		// colorization, example validation — emit a help page as a side effect.
-		if isHelpToken(arg, currentCommands, a.AbbrevCommands) {
+		if isHelpToken(arg, currentCommands, a.AbbrevCommands, res.cmd == nil) {
 			return resolution{
-				isHelp:   true,
-				helpPath: append(append([]string{}, res.path...), args[idx+1:]...),
+				isHelp: true,
+				helpPath: append(append([]string{}, res.path...),
+					helpTopicWords(probe, args[idx+1:], len(res.path) == 0)...),
 			}, nil
 		}
 
@@ -456,28 +504,82 @@ func (a *App) resolveCommandPath(args []string, currentCommands []Command) (reso
 	return res, nil
 }
 
+// helpTopicWords keeps the words of a help invocation that can name a command or
+// a topic, dropping flags, their values and the "--" terminator.
+//
+// The raw tail used to become the path, so a flag written after "help" turned
+// the whole thing into "unknown help topic" while the same flag before "help"
+// worked — and the order is the user's arbitrary choice. At the root a lone
+// token is kept exactly as written, because "-v" and "--version" are themselves
+// help topics.
+func helpTopicWords(arity map[string]bool, args []string, atRoot bool) []string {
+	if atRoot && len(args) == 1 {
+		return args
+	}
+	var words []string
+	for i := 0; i < len(args); {
+		switch {
+		case args[i] == "--":
+			i++
+		case len(args[i]) > 1 && strings.HasPrefix(args[i], "-"):
+			if count, known := scanLeadingFlag(arity, args[i:]); known {
+				i += count
+				continue
+			}
+			i++
+		default:
+			words = append(words, args[i])
+			i++
+		}
+	}
+	return words
+}
+
 func (a *App) resolveCommand(args []string) (resolution, error) {
 	currentCommands := a.Commands
 	return a.resolveCommandPath(args, currentCommands)
 }
 
 func suggestCommand(typed string, available []Command) string {
+	if typed == "" {
+		return "" // every short name is within edit distance of nothing
+	}
 	bestDist := 3
 	bestName := ""
+	typedRunes := utf8.RuneCountInString(typed)
+
+	// levenshtein(a, b) is at least the difference in their lengths, and only a
+	// distance below bestDist can win — so a candidate whose length differs by
+	// bestDist or more is decided before the matrix is built. The check is exact
+	// and cannot change an answer; without it a mistyped argument was walked in
+	// full once per command and once per alias, and that argument comes from
+	// argv. A 128 KB word — the most a single argument can be — cost a quarter
+	// of a second and 75 MB, on every press of Tab through __complete.
+	//
+	// Runes, not bytes: 日本語 and 日本 are three bytes apart and one edit apart.
+	near := func(name string) bool {
+		d := utf8.RuneCountInString(name) - typedRunes
+		if d < 0 {
+			d = -d
+		}
+		return d < bestDist
+	}
+
 	for _, cmd := range available {
 		if cmd.Hidden {
 			continue // a hidden command is not one to suggest
 		}
-		d := levenshtein(typed, cmd.Name)
-		if d < bestDist {
-			bestDist = d
-			bestName = cmd.Name
+		if near(cmd.Name) {
+			if d := levenshtein(typed, cmd.Name); d < bestDist {
+				bestDist, bestName = d, cmd.Name
+			}
 		}
 		for _, alias := range cmd.Aliases {
-			da := levenshtein(typed, alias)
-			if da < bestDist {
-				bestDist = da
-				bestName = cmd.Name
+			if !near(alias) {
+				continue
+			}
+			if da := levenshtein(typed, alias); da < bestDist {
+				bestDist, bestName = da, cmd.Name
 			}
 		}
 	}
