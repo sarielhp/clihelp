@@ -19,6 +19,55 @@ const (
 	sgrCodeOff   = "\x1b[39m"
 )
 
+// sanitizeControl replaces the control bytes a terminal would act on.
+//
+// Everything this package renders is a string the application's author wrote,
+// and an author string is not always a compile-time literal: descriptions come
+// from config files, embedded JSON and translation catalogues, and __clihelp
+// exists so a packager can set a program up whose author mounted nothing. A
+// stray ESC in one of those used to be copied to the terminal verbatim, where
+// "\x1b[2J" clears the screen, "\x1b[?1049h" switches to the alternate buffer
+// and "\x1b[?25l" hides the cursor for good.
+//
+// Newline and tab survive, because reflow splits prose on one and
+// detectListPrefix reads the other. Everything else becomes U+FFFD, which is
+// what a terminal shows for a byte it cannot render anyway.
+func sanitizeControl(s string) string {
+	if strings.IndexFunc(s, isActionableControl) < 0 {
+		return s
+	}
+	return strings.Map(func(r rune) rune {
+		if isActionableControl(r) {
+			return '\uFFFD'
+		}
+		return r
+	}, s)
+}
+
+func isActionableControl(r rune) bool {
+	return r != '\n' && r != '\t' && (r < 0x20 || r == 0x7f)
+}
+
+// oscSafeURL percent-encodes every byte that must not appear inside an OSC 8
+// string.
+//
+// A terminal reads the payload up to ST or BEL, and reflow splits the rendered
+// string on whitespace — so a space, a tab or a newline in the author's URL ends
+// the sequence in the middle of itself, and the user sees the escape's own bytes
+// printed. Percent-encoding is what a browser and xdg-open expect, so no working
+// hyperlink stops working.
+func oscSafeURL(url string) string {
+	var b strings.Builder
+	for i := 0; i < len(url); i++ {
+		if c := url[i]; c <= 0x20 || c == 0x7f {
+			fmt.Fprintf(&b, "%%%02X", c)
+			continue
+		}
+		b.WriteByte(url[i])
+	}
+	return b.String()
+}
+
 // Inline renders inline markdown in s to a string with ANSI/OSC8 sequences.
 // It is the exported form of the internal inline helper used by the renderer.
 func Inline(s string) string {
@@ -58,6 +107,7 @@ func emphasisEnd(s string, start int, marker string) int {
 //   - \X              backslash escapes the next character
 func renderInline(w io.Writer, s string, showURLs ...bool) {
 	show := len(showURLs) > 0 && showURLs[0]
+	s = sanitizeControl(s)
 	for i := 0; i < len(s); {
 		// backslash escape
 		if s[i] == '\\' && i+1 < len(s) {
@@ -79,7 +129,7 @@ func renderInline(w io.Writer, s string, showURLs ...bool) {
 			if show {
 				fmt.Fprintf(w, "%s (%s)", text, url)
 			} else {
-				fmt.Fprintf(w, "%s%s%s%s%s", osc8, url, oscEnd, text, osc8+oscEnd)
+				fmt.Fprintf(w, "%s%s%s%s%s", osc8, oscSafeURL(url), oscEnd, text, osc8+oscEnd)
 			}
 			i += advance
 			continue

@@ -463,7 +463,11 @@ func (a *App) renderCommandFlags(w io.Writer, th Theme, o Options, termWidth int
 
 func renderRawLines(w io.Writer, th Theme, indent int, text string) {
 	indentStr := strings.Repeat(" ", indent)
-	lines := splitLines(strings.Trim(text, "\r\n"))
+	// Raw note text goes to the terminal unrendered, so this is one of the four
+	// places an author string bypasses renderInline's sanitiser. A lone carriage
+	// return here used to reach the screen, where it returns the cursor to
+	// column 0 and the rest of the row overwrites what was already drawn.
+	lines := splitLines(sanitizeControl(strings.Trim(text, "\r\n")))
 	for _, line := range lines {
 		if line == "" {
 			fmt.Fprintln(w)
@@ -479,7 +483,10 @@ func renderNoteContent(w io.Writer, th Theme, o Options, termWidth, indent int, 
 		return
 	}
 
-	lines := splitLines(strings.Trim(note.Text, "\r\n"))
+	// The fenced branch below prints its lines verbatim, so the author string is
+	// sanitised here for the same reason renderRawLines sanitises its own. The
+	// prose branch is sanitised again by renderInline, which is harmless.
+	lines := splitLines(sanitizeControl(strings.Trim(note.Text, "\r\n")))
 	var proseLines []string
 	inFence := false
 
@@ -520,7 +527,11 @@ func renderNoteContent(w io.Writer, th Theme, o Options, termWidth, indent int, 
 func renderCommandNotes(w io.Writer, th Theme, o Options, termWidth int, notes []Note) {
 	for _, note := range notes {
 		if note.Heading != "" {
-			th.Hdr.Fprintln(w, "\n"+note.Heading+":")
+			// inline(), like every other heading: the markdown generator renders
+			// a heading's markup (doc/md.go) and the terminal printed it raw, so
+			// "**Warning**" came out bold on the page and asterisked on screen.
+			// It also sanitises, which is why a heading needs no separate guard.
+			th.Hdr.Fprintln(w, "\n"+inline(note.Heading)+":")
 		}
 		renderNoteContent(w, th, o, termWidth, 2, note)
 	}

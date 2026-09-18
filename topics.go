@@ -343,7 +343,7 @@ func (a *App) renderManNotes(w io.Writer, th Theme, o Options, termWidth int, no
 	for _, n := range notes {
 		fmt.Fprintln(w)
 		if n.Heading != "" {
-			th.Hdr.Fprintf(w, "      %s:\n", n.Heading)
+			th.Hdr.Fprintf(w, "      %s:\n", inline(n.Heading))
 		}
 		renderNoteContent(w, th, o, termWidth, 8, n)
 	}

@@ -52,6 +52,10 @@ func splitLines(text string) []string {
 	if text == "" {
 		return nil
 	}
+	// No sanitising here: splitLines also runs on text this package has already
+	// rendered, where an ESC is one of ours and replacing it would break the very
+	// escape it belongs to. Author strings are sanitised at the boundary instead
+	// — renderInline for prose, and the verbatim callers below for the rest.
 	var out []string
 	start := 0
 	for i, r := range text {
@@ -60,8 +64,7 @@ func splitLines(text string) []string {
 			start = i + 1
 		}
 	}
-	out = append(out, strings.TrimSuffix(text[start:], "\r"))
-	return out
+	return append(out, strings.TrimSuffix(text[start:], "\r"))
 }
 
 // padPrefix lays prefix out in its own column, padded to indent display
