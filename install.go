@@ -29,25 +29,15 @@ const (
 	integrationMarkerFn = "clihelp-integration-version"
 )
 
-// integrationVersion identifies what the generated file contains. It is derived
-// from the two template versions rather than maintained separately, so that
-// bumping either one invalidates every installed file.
-func integrationVersion() string {
-	return fmt.Sprintf("%d.%d", completionScriptVersion, keyDispatcherVersion)
-}
-
 // IntegrationPath returns the file the shell startup line sources: one file per
 // shell under the application's configuration directory.
 func IntegrationPath(app *App, shell string) (string, error) {
 	if app == nil {
 		return "", errors.New("integration path: app is nil")
 	}
-	if shell == "" {
-		shell = detectShell()
-	}
-	shell = strings.ToLower(strings.TrimSpace(shell))
-	if !isSupportedShell(shell) {
-		return "", fmt.Errorf("unsupported shell %q (supported: %s)", shell, strings.Join(SupportedShells, ", "))
+	shell, err := resolveShell(shell)
+	if err != nil {
+		return "", err
 	}
 
 	name, err := safeAppName(app)
@@ -72,10 +62,14 @@ func GenShellIntegration(app *App, shell string, keys bool, w io.Writer) error {
 	if app == nil {
 		return errors.New("shell integration: app is nil")
 	}
-	shell = strings.ToLower(strings.TrimSpace(shell))
+	// This one did not default an empty shell to the detected one, while every
+	// sibling entry point did; resolveShell makes all of them agree.
+	shell, err := resolveShell(shell)
+	if err != nil {
+		return err
+	}
 
 	var body bytes.Buffer
-	var err error
 	switch shell {
 	case "bash":
 		err = GenBashCompletion(app, &body)
@@ -269,7 +263,9 @@ func startupFile(app *App, shell string) (path string, owned bool, err error) {
 		}
 		return filepath.Join(configHome, "fish", "conf.d", appName(app)+".fish"), true, nil
 	}
-	return "", false, fmt.Errorf("unsupported shell %q", shell)
+	// Unreachable while every caller resolves the shell first; kept so that
+	// adding a shell to SupportedShells fails here rather than silently.
+	return "", false, fmt.Errorf("unsupported shell %q (supported: %s)", shell, strings.Join(SupportedShells, ", "))
 }
 
 // bootstrapBlock is the text placed in the startup file. It names a fixed path
@@ -382,10 +378,10 @@ func InstallShellIntegration(app *App, shell string, keys bool) (InstallResult, 
 	if err != nil {
 		return InstallResult{}, err
 	}
-	if shell == "" {
-		shell = detectShell()
+	shell, err = resolveShell(shell)
+	if err != nil {
+		return InstallResult{}, err
 	}
-	shell = strings.ToLower(strings.TrimSpace(shell))
 	res := InstallResult{Shell: shell, Integration: target}
 
 	if err := writeIntegrationFile(app, shell, keys, target); err != nil {
@@ -460,10 +456,10 @@ func UninstallShellIntegration(app *App, shell string) (InstallResult, error) {
 	if err != nil {
 		return InstallResult{}, err
 	}
-	if shell == "" {
-		shell = detectShell()
+	shell, err = resolveShell(shell)
+	if err != nil {
+		return InstallResult{}, err
 	}
-	shell = strings.ToLower(strings.TrimSpace(shell))
 	res := InstallResult{Shell: shell}
 
 	if err := os.Remove(target); err == nil {

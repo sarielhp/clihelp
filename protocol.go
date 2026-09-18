@@ -195,9 +195,9 @@ func (a *App) printClihelpDetail(w io.Writer) {
 	fmt.Fprintf(w, "  %-12s the Alt-H protocol, called by the generated key bindings\n", protoExplain)
 	fmt.Fprintf(w, "  %-12s these verbs\n", protoClihelp)
 
-	shell := detectShell()
+	shell, shellErr := resolveShell("")
 	fmt.Fprintf(w, "\nWhat 'install' would write here")
-	if !isSupportedShell(shell) {
+	if shellErr != nil {
 		fmt.Fprintf(w, " (no shell detected; name one on the command line):\n")
 		return
 	}

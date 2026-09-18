@@ -382,19 +382,6 @@ end
 set -e _clihelp_entry
 `
 
-// keyDispatcherVersion is raised whenever the shared dispatcher changes. A
-// snippet installs its dispatcher only when nothing newer is already in place,
-// so two programs shipping different clihelp versions cannot fight over the key:
-// the newer dispatcher wins, and it serves every program in the shared registry.
-const keyDispatcherVersion = 5
-
-// explainProtocolVersion is what a program tells the shared dispatcher it
-// speaks, through its registry entry. It is not the dispatcher's own version:
-// the dispatcher is whatever the newest installed program shipped, while this
-// says how to talk to *this* program. They change independently, which is the
-// whole reason the registry carries it.
-const explainProtocolVersion = 1
-
 // GenKeyBindings writes the shell snippet that binds Alt-H to "expand this
 // command line and explain it". The binding acts only on command lines that
 // begin with the application's own name, and zsh hands anything else back to its
@@ -407,12 +394,13 @@ func GenKeyBindings(app *App, shell string, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if shell == "" {
-		shell = detectShell()
+	shell, err = resolveShell(shell)
+	if err != nil {
+		return err
 	}
 
 	var tmpl string
-	switch strings.ToLower(strings.TrimSpace(shell)) {
+	switch shell {
 	case "bash":
 		tmpl = bashKeysTemplate
 	case "zsh":

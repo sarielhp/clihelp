@@ -14,12 +14,6 @@ import (
 )
 
 // SupportedShells lists available shell autocompletion formats.
-var SupportedShells = []string{"bash", "zsh", "fish"}
-
-// completionScriptVersion marks the generated scripts. It is raised whenever a
-// template changes in a way that already-installed scripts must pick up, so that
-// the auto-install path rewrites them instead of leaving an old script in place.
-const completionScriptVersion = 5
 
 // sanitizeCompletionField makes a string safe to put in one field of a
 // completion record. The protocol is line-oriented with a tab between candidate
@@ -283,12 +277,9 @@ func CompletionPath(app *App, shell string) (string, error) {
 	if app == nil {
 		return "", errors.New("completion path: app is nil")
 	}
-	if shell == "" {
-		shell = detectShell()
-	}
-	shell = strings.ToLower(strings.TrimSpace(shell))
-	if shell == "" {
-		return "", errors.New("cannot detect the active shell: $SHELL is not set; name one of " + strings.Join(SupportedShells, ", "))
+	shell, err := resolveShell(shell)
+	if err != nil {
+		return "", err
 	}
 
 	appName, err := safeAppName(app)
@@ -358,8 +349,8 @@ func (a *App) maybeAutoInstallCompletion(args []string) {
 	}
 	a.refreshManPage()
 
-	sh := detectShell()
-	if !isSupportedShell(sh) {
+	sh, err := resolveShell("")
+	if err != nil {
 		return // no script exists for this shell; writing a bash one would be a lie
 	}
 	// A shell integration the user installed is kept current, and never created
@@ -445,10 +436,10 @@ func InstallCompletion(app *App, shell string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if shell == "" {
-		shell = detectShell()
+	shell, err = resolveShell(shell)
+	if err != nil {
+		return "", err
 	}
-	shell = strings.ToLower(strings.TrimSpace(shell))
 
 	var script bytes.Buffer
 	switch shell {
@@ -532,28 +523,6 @@ func writeFileAtomically(path string, data []byte, mode os.FileMode) error {
 		dir.Close()
 	}
 	return nil
-}
-
-// detectShell names the shell from $SHELL, or returns "" when $SHELL is unset.
-// It does not translate an unknown shell into "bash": a dash, ksh or nushell
-// user was silently given a bash script in their home directory, which their
-// shell cannot read and which nothing ever removes.
-func detectShell() string {
-	sh := os.Getenv("SHELL")
-	if strings.TrimSpace(sh) == "" {
-		return ""
-	}
-	return strings.ToLower(filepath.Base(sh))
-}
-
-// isSupportedShell reports whether a completion script exists for shell.
-func isSupportedShell(shell string) bool {
-	for _, s := range SupportedShells {
-		if s == shell {
-			return true
-		}
-	}
-	return false
 }
 
 // CompletionCommand returns a standard clihelp.Command providing 'bash', 'zsh', 'fish', and 'install' subcommands.

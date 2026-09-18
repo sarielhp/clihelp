@@ -11,10 +11,6 @@ import (
 	"time"
 )
 
-// manPageVersion marks a generated page, so that an upgrade can tell one it
-// wrote from one it did not.
-const manPageVersion = 2
-
 // GenManPage writes a roff manual page for app: one page for the program, with
 // a subsection for every command.
 //
