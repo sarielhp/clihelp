@@ -2,6 +2,19 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.21] - unreleased
+
+### Fixed
+- **The Startup-File Lock Was Barely a Lock** - `flock` is held on an inode rather than a name, and the release function unlinked the lock file, so a waiter already blocked on the old inode could acquire it at the moment a newcomer's `O_CREATE` produced a fresh inode and locked that one instead — two writers, each certain it held the lock. A deterministic test (twelve workers, forty read-modify-writes each) reports **478 of 480 updates lost** against the old code; the install test's "2 of 8 blocks lost" was the mild case, and it only ever appeared under a full `-race` run, never on its own. The lock file is no longer removed.
+- **Tree Rendering Mis-measured Hyperlinks and Multi-line Descriptions** - when `doc/` and `tree/` were split into subpackages, four text helpers were copied rather than shared, and three had drifted. `tree`'s width measurement used a stripper that does not understand OSC sequences, so an OSC 8 hyperlink — which this library emits — measured 22 columns instead of 4. Its `firstSentence` checked for `". "` before truncating at a line break, so a description whose first full stop fell on a later line came back with the newline still in it, and the reflow that receives it assumes one line. `VisualWidth`, `StripANSI` and `SubcommandList` are exported, both subpackages defer to them, and each has a test asserting it still asks rather than answering.
+- **The Manual-Page Lookup Could Hang, and Collided With Itself** - `man -w` ran with no deadline, so an unreachable `MANPATH` entry would hang an install silently; it now has three seconds. It also compared paths as strings, and `man` prints the path it resolved — so clihelp's own page, reached through a symlinked `$XDG_DATA_HOME`, was reported as a foreign collision and the user was told to pass `--force` to overwrite their own file. `os.SameFile` settles it.
+- **Manual Pages Were Not Reproducible** - the `.TH` line carried today's date, so two builds of the same program produced different bytes. `SOURCE_DATE_EPOCH` is honoured, per the reproducible-builds convention. `manPageVersion` is raised so installed pages are replaced.
+
+### Internal
+- **The Atomic Write's Contract Is Now Checked Rather Than Claimed.** Every syscall in `writeFileAtomically` can fail, and each failure owes the caller three things: the error returned, the original file untouched, and no `.tmp-*` sibling left in the user's home. None of that was reachable from a test while `os` was called directly. A small `fileOps` seam passes the operations in — with no package-level variable to swap, since a mutable global would be visible to every other test — and all six failure points are driven, with all three obligations asserted at each.
+- `tools/bump-version.sh` regenerates both example documentation trees as part of a release. The pages embed `App.Version`, so they were one version stale after every bump, which is how they drifted far enough to hide two generator defects.
+- `docs/completion.md` describes the lock file, since it is a fourth artifact appearing in the user's home.
+
 ## [0.3.20] - 2026-09-17
 
 ### Fixed
