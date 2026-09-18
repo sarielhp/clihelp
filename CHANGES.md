@@ -2,6 +2,15 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.19] - unreleased
+
+### Internal
+- **The Shell-Integration Surface Is Layered Now, and Acyclic.** This is A1 from the review, the one finding deliberately left open through the fix pass. Five files formed a complete dependency cycle: `completion.go` reached into `install.go` nine ways, `install.go` reached back six, and `protocol.go` sat at the top while `install.go` reached up into it for one string constant. There are four layers now — leaves (`shell.go`, `names.go`, `versions.go`, `atomicwrite.go`, `completion_templates.go`), generators that produce text and touch no files (`completion.go`, `explain.go`, `man.go`), installers that write them (`install.go`, `autoinstall.go`), and the command layer over those (`protocol.go`, `completion_command.go`) — with no edge pointing up. `completion.go` is 372 lines rather than 724, and `AGENTS.md` records the rule so the cycle does not grow back.
+- **`autoinstall.go` Is Its Own File.** The unattended path is the only code here that writes to a home directory unasked, and it is held to a much narrower rule than the explicit installers, so it no longer sits in the middle of a file about something else.
+
+### Fixed
+- **Entry Points Disagreed About What a Shell Argument Means** - "which shell, and can we write for it?" was answered in seven places. Six read an empty argument as "the shell the user is running" and `GenShellIntegration` alone rejected it. The error came in two wordings, one of which never listed the supported shells, and five sites reported an undetectable shell as `unsupported shell ""` — which names neither the problem nor the fix. One resolver answers for all of them now, and an unset `$SHELL` says so and asks for a name.
+
 ## [0.3.18] - 2026-09-17
 
 ### Internal

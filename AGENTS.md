@@ -181,12 +181,18 @@ a redirecting caller sees it, and that caller wants it.
 | `testing.go` | Testing harnesses (`TestExecute`, `Audit`) for simulating execution and verifying command trees |
 | `inline.go` | Inline markdown parsing and ANSI/OSC8 terminal formatting (bold, italic, code, hyperlinks) |
 | `pager.go` | Pager detection/execution (`$PAGER`, `less`), terminal height check, and paged output |
-| `completion.go` | Shell autocompletion script generation (Bash, Zsh, Fish), dynamic completion, and XDG auto-installation |
+| `completion.go` | The `__complete` protocol, dynamic completion, and the three script generators |
+| `completion_templates.go` | The generated bash, zsh and fish completion scripts, as shell source |
+| `completion_command.go` | The optional `completion` command and the install/uninstall report |
+| `autoinstall.go` | `AutoInstallCompletion`: the only unattended writer, allowed to refresh and never to create |
+| `atomicwrite.go` | `writeFileAtomically` — symlink-resolving, fsynced, owner-preserving replace |
+| `shell.go` | `resolveShell` — the one answer to "which shell, and can we write for it?" |
+| `versions.go` | Every version number stamped into a generated artifact, in one place |
 | `explain.go` | Command-line expansion and the height-capped explanation behind Alt-H (`__explain`, `App.Explain`, `GenKeyBindings`) |
 | `protocol.go` | The reserved `__clihelp` setup verbs (version, install, uninstall, keys, wrapper, manpage), their shared argument parser, and wrapper-script generation |
 | `names.go` | `safeAppName` — the one gate for any name that becomes a file path, a shell symbol or an rc-file marker — plus the shell quoters |
 | `lock_unix.go`, `lock_other.go` | Advisory locking for the startup-file read-modify-write |
-| `install.go` | One-command shell integration: the generated per-shell file, the marked startup-file block, install/uninstall/refresh |
+| `install.go` | One-command setup: the generated per-shell file, the marked startup-file block, install/uninstall/refresh, and the manual page that goes with them |
 | `man.go` | roff manual page generation (`GenManPage`), installation under `$XDG_DATA_HOME/man`, and `ManPageCommand` |
 | `completion_test.go` | Unit tests for shell completion protocol, installation, and shared completion helpers |
 | `completion_bash_test.go` | Live Bash tab-completion integration and dynamic callback tests |
@@ -198,6 +204,10 @@ a redirecting caller sees it, and that caller wants it.
 | `atomicwrite_test.go` | Symlinked dotfiles and the atomic-replace contract |
 | `autopath_test.go` | What an ordinary program run is and is not allowed to do |
 | `sandbox_test.go` | `TestMain`'s guard that the suite never writes to the real home directory |
+| `shell_harness_test.go` | Drives the generated zsh and fish code headlessly by stubbing `zle`, `bindkey`, `bind` and `commandline` |
+| `install_live_test.go` | Starts a real zsh and fish against a sandboxed home and checks what the install left them |
+| `install_manpage_test.go` | That one `install` sets everything up, and one `uninstall` removes it |
+| `shell_test.go` | That every entry point resolves a shell the same way |
 | `man_test.go` | roff generation, escaping, installation, and live `man` rendering |
 | `protocol_test.go` | The `__clihelp` verbs, their argument grammar, and wrapper generation |
 | `explain_test.go`, `explain_shell_test.go` | Command-line expansion, the height budget, and the live shell key bindings |
@@ -214,6 +224,20 @@ a redirecting caller sees it, and that caller wants it.
 | `VERSION` | Version source of truth |
 | `CHANGES.md` | Version changelog |
 | `tools/` | Automation shell and ruby scripts |
+
+**The shell-integration surface is layered, and the layering is load-bearing.** It was a
+dependency cycle across five files until it was untangled; keep it acyclic:
+
+1. **Leaves** — `shell.go`, `names.go`, `versions.go`, `atomicwrite.go`,
+   `completion_templates.go`. They depend on nothing above them.
+2. **Generators** — `completion.go`, `explain.go`, `man.go`. They produce text and touch no
+   files.
+3. **Installers** — `install.go`, `autoinstall.go`. They write files, using layer 2.
+4. **Commands** — `protocol.go`, `completion_command.go`. Presentation over layer 3.
+
+A reference from a lower layer to a higher one is the cycle coming back. If a constant is
+what you need from above, move the constant down — that is why the `__complete` / `__explain`
+/ `__clihelp` names live in `names.go` and not in `protocol.go`.
 
 ## Agent Development Rules
 

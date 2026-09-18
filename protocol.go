@@ -27,12 +27,6 @@ import (
 //
 // It is hidden, not secret: it is absent from help and completion output because
 // no human needs it in the way, and it never acts unless it is invoked.
-const (
-	protoComplete = "__complete"
-	protoExplain  = "__explain"
-	protoClihelp  = "__clihelp"
-)
-
 // clihelpVerb is one entry of the __clihelp surface. The list is the single
 // source for both the summary and a verb's own usage line.
 type clihelpVerb struct {

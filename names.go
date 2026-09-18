@@ -102,3 +102,15 @@ func fileHasMarker(path, marker string, limit int64) bool {
 // markerWindow is how far into a generated file a marker may sit. Every header
 // this library writes is far shorter; the slack is for a long application name.
 const markerWindow = 4096
+
+// The three reserved argument names.
+//
+// They are declared here, with the other identifiers this library reserves,
+// rather than in protocol.go where they are served: install.go names __clihelp
+// when it tells a user how to undo an install, and a constant is no reason for
+// the installer to depend on the command layer above it.
+const (
+	protoComplete = "__complete"
+	protoExplain  = "__explain"
+	protoClihelp  = "__clihelp"
+)

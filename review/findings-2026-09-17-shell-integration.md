@@ -173,7 +173,7 @@ changed. The per-test `sandboxHome` discipline has already failed once; the guar
 | IO-7 | `man -w` runs with no timeout inside the user's program. (Disproved: it is *not* on the per-invocation path, and its stderr does not leak.) |
 | IO-8/9 | Four marker checks read a fixed-size head with the error discarded; an interrupted write leaves a `.tmp-*` sibling in `$HOME` forever. |
 | S9 | The wrapper's `rest=${2#* }` reconstruction leaks the wrapper's own name when the line has leading blanks, and drops every argument when the separator is a tab. **[fixed: 6eb1015]** |
-| A1 | The five files form a complete dependency cycle; there is no layering. Shell resolution is written out six times with two different error messages. |
+| A1 | The five files form a complete dependency cycle; there is no layering. Shell resolution is written out six times with two different error messages. **[fixed: pending]** — four layers with no upward edge, one `resolveShell`, and the rule written into `AGENTS.md`. The count was seven sites, not six, and the seventh disagreed about the default. |
 | SH-5 | The Alt-H protocol has a version on the *dispatcher* but none on the *wire*: `_clihelp_apps` carries bare names, so a newer dispatcher cannot tell which release a registered program speaks. Nothing is broken today; the first bump of `keyDispatcherVersion` is what breaks, silently. Fix before the next bump, not after. **[fixed: 995d880]** |
 | SH-6 | The key binds into whatever keymap is current at source time: with `set -o vi` after the block, Alt-H is dead in bash and zsh. It also silently clobbers a user's existing `\eh` binding. **[fixed: cf9ab99]** — the keymaps by binding all of them; the clobber by `CLIHELP_NO_KEY_BINDINGS`, an opt-out rather than detection, because readline gives no portable way to ask what `\eh` is currently bound to. |
 | SH-7 | zsh completion is silently not registered when `compdef` does not exist yet — deferred/turbo loaders and late `compinit` all land here, with no diagnostic and no retry. **[fixed: 578a860]** |
@@ -284,11 +284,11 @@ behaviour with `teeth.sh`. Every proof-of-concept in this document was re-run ag
 final tree and is closed. `make check` — which now includes the race detector — and
 `make audit` are green.
 
-The Later block is applied too, except for one item, deliberately: **A1's file
-reorganization**. It is a pure refactor, it touches every file in the surface, and a safety
-pass is not the place for it. The findings it would address (six copies of shell resolution,
-presentation living in a third file, five version constants in five files) are recorded above
-and unchanged.
+The Later block is applied too, except for one item, deliberately at the time: **A1's file
+reorganization**. It was a pure refactor, it touches every file in the surface, and a safety
+pass was not the place for it. It has since been done on its own, after the defects were
+closed — which is the right order, because the layering is only checkable once the behaviour
+is settled.
 
 Two things the fix pass proved this document wrong about, corrected in place:
 
