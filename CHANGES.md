@@ -2,7 +2,7 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
-## [0.3.17] - unreleased
+## [0.3.17] - 2026-09-17
 
 ### Changed
 - **`install` Now Sets the Program Up Completely** - it installed the shell integration and left the manual page to a second command, `__clihelp manpage --install`, which the user had to know existed. Since an installed man page is also what makes Alt-H answer natively in zsh and fish, the half most people would never run was the half that finished the feature. `install` now writes the page too, `--no-man` declines it the way `--no-keys` declines the key binding, and `uninstall` removes it — its report promises to undo everything, and a man page left behind is one the user is never told about again. A page already installed system-wide is still refused rather than overwritten, but it is now reported as a warning instead of failing a shell setup that otherwise succeeded.
