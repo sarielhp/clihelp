@@ -651,32 +651,11 @@ func displayName(c clihelp.Command) string {
 	return c.Name
 }
 
-// subcommandEntries is the subcommand list for a page, and it has to be the
-// same list the terminal help shows.
+// subcommandEntries is clihelp's own list, not a second opinion about it.
 //
-// clihelp's own copy of this (format.go) prefers an explicit SubcommandEntries
-// over walking the tree, which is the point of that field: it documents
-// subcommands the tree does not carry. When doc became a subpackage this
-// function was copied without that branch, so the generated markdown quietly
-// disagreed with `--help` — mail_cli's "whitelist list" is in the terminal
-// output and was missing from the page.
+// A copy used to live here, and it had lost the branch that prefers an explicit
+// SubcommandEntries — the field whose purpose is documenting subcommands the
+// tree does not carry — so the generated pages disagreed with `--help`.
 func subcommandEntries(cmd *clihelp.Command) []clihelp.Param {
-	if len(cmd.SubcommandEntries) > 0 {
-		return cmd.SubcommandEntries
-	}
-	if len(cmd.Subcommands) == 0 {
-		return nil
-	}
-	var out []clihelp.Param
-	for _, sub := range cmd.Subcommands {
-		if sub.Hidden {
-			continue
-		}
-		name := displayName(sub)
-		if len(sub.Aliases) > 0 {
-			name += " (" + strings.Join(sub.Aliases, ", ") + ")"
-		}
-		out = append(out, clihelp.Param{Name: name, Description: sub.Description})
-	}
-	return out
+	return clihelp.SubcommandList(*cmd)
 }

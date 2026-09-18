@@ -19,13 +19,31 @@ var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]|\x1b\].*?(?:\x1b\\|\x0
 // sequences (e.g. \x1b]8;;url\x1b\ for hyperlinks, \x1b]0;title\x07 for
 // window titles) from s, returning only the visible text.
 func stripANSI(s string) string {
+	return StripANSI(s)
+}
+
+// StripANSI removes the escape sequences clihelp itself emits — CSI colour codes
+// and OSC sequences, including the OSC 8 hyperlinks this library sets — leaving
+// the text a terminal actually displays.
+//
+// It is exported because the subpackages need it. tree/ had its own width
+// measurement built on a third-party stripper that does not handle OSC, so a
+// hyperlink measured 22 columns wide instead of 4.
+func StripANSI(s string) string {
 	return ansiRegex.ReplaceAllString(s, "")
 }
 
 // visualLen returns the display column width of s, ignoring ANSI escape
 // codes. Wide East-Asian characters count as two columns.
 func visualLen(s string) int {
-	return runewidth.StringWidth(stripANSI(s))
+	return VisualWidth(s)
+}
+
+// VisualWidth is the number of terminal columns s occupies: escape sequences
+// cost nothing, and a wide rune costs two. Every layout decision in this library
+// and its subpackages has to measure the same way, or columns do not line up.
+func VisualWidth(s string) int {
+	return runewidth.StringWidth(StripANSI(s))
 }
 
 // splitLines splits text on '\n', preserving empty segments so consecutive
@@ -352,6 +370,19 @@ func title(c *Command) string {
 // subcommandEntries returns the display list for the Subcommands section,
 // preferring explicit entries over the structural Subcommands tree.
 func subcommandEntries(c *Command) []Param {
+	return SubcommandList(*c)
+}
+
+// SubcommandList is the subcommand list to display for a command: an explicit
+// SubcommandEntries when the author supplied one, and otherwise the visible
+// Subcommands under their display names.
+//
+// The preference is the whole point of SubcommandEntries — it documents
+// subcommands the tree does not carry. It is exported so that the terminal help
+// and the markdown generator cannot answer differently, which they did: doc/ was
+// given a copy of this without the preference, and a documented-only entry
+// showed in `--help` and was missing from the generated page.
+func SubcommandList(c Command) []Param {
 	if len(c.SubcommandEntries) > 0 {
 		return c.SubcommandEntries
 	}

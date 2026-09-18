@@ -7,9 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/acarl005/stripansi"
 	"github.com/fatih/color"
-	"github.com/mattn/go-runewidth"
 	"github.com/sarielhp/clihelp"
 )
 
@@ -146,25 +144,24 @@ func renderTreeTo(w io.Writer, th clihelp.Theme, width int, commands []clihelp.C
 }
 
 // visualLen returns the display column width of s, ignoring ANSI escapes.
+//
+// It defers to clihelp rather than measuring here. This file used to strip
+// escapes with a third-party stripper that does not understand OSC sequences,
+// so an OSC 8 hyperlink — which this library emits — measured 22 columns
+// instead of 4, and every column beside it was placed wrong.
 // Counting bytes here measured every box-drawing glyph the tree draws with as
 // three columns instead of one, so descriptions were indented and wrapped as if
 // the tree were far wider than it is.
 func visualLen(s string) int {
-	return runewidth.StringWidth(stripansi.Strip(s))
+	return clihelp.VisualWidth(s)
 }
 
+// firstSentence is clihelp's own, not a copy of it. The copy that used to live
+// here checked for ". " before truncating at a line break, so a description
+// whose first full stop fell on a later line yielded a string containing
+// newlines — and reflowTree below assumes one line.
 func firstSentence(s string) string {
-	s = strings.TrimSpace(s)
-	if idx := strings.Index(s, ". "); idx != -1 {
-		return s[:idx+1]
-	}
-	if strings.HasSuffix(s, ".") {
-		return s
-	}
-	if idx := strings.IndexByte(s, '\n'); idx != -1 {
-		return s[:idx]
-	}
-	return s
+	return clihelp.FirstSentence(s)
 }
 
 func colorizeTreeWord(c *color.Color, word string) string {
