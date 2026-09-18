@@ -389,13 +389,13 @@ func TestGeneratedWrapperPassesArgumentsThrough(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if out, err := exec.Command(shPath, "-n", wrapper).CombinedOutput(); err != nil {
+	if out, err := sandboxedCommand(t, shPath, "-n", wrapper).CombinedOutput(); err != nil {
 		t.Fatalf("the generated wrapper is not valid sh: %v\n%s", err, out)
 	}
 
-	cmd := exec.Command(wrapper, "extra")
+	cmd := sandboxedCommand(t, wrapper, "extra")
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "PATH="+dir+":"+os.Getenv("PATH"))
+	cmd.Env = append(cmd.Env, "PATH="+dir+":"+os.Getenv("PATH"))
 	out, err := cmd.Output()
 	if err != nil {
 		t.Fatalf("running the wrapper failed: %v", err)

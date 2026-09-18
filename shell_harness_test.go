@@ -60,8 +60,8 @@ func driveShell(t *testing.T, shell, dir, snippet, stubs, body string) string {
 	default:
 		args = []string{"-f", "-c", script}
 	}
-	cmd := exec.Command(path, args...)
-	cmd.Env = append(os.Environ(), "HOME="+dir, "PATH="+dir+":"+os.Getenv("PATH"), "LINES=24", "COLUMNS=78")
+	cmd := sandboxedCommand(t, path, args...)
+	cmd.Env = append(cmd.Env, "HOME="+dir, "PATH="+dir+":"+os.Getenv("PATH"), "LINES=24", "COLUMNS=78")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("%s failed: %v\n%s", shell, err, out)
@@ -245,5 +245,119 @@ func TestZshCompletionRegistersImmediately(t *testing.T) {
 	}
 	if strings.Contains(out, "HOOK:") {
 		t.Errorf("a precmd hook was installed although compdef was available:\n%s", out)
+	}
+}
+
+// stubCompleter writes a stand-in program that answers __complete with fixed
+// lines, so a completion script can be driven without building anything.
+func stubCompleter(t *testing.T, dir, name, output string) {
+	t.Helper()
+	body := "#!/bin/sh\nprintf '%s' " + shellSingleQuote(output) + "\n"
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o700); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func shellSingleQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// Every shell must fall back to filenames when the program offers no
+// candidates: that is what the bash script's "complete -o default" does, and
+// without it an argument that is a path cannot be completed at all. zsh offered
+// nothing and fish's "-f" forbade files outright.
+func TestCompletionFallsBackToFiles(t *testing.T) {
+	t.Run("zsh", func(t *testing.T) {
+		dir := t.TempDir()
+		stubCompleter(t, dir, "alpha", "")
+		snippet := completionSnippet(t, dir, "zsh", &App{Name: "alpha"})
+		stubs := zshCompletionStubs + `
+compdef() { : }
+_files() { print -r -- "FILES" }
+compadd() { print -r -- "COMPADD:$*" }
+_describe() { print -r -- "DESCRIBE:$*" }
+`
+		body := "local -a words; words=(alpha sub); local CURRENT=2; _alpha"
+		out := driveShell(t, "zsh", dir, snippet, stubs, body)
+		if !strings.Contains(out, "FILES") {
+			t.Errorf("zsh offered no filename fallback:\n%s", out)
+		}
+	})
+
+	t.Run("fish", func(t *testing.T) {
+		dir := t.TempDir()
+		stubCompleter(t, dir, "alpha", "")
+		snippet := completionSnippet(t, dir, "fish", &App{Name: "alpha"})
+		stubs := `
+function complete; echo "COMPLETE:$argv"; end
+function commandline; echo alpha; end
+`
+		body := `
+if functions -q __fish_alpha_needs_files
+    __fish_alpha_needs_files; and echo "NEEDS-FILES"
+end`
+		out := driveShell(t, "fish", dir, snippet, stubs, body)
+		if !strings.Contains(out, "NEEDS-FILES") {
+			t.Errorf("fish has no filename fallback for an empty candidate list:\n%s", out)
+		}
+	})
+}
+
+// ...and must not offer files on top of the candidates the program gave, which
+// is what dropping fish's -f outright would have done.
+func TestCompletionKeepsCandidatesFileFree(t *testing.T) {
+	t.Run("zsh", func(t *testing.T) {
+		dir := t.TempDir()
+		stubCompleter(t, dir, "alpha", "build\tcompile it\n")
+		snippet := completionSnippet(t, dir, "zsh", &App{Name: "alpha"})
+		stubs := zshCompletionStubs + `
+compdef() { : }
+_files() { print -r -- "FILES" }
+compadd() { print -r -- "COMPADD:$*" }
+_describe() { print -r -- "DESCRIBE:$*" }
+`
+		body := "local -a words; words=(alpha sub); local CURRENT=2; _alpha"
+		out := driveShell(t, "zsh", dir, snippet, stubs, body)
+		if strings.Contains(out, "FILES") {
+			t.Errorf("zsh mixed filenames into a non-empty candidate list:\n%s", out)
+		}
+		if !strings.Contains(out, "DESCRIBE:") {
+			t.Errorf("zsh dropped the described candidates:\n%s", out)
+		}
+	})
+
+	t.Run("fish", func(t *testing.T) {
+		dir := t.TempDir()
+		stubCompleter(t, dir, "alpha", "build\n")
+		snippet := completionSnippet(t, dir, "fish", &App{Name: "alpha"})
+		stubs := `
+function complete; echo "COMPLETE:$argv"; end
+function commandline; echo alpha; end
+`
+		body := "__fish_alpha_needs_files; and echo \"NEEDS-FILES\"\ntrue"
+		out := driveShell(t, "fish", dir, snippet, stubs, body)
+		if strings.Contains(out, "NEEDS-FILES") {
+			t.Errorf("fish asked for files although the program gave candidates:\n%s", out)
+		}
+	})
+}
+
+// A single candidate that is the empty string is still a candidate list. zsh's
+// "[ -n $completions ]" read the array as one joined string, so it decided there
+// was nothing to add — the same bug that would misjudge the files fallback.
+func TestZshCountsCandidatesNotTheirText(t *testing.T) {
+	dir := t.TempDir()
+	stubCompleter(t, dir, "alpha", "\n\n")
+	snippet := completionSnippet(t, dir, "zsh", &App{Name: "alpha"})
+	stubs := zshCompletionStubs + `
+compdef() { : }
+_files() { print -r -- "FILES" }
+compadd() { print -r -- "COMPADD:$*" }
+_describe() { print -r -- "DESCRIBE:$*" }
+`
+	body := "local -a words; words=(alpha sub); local CURRENT=2; _alpha"
+	out := driveShell(t, "zsh", dir, snippet, stubs, body)
+	if !strings.Contains(out, "FILES") {
+		t.Errorf("blank-only output should count as no candidates:\n%s", out)
 	}
 }

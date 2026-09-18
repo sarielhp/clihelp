@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 	"testing"
 )
@@ -31,8 +30,8 @@ func TestHelpExampleDoesNotRecurse(t *testing.T) {
 		return
 	}
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestHelpExampleDoesNotRecurse", "-test.timeout=60s")
-	cmd.Env = append(os.Environ(), "CLIHELP_HELP_RECURSION_CHILD=1")
+	cmd := sandboxedCommand(t, os.Args[0], "-test.run=TestHelpExampleDoesNotRecurse", "-test.timeout=60s")
+	cmd.Env = append(cmd.Env, "CLIHELP_HELP_RECURSION_CHILD=1")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		summary := string(output)

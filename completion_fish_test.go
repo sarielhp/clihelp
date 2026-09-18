@@ -40,8 +40,8 @@ source %q
 complete -C %q
 `, scriptPath, commandLine)
 
-		cmd := exec.Command(fishPath, "--no-config", "-c", fishScript)
-		cmd.Env = append(os.Environ(), "PATH="+tmpDir+":"+os.Getenv("PATH"))
+		cmd := sandboxedCommand(t, fishPath, "--no-config", "-c", fishScript)
+		cmd.Env = append(cmd.Env, "PATH="+tmpDir+":"+os.Getenv("PATH"))
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("fish completion failed for %q: %v, output: %s", commandLine, err, string(out))
@@ -350,8 +350,8 @@ source %q
 complete -C "dyncli play -p h"
 `, scriptPath)
 
-	cmd := exec.Command(fishPath, "--no-config", "-c", fishScript)
-	cmd.Env = append(os.Environ(), "PATH="+tmpDir+":"+os.Getenv("PATH"))
+	cmd := sandboxedCommand(t, fishPath, "--no-config", "-c", fishScript)
+	cmd.Env = append(cmd.Env, "PATH="+tmpDir+":"+os.Getenv("PATH"))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("fish completion failed: %v, output: %s", err, string(out))

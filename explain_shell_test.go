@@ -46,7 +46,7 @@ func TestKeyBindingSnippetsParse(t *testing.T) {
 				t.Skipf("%s not found, skipping", tt.shell)
 			}
 			_, snippet := buildExplainFixture(t, tt.shell)
-			if out, err := exec.Command(shellPath, append(tt.args, snippet)...).CombinedOutput(); err != nil {
+			if out, err := sandboxedCommand(t, shellPath, append(tt.args, snippet)...).CombinedOutput(); err != nil {
 				t.Errorf("%s rejected its own snippet: %v\n%s", tt.shell, err, out)
 			}
 		})
@@ -73,8 +73,8 @@ echo "EXPANDED:$READLINE_LINE"
 echo "POINT:$READLINE_POINT"
 `, snippet)
 
-	cmd := exec.Command(bashPath, "--norc", "--noprofile", "-c", script)
-	cmd.Env = append(os.Environ(), "PATH="+binDir+":"+os.Getenv("PATH"))
+	cmd := sandboxedCommand(t, bashPath, "--norc", "--noprofile", "-c", script)
+	cmd.Env = append(cmd.Env, "PATH="+binDir+":"+os.Getenv("PATH"))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("bash binding failed: %v\n%s", err, out)
@@ -120,8 +120,8 @@ _clihelp_explain
 echo "LINE:$READLINE_LINE"
 `, snippet)
 
-	cmd := exec.Command(bashPath, "--norc", "--noprofile", "-c", script)
-	cmd.Env = append(os.Environ(), "PATH="+binDir+":"+os.Getenv("PATH"))
+	cmd := sandboxedCommand(t, bashPath, "--norc", "--noprofile", "-c", script)
+	cmd.Env = append(cmd.Env, "PATH="+binDir+":"+os.Getenv("PATH"))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("bash binding failed: %v\n%s", err, out)
@@ -171,11 +171,11 @@ func TestCompletionScriptsAreSafeToSource(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			cmd := exec.Command(shellPath, "-c", tt.script(scriptPath, dir))
+			cmd := sandboxedCommand(t, shellPath, "-c", tt.script(scriptPath, dir))
 			if tt.shell != "fish" {
-				cmd = exec.Command(shellPath, "-f", "-c", tt.script(scriptPath, dir))
+				cmd = sandboxedCommand(t, shellPath, "-f", "-c", tt.script(scriptPath, dir))
 			}
-			cmd.Env = append(os.Environ(), "PATH="+dir+":"+os.Getenv("PATH"))
+			cmd.Env = append(cmd.Env, "PATH="+dir+":"+os.Getenv("PATH"))
 			out, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("%s failed to source its own completion script: %v\n%s", tt.shell, err, out)
@@ -234,8 +234,8 @@ for line in "alpha build" "beta build" "git commit"; do
 done
 `, snippets[0], snippets[1], filepath.Join(dir, "out"), filepath.Join(dir, "out"))
 
-	cmd := exec.Command(bashPath, "--norc", "--noprofile", "-c", script)
-	cmd.Env = append(os.Environ(), "PATH="+dir+":"+os.Getenv("PATH"))
+	cmd := sandboxedCommand(t, bashPath, "--norc", "--noprofile", "-c", script)
+	cmd.Env = append(cmd.Env, "PATH="+dir+":"+os.Getenv("PATH"))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("dispatcher failed: %v\n%s", err, out)
@@ -286,9 +286,9 @@ func TestLiveBashWrapperScript(t *testing.T) {
 
 	run := func(t *testing.T, body string) string {
 		t.Helper()
-		cmd := exec.Command(bashPath, "--norc", "--noprofile", "-c",
+		cmd := sandboxedCommand(t, bashPath, "--norc", "--noprofile", "-c",
 			"source "+completionPath+"\ncomplete -F _podctl_complete pd\n"+body)
-		cmd.Env = append(os.Environ(), "PATH="+dir+":"+os.Getenv("PATH"), "LINES=24", "COLUMNS=78")
+		cmd.Env = append(cmd.Env, "PATH="+dir+":"+os.Getenv("PATH"), "LINES=24", "COLUMNS=78")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("bash failed: %v\n%s", err, out)
@@ -338,7 +338,7 @@ func TestLiveBashOneStepInstall(t *testing.T) {
 	// A logging stand-in on PATH ahead of the real binary would change what runs,
 	// so instead the install is done first and the startup measured after.
 	install := sandboxedCommand(t, bin, "completion", "install", "bash")
-	install.Env = append(os.Environ(), "HOME="+home, "XDG_CONFIG_HOME="+filepath.Join(home, ".config"),
+	install.Env = append(install.Env, "HOME="+home, "XDG_CONFIG_HOME="+filepath.Join(home, ".config"),
 		"XDG_DATA_HOME="+filepath.Join(home, ".local", "share"), "CLIHELP_NO_AUTO_COMPLETION=1")
 	if out, err := install.CombinedOutput(); err != nil {
 		t.Fatalf("install failed: %v\n%s", err, out)
@@ -353,8 +353,8 @@ COMP_WORDS=(podctl 'buil'); COMP_CWORD=1
 _podctl_complete
 echo "CANDIDATES: ${COMPREPLY[*]}"
 `
-	cmd := exec.Command(bashPath, "--norc", "--noprofile", "-c", script)
-	cmd.Env = append(os.Environ(), "HOME="+home, "PATH="+home+":"+os.Getenv("PATH"))
+	cmd := sandboxedCommand(t, bashPath, "--norc", "--noprofile", "-c", script)
+	cmd.Env = append(cmd.Env, "HOME="+home, "PATH="+home+":"+os.Getenv("PATH"))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("the installed startup file failed: %v\n%s", err, out)
@@ -404,8 +404,8 @@ READLINE_LINE="./alpha deploy"
 _clihelp_explain > /dev/null
 echo "LINE:$READLINE_LINE"
 `, dir, snippetPath)
-	cmd := exec.Command(bashPath, "--norc", "--noprofile", "-c", script)
-	cmd.Env = append(os.Environ(), "HOME="+dir, "PATH="+os.Getenv("PATH"))
+	cmd := sandboxedCommand(t, bashPath, "--norc", "--noprofile", "-c", script)
+	cmd.Env = append(cmd.Env, "HOME="+dir, "PATH="+os.Getenv("PATH"))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("bash failed: %v\n%s", err, out)
@@ -449,8 +449,8 @@ READLINE_LINE="  alpha build"
 _clihelp_explain > %q
 echo "LINE:[$READLINE_LINE]"
 `, snippetPath, filepath.Join(dir, "out"))
-	cmd := exec.Command(bashPath, "--norc", "--noprofile", "-c", script)
-	cmd.Env = append(os.Environ(), "HOME="+dir, "PATH="+dir+":"+os.Getenv("PATH"))
+	cmd := sandboxedCommand(t, bashPath, "--norc", "--noprofile", "-c", script)
+	cmd.Env = append(cmd.Env, "HOME="+dir, "PATH="+dir+":"+os.Getenv("PATH"))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("bash failed: %v\n%s", err, out)

@@ -83,7 +83,7 @@ func main() {
 	if out, err := exec.Command("go", "build", "-o", binPath, srcPath).CombinedOutput(); err != nil {
 		t.Fatalf("failed to build test CLI: %v, output: %s", err, out)
 	}
-	scriptBytes, err := exec.Command(binPath, "completion", "bash").Output()
+	scriptBytes, err := sandboxedCommand(t, binPath, "completion", "bash").Output()
 	if err != nil {
 		t.Fatalf("failed to generate bash completion script: %v", err)
 	}
@@ -102,8 +102,8 @@ for r in "${COMPREPLY[@]}"; do
 done
 `, scriptPath)
 
-	cmd := exec.Command(bashPath, "--norc", "--noprofile", "-c", bashScript)
-	cmd.Env = append(os.Environ(), "PATH="+tmpDir+":"+os.Getenv("PATH"))
+	cmd := sandboxedCommand(t, bashPath, "--norc", "--noprofile", "-c", bashScript)
+	cmd.Env = append(cmd.Env, "PATH="+tmpDir+":"+os.Getenv("PATH"))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("bash completion failed: %v, output: %s", err, out)
@@ -157,8 +157,8 @@ sleep 2
 zpty -d z
 `, dir, scriptPath, marker)
 
-	cmd := exec.Command(zshPath, "-f", "-c", driver)
-	cmd.Env = append(os.Environ(), "HOME="+dir)
+	cmd := sandboxedCommand(t, zshPath, "-f", "-c", driver)
+	cmd.Env = append(cmd.Env, "HOME="+dir)
 	_ = cmd.Run() // the driver's own exit status is not the assertion
 
 	if _, err := os.Stat(marker); err == nil {

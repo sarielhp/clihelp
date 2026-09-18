@@ -136,8 +136,8 @@ func TestLiveManRendersThePageWithoutWarnings(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cmd := exec.Command(manPath, page)
-	cmd.Env = append(os.Environ(), "MANPAGER=cat", "MANWIDTH=80")
+	cmd := sandboxedCommand(t, manPath, page)
+	cmd.Env = append(cmd.Env, "MANPAGER=cat", "MANWIDTH=80")
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
@@ -291,8 +291,8 @@ func TestManPageHeaderSurvivesAHostileVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cmd := exec.Command(manPath, page)
-	cmd.Env = append(os.Environ(), "MANPAGER=cat", "MANWIDTH=100")
+	cmd := sandboxedCommand(t, manPath, page)
+	cmd.Env = append(cmd.Env, "MANPAGER=cat", "MANWIDTH=100")
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()

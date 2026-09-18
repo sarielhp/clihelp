@@ -77,8 +77,8 @@ source %q
 _podctl
 `, wordsArray, scriptPath)
 
-		cmd := exec.Command(zshPath, "-f", "-c", zshScript)
-		cmd.Env = append(os.Environ(), "PATH="+tmpDir+":"+os.Getenv("PATH"))
+		cmd := sandboxedCommand(t, zshPath, "-f", "-c", zshScript)
+		cmd.Env = append(cmd.Env, "PATH="+tmpDir+":"+os.Getenv("PATH"))
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("zsh completion failed: %v, output: %s", err, string(out))
@@ -423,8 +423,8 @@ source %q
 _dyncli
 `, scriptPath)
 
-	cmd := exec.Command(zshPath, "-f", "-c", zshScript)
-	cmd.Env = append(os.Environ(), "PATH="+tmpDir+":"+os.Getenv("PATH"))
+	cmd := sandboxedCommand(t, zshPath, "-f", "-c", zshScript)
+	cmd.Env = append(cmd.Env, "PATH="+tmpDir+":"+os.Getenv("PATH"))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("zsh completion failed: %v, output: %s", err, string(out))

@@ -51,8 +51,8 @@ for r in "${COMPREPLY[@]}"; do
 done
 `, scriptPath, wordsArray, cword)
 
-		cmd := exec.Command(bashPath, "--norc", "--noprofile", "-c", bashScript)
-		cmd.Env = append(os.Environ(), "PATH="+tmpDir+":"+os.Getenv("PATH"))
+		cmd := sandboxedCommand(t, bashPath, "--norc", "--noprofile", "-c", bashScript)
+		cmd.Env = append(cmd.Env, "PATH="+tmpDir+":"+os.Getenv("PATH"))
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("bash completion execution failed: %v, output: %s", err, string(out))
@@ -360,8 +360,8 @@ for r in "${COMPREPLY[@]}"; do
 done
 `, scriptPath)
 
-	cmd := exec.Command(bashPath, "--norc", "--noprofile", "-c", bashScript)
-	cmd.Env = append(os.Environ(), "PATH="+tmpDir+":"+os.Getenv("PATH"))
+	cmd := sandboxedCommand(t, bashPath, "--norc", "--noprofile", "-c", bashScript)
+	cmd.Env = append(cmd.Env, "PATH="+tmpDir+":"+os.Getenv("PATH"))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("bash completion failed: %v, output: %s", err, string(out))
