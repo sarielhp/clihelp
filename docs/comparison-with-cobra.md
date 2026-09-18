@@ -16,7 +16,11 @@ While Cobra excels at building large CLI ecosystems, `clihelp` offers a differen
 | **Terminal Output** | Monochromatic, plain-text default layout | Theme-driven ANSI colors, width detection, OSC 8 links |
 | **Markdown Documentation** | Separate package (`cobra/doc`) | Built-in GitHub Markdown tree generator with SHA-256 caching |
 | **Flag Specification** | Method-based binding (`Flags().StringVarP(...)`) | Concise spec string (e.g. `"-o, --output PATH"`) |
-| **Shell Completion** | Bash, Zsh, Fish, PowerShell | Bash, Zsh, Fish |
+| **Shell Completion** | Bash, Zsh, Fish, PowerShell; richer per-candidate control (`ShellCompDirective`, flag completion funcs, active help) | Bash, Zsh, Fish |
+| **Who Installs It** | The author generates, the user redirects: `myapp completion zsh > <somewhere>`, per shell, from the docs | `myapp __clihelp install` writes the file, adds one marked line to the startup file, and keeps both current on upgrade |
+| **Manual Pages** | `cobra/doc`'s `GenManTree`, run at build time for a packager to ship | `__clihelp manpage`, and `install` writes one for the user directly |
+| **Key Binding** | None | Alt-H expands the abbreviated command line and prints that command's help, capped at two thirds of the screen |
+| **Setup Without the Author** | Not available: completion exists only if the author wired it up | Every program answers `__clihelp`, so a dotfiles script or packager can set one up regardless |
 | **Tiered Progressive Help** | `-h` and `--help` render identical help output | `-h` provides concise help (<= 24 lines); `--help` / `-H` renders full documentation |
 | **AI Agent Prompting** | Multi-step `init()` wiring patterns | Self-contained struct literal with `llms.txt` spec |
 
@@ -130,11 +134,38 @@ In Cobra, `-h` and `--help` execute identical rendering logic: when commands def
 
 ---
 
+### 7. Generating Versus Installing
+
+This is the sharpest difference in the shell surface, and it is a trade rather than a win.
+
+Cobra generates and prints. `myapp completion zsh` writes a script to standard output and
+the documentation tells the user where to redirect it, which differs per shell. `cobra/doc`
+generates man pages the same way, at build time, for a packager to ship. Cobra never writes
+into a user's home directory and never edits a startup file.
+
+`clihelp` does the installing: one command writes the generated file, adds one marked line
+to the shell's startup file, installs the manual page, and rewrites the generated file when
+the application is upgraded. That is a genuine convenience, and it is also the whole of the
+risk this library carries and Cobra does not — every destructive-write concern in
+`docs/completion.md` exists because something here writes to a home directory. If that trade
+is not one you want, `--no-keys`, `--no-man` and simply not calling `install` leave you with
+Cobra's model: generators whose output you place yourself.
+
+The Alt-H binding is the same bet in smaller form. It is not an invention: Alt-H is already
+`run-help` in zsh and `__fish_man_page` in fish, both meaning "explain what I am typing".
+`clihelp` fills that in for programs that ship no manual page and hands the key straight back
+to the shell for any command line it does not recognise — and since `install` now writes a
+manual page, on zsh and fish the key does something useful either way.
+
+---
+
 ## When to Choose Cobra
 
 Cobra is well-suited for projects that:
 - Rely on plugins or integrations in the Cobra ecosystem (e.g. `kubectl` plugin frameworks).
 - Need PowerShell or Windows completion scripts out-of-the-box.
+- Want completion candidates controlled per-call (`ShellCompDirective`, file-extension filters, active help), which Cobra exposes and `clihelp` does not.
+- Should not write to the user's home directory at all — Cobra generates, and leaves placement to the user or the packager.
 - Rely heavily on `spf13/viper` configuration bindings across large multi-package architectures.
 - Are maintained by teams with established conventions around Cobra.
 
@@ -144,3 +175,4 @@ Cobra is well-suited for projects that:
 
 - Choose **Cobra** for large enterprise ecosystems with existing tooling tied to Cobra and Viper.
 - Choose **`clihelp`** when you prefer a declarative, zero-global-state architecture with built-in theming, integrated Markdown documentation generation, and straightforward unit testing.
+- On the shell surface specifically: Cobra hands the user a script to place; `clihelp` places it, adds the key binding and the manual page, and keeps them current — more done for the user, and more of the user's filesystem at stake.
