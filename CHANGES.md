@@ -2,6 +2,13 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.28] - 2026-09-18
+
+### Internal
+- **The File That Names Every Flag Was the Worst-Tested in the Library.** A mutation survey of `options.go` — the 728 lines that turn a spec string like `--tag <v>, -t, -T` into pflag registrations — killed **11 of 22**, a 50% escape rate against 29% for `install.go`/`man.go` and 32% for `doc/`/`tree/`. No defect: every survivor was a missing assertion, which is the point of doing this on code whose correctness the rest of the library assumes. Among them, `parseFlagSpec` could stop recognising the short `-[no-]` toggle marker, keep an empty long name, or stop treating an all-uppercase word as a value placeholder — the last of which feeds the arity probe that decides where the command name is. `aliasFlagName` could collide for two short-only options, or drop the option's name entirely, and `--tag`'s synthetic `--tag-alias-T` could be registered visibly instead of hidden, putting an internal spelling in the help. The group annotation that makes every spelling of an option one option — what `Option.Group` and "was this flag set" both read — could be dropped from the primary flag. And four mutations could not even be scored, because the harness only mutated one of the two binder paths.
+- The survey is **25 of 26** now, over a harness that mutates both binder paths. The remaining survivor is equivalent and is left surviving: `addFlagArity` negates the toggle's base name as well as every long name the spec declared, and `parseFlagSpec` always puts the base among the long names, so the first is redundant today. The two were folded into one loop, and a test records the invariant — if the base ever stops being a long name, that test says so rather than the redundancy being quietly tidied away.
+- Two survivors were redundancy rather than gaps, and are asserted against their contract rather than through behaviour. `optionGroup` falls back to the flag's own name, which is a safety net for flags clihelp did not bind, and that fallback made tagging the primary flag unobservable through any parse; the annotation is now asserted directly. `toggleVal.IsBoolFlag` never runs during parsing — pflag decides whether `--color` consumes the next argument from `NoOptDefVal` — but it is part of the `Value` contract that cobra and completion generators read, so it is asserted against the interface.
+
 ## [0.3.27] - 2026-09-18
 
 ### Fixed

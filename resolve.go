@@ -329,11 +329,14 @@ func addFlagArity(arity map[string]bool, opts []Option) {
 		if opt.toggle {
 			base := spec.toggleBase()
 			if base != "" {
-				arity["--no-"+base] = takesValue
 				primaryLong = base
 			}
-			for _, long := range spec.longNames {
-				if !strings.HasPrefix(long, "no-") {
+			// The base name is negated whether or not the spec spelled it out:
+			// toggleBase falls back to the first long name, but bindToggle binds
+			// "--no-"+base regardless, and a name bound but not named here is a
+			// name resolution stops at.
+			for _, long := range append([]string{base}, spec.longNames...) {
+				if long != "" && !strings.HasPrefix(long, "no-") {
 					arity["--no-"+long] = takesValue
 				}
 			}
