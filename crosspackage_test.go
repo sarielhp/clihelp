@@ -30,9 +30,9 @@ import (
 // types in different packages, and clihelp.Render and tree.Render are different
 // entry points. Those are the package boundary working as intended.
 var sharedHelperExceptions = map[string]string{
-	"visualLen":         "tree/tree.go: one-line wrapper around clihelp.VisualWidth; tree/drift_test.go asserts it agrees",
 	"firstSentence":     "tree/tree.go: one-line wrapper around clihelp.FirstSentence; tree/drift_test.go asserts it agrees",
 	"subcommandEntries": "doc/md.go: one-line wrapper around clihelp.SubcommandList; doc/drift_test.go asserts it agrees",
+	"visualLen":         "tree/tree.go: one-line wrapper around clihelp.VisualWidth; tree/drift_test.go asserts it agrees",
 }
 
 func TestNoUnexplainedHelperCopiesInSubpackages(t *testing.T) {
@@ -111,38 +111,72 @@ func unexportedFuncs(t *testing.T, dir string) map[string]string {
 	t.Helper()
 	out := map[string]string{}
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, dir, func(fi os.FileInfo) bool {
-		return !strings.HasSuffix(fi.Name(), "_test.go")
-	}, 0)
+	// One file at a time rather than parser.ParseDir, which is deprecated as of
+	// Go 1.25 and makes staticcheck — and therefore tools/check.sh — fail.
+	entries, err := os.ReadDir(dir)
 	if err != nil {
-		t.Fatalf("parsing %s: %v", dir, err)
+		t.Fatalf("reading %s: %v", dir, err)
 	}
-	for _, pkg := range pkgs {
-		for path, file := range pkg.Files {
-			for _, decl := range file.Decls {
-				fn, ok := decl.(*ast.FuncDecl)
-				if !ok || fn.Recv != nil || fn.Name == nil {
-					continue
-				}
-				if name := fn.Name.Name; !ast.IsExported(name) {
-					out[name] = filepath.Base(path)
-				}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		file, parseErr := parser.ParseFile(fset, filepath.Join(dir, name), nil, 0)
+		if parseErr != nil {
+			t.Fatalf("parsing %s: %v", name, parseErr)
+		}
+		for _, decl := range file.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Recv != nil || fn.Name == nil {
+				continue
+			}
+			if fname := fn.Name.Name; !ast.IsExported(fname) {
+				out[fname] = name
 			}
 		}
 	}
 	return out
 }
 
-// The guard's own reporting is worth a glance when it fires, so keep the list
-// readable.
+// The exception list is read by whoever the guard fires on, so keep it in order.
+//
+// This has to read the source: ranging a map gives Go's deliberately randomised
+// order, so the order as written is not observable from inside the test. The
+// first version of this ranged the map and used t.Logf, which meant it could not
+// fail and was not checking anything.
 func TestSharedHelperExceptionsAreSorted(t *testing.T) {
-	names := make([]string, 0, len(sharedHelperExceptions))
-	for name := range sharedHelperExceptions {
-		names = append(names, name)
+	src, err := os.ReadFile("crosspackage_test.go")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !sort.StringsAreSorted(names) {
-		sort.Strings(names)
-		t.Logf("for reference, sorted: %s", strings.Join(names, ", "))
+	const marker = "sharedHelperExceptions = map[string]string{"
+	body := string(src)
+	start := strings.Index(body, marker)
+	if start < 0 {
+		t.Fatalf("could not find %q; this test needs updating", marker)
+	}
+	body = body[start+len(marker):]
+	end := strings.Index(body, "\n}")
+	if end < 0 {
+		t.Fatal("could not find the end of the exception list")
+	}
+
+	var keys []string
+	for _, line := range strings.Split(body[:end], "\n") {
+		if i := strings.Index(line, `"`); i >= 0 {
+			if j := strings.Index(line[i+1:], `"`); j >= 0 {
+				keys = append(keys, line[i+1:i+1+j])
+			}
+		}
+	}
+	if len(keys) != len(sharedHelperExceptions) {
+		t.Fatalf("read %d keys from the source but the map has %d", len(keys), len(sharedHelperExceptions))
+	}
+	if !sort.StringsAreSorted(keys) {
+		sorted := append([]string(nil), keys...)
+		sort.Strings(sorted)
+		t.Errorf("sharedHelperExceptions is not sorted:\n  got  %v\n  want %v", keys, sorted)
 	}
 }
 
