@@ -128,3 +128,72 @@ func TestMin3(t *testing.T) {
 		}
 	}
 }
+
+// filterCommandsByPrefix carries two policy decisions and neither was asserted:
+// a hidden command must not win an abbreviation, and an alias prefix must.
+func TestFilterCommandsByPrefix(t *testing.T) {
+	cmds := []Command{
+		{Name: "deploy"},
+		{Name: "destroy", Hidden: true},
+		{Name: "zebra", Aliases: []string{"apple", "apricot"}},
+	}
+	for _, tt := range []struct {
+		prefix string
+		want   []string
+	}{
+		{"de", []string{"deploy"}}, // the hidden sibling is not a match
+		{"ap", []string{"zebra"}},  // matched by alias, and only once
+		{"z", []string{"zebra"}},   // matched by name
+		{"nothing", nil},           //
+	} {
+		got := filterCommandsByPrefix(cmds, tt.prefix)
+		if len(got) != len(tt.want) {
+			t.Errorf("prefix %q matched %d commands, want %d", tt.prefix, len(got), len(tt.want))
+			continue
+		}
+		for i, cmd := range got {
+			if cmd.Name != tt.want[i] {
+				t.Errorf("prefix %q matched %q at %d, want %q", tt.prefix, cmd.Name, i, tt.want[i])
+			}
+		}
+	}
+}
+
+// A hidden command must not be reachable by abbreviation, only by its exact
+// name — the same rule as a hidden ordinary command.
+func TestHiddenCommandIsNotAbbreviated(t *testing.T) {
+	ran := ""
+	app := &App{Name: "app", AbbrevCommands: true, Commands: []Command{
+		{Name: "secret", Hidden: true, Run: func(*Context) error { ran = "secret"; return nil }},
+	}}
+	silentApp(app)
+	if err := app.Execute([]string{"sec"}); err == nil && ran == "secret" {
+		t.Error("an abbreviation reached a hidden command")
+	}
+	if err := app.Execute([]string{"secret"}); err != nil || ran != "secret" {
+		t.Errorf("the exact name stopped reaching it: err=%v ran=%q", err, ran)
+	}
+}
+
+// Shortcuts are top-level commands. Matching them at every depth would let a
+// root shortcut resolve underneath an unrelated subcommand.
+func TestShortcutsAreMatchedOnlyAtTheRoot(t *testing.T) {
+	ran := ""
+	app := &App{Name: "app",
+		Commands: []Command{{
+			Name: "db", Description: "Database.",
+			Subcommands: []Command{{Name: "migrate", Run: func(*Context) error { ran = "migrate"; return nil }}},
+		}},
+		Shortcuts: []Command{{Name: "quick", Description: "Q.", Run: func(*Context) error { ran = "quick"; return nil }}},
+	}
+	silentApp(app)
+
+	err := app.Execute([]string{"db", "quick"})
+	if err == nil || ran == "quick" {
+		t.Errorf("a root shortcut resolved under a subcommand: err=%v ran=%q", err, ran)
+	}
+	ran = ""
+	if err := app.Execute([]string{"quick"}); err != nil || ran != "quick" {
+		t.Errorf("the shortcut stopped working at the root: err=%v ran=%q", err, ran)
+	}
+}

@@ -2,6 +2,26 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.23] - 2026-09-18
+
+Fixes from the deep review of command resolution
+(`review/findings-2026-09-18-resolve.md`) — 506 lines that the three previous reviews had
+all left out of scope. Every finding is closed.
+
+### Fixed
+- **Six Ways a Command Silently Did Not Run** - each of these printed the help page and exited 0, so a calling script saw success. A toggle's negative spelling written before the command name (`app --no-cache build`) was bound by pflag and unknown to the arity probe, so the command name became a positional — three of the four toggle spellings failed, and the one that worked is the only one any test covered, because `--no-colour` is only ever asserted *after* the command name where resolution never has to skip it. A grouping command's own option consumed its subcommand's name (`app remote --level 2 add`), and the flag was unusable in the other position too. An application whose verbs all live in `App.Shortcuts` never ran the unknown-command check at all, so any typo was accepted. `app -- junk` was accepted where `app junk` errors, because the check sat only on the path resolution did not take. A leaf command could not be handed the word `help`. And an ambiguity between real commands was silently broken by a shortcut that shared the prefix — with commands `deploy` and `destroy` and a shortcut `dance`, typing `app d` ran `dance`.
+- **`help X` and `X` Resolved to Different Commands** - the two traversals ordered exact-match, abbreviation and shortcut differently, so `app dep` ran the command `deploy` while `app help dep` documented the shortcut `dep`. There is one resolver now, exact before abbreviated, used by both.
+- **Hidden Commands Were Named in Suggestions** - the "did you mean" search checked `Hidden` on the visited command only, so a visible subcommand under a hidden parent was offered with the hidden parent's name spelled out — the exact invocation, for the commands authors hide because they are deprecated, internal or destructive. The library has an explicit, tested policy against this; only one of its two suggesters honoured it.
+- **A Flag After `help` Broke the Help Path** - `app help --verbose deploy` reported "unknown help topic" while `app --verbose help deploy` worked, and the order is the user's arbitrary choice. Flags and their values are dropped from the path now, with a lone root token kept as written because `-v` and `--version` are themselves topics.
+- **A Mistyped Argument Was Walked in Full, Once Per Command and Alias** - the edit-distance matrix was built with no bound on the typed word, and that word comes from argv. Only a distance below three can win, so a rune-length difference of three or more decides the answer before any work: 128 KB — the most a single argument can be — went from 228ms and 75MB of garbage to microseconds, on a path that also runs on every press of Tab through `__complete`.
+- **Smaller Corrections** - an empty help topic is an error rather than a prefix match on `flags`, which made the behaviour depend on whether `AbbrevCommands` was set; an empty argument no longer manufactures a suggestion; an unknown command in an app with no `Name` no longer reports `for ""`; a shortcut's subcommand help shows the shortcut's persistent flags; an ambiguity names the spelling the user's prefix matched rather than one it does not; and the zsh and fish completion scripts redirect the program's stderr as bash already did, so a resolution error no longer prints over the prompt mid-edit.
+
+### Internal
+- The resolution test suite had a 38% mutation escape rate: 17 of 45 mutations survived, including one against `min3`, which has 100% statement coverage and could be made to return a non-minimum with the suite still green. Every typo in the suite was a same-length edit, which is why four separate ways of breaking the distance function went unnoticed. New table tests cover `levenshtein`, `min3`, `suggestCommand` and `isHelpToken` directly, with typos of unequal length, multi-byte runes and case folding.
+- `resolution_purity_test.go` contained no purity test — its three tests are about re-entrancy and silence, which it is now named for. The real one covers the entry points the existing check missed and snapshots the command tree, because resolution hands out `*Command` pointers into the caller's own slice.
+- A subtest named "sibling typo takes priority over deep command" asserted the opposite of what the code does, on an input that could not exercise the contest. Renamed, with the real contest asserted beside it.
+- Two disproofs worth keeping: 20,000 randomised argument vectors show the arguments handed to pflag are exactly the input with the matched command positions deleted — nothing dropped, duplicated or reordered — and a differential against a real `pflag.FlagSet` across every option constructor found no flag the probe knows that pflag does not bind, and no arity disagreement.
+
 ## [0.3.22] - 2026-09-18
 
 Fixes from the deep review of the terminal rendering path

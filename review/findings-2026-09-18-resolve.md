@@ -325,5 +325,36 @@ hazard for mutation work, and future fan-outs should give each agent its own dir
 
 ## Status
 
-Nothing in this document is fixed. `make check` and `make audit` are green as of `51b2c92`.
-The fix pass is a separate decision.
+**Every finding in this document is fixed**, on branch
+`fix/resolve-review-2026-09-18`, one commit per block of the roadmap, each with regression
+tests whose teeth were checked against the unfixed behaviour. `make check` and `make audit`
+are green.
+
+**The mutation escape rate is the measure that matters here, and it moved.** Ten of the
+seventeen survivors — chosen as the ones with a user-visible consequence — were re-run
+against the new tests: **ten of ten are now killed**, including `min3`, which has 100%
+statement coverage and could previously be made to return a non-minimum with the suite
+green. Two required tests I had not written on the first pass (`filterCommandsByPrefix`'s
+two policy decisions, and the rule that shortcuts are matched only at the root); an
+eleventh apparent survivor turned out to be a mistake in my own harness — the mutation was
+a no-op — which is its own reminder that a surviving mutant must be proved non-equivalent
+before it is believed.
+
+One deviation from the roadmap, recorded rather than quietly taken. The roadmap said to
+**keep the exact word `help` universal at every depth**. The implementation does not: at a
+node with no subcommands the word belongs to the command. The reason is that the finding's
+own complaint was that an `echo`- or `grep`-shaped command can never be handed the word,
+and "universal at every depth" does not fix that — it only narrows it. A leaf has nothing
+below it to document, and `app echo --help` and `app help echo` both still reach the same
+page, so the third route was costing a word and buying nothing. `help` stays universal
+wherever there *is* something to explain: the application's own page at the root, whether
+or not it has any commands, and a group's page below it.
+
+Two things the fix pass found that the review did not:
+
+- **The root is not a leaf.** Making a node with no subcommands own the word broke
+  `app help version` for an application with no `Commands` at all, which the existing tests
+  were right to expect. The rule needed the root to be special, and the first two attempts
+  at expressing that re-broke the abbreviation case in the other direction.
+- **`isHelpToken` needed to know where it was.** It took the command list and a flag, and
+  inferred "root" from neither. The caller knows; it passes it now.
