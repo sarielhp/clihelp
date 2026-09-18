@@ -34,7 +34,7 @@ const explainProtocolVersion = 1
 
 // manPageVersion marks a generated page, so that an upgrade can tell one it
 // wrote from one it did not.
-const manPageVersion = 2
+const manPageVersion = 3
 
 // integrationVersion identifies what the generated integration file contains. It
 // is derived from the two template versions rather than maintained separately,
