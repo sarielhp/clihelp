@@ -2,7 +2,7 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
-## [0.3.16] - unreleased
+## [0.3.16] - 2026-09-17
 
 Follow-ups to the shell-integration review: three defects in the surface
 0.3.15 shipped, and the versioning that has to be in place before the
