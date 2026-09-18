@@ -295,7 +295,7 @@ func orDash(s string) string {
 // escapes it for roff.
 func manText(s string) string {
 	var b strings.Builder
-	renderInline(&b, s, true)
+	renderInline(&b, s, true, true) // plain, and spell out link targets
 	return manEscape(stripANSI(b.String()))
 }
 

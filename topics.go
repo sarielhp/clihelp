@@ -38,7 +38,7 @@ func renderOptionsGrouped(w io.Writer, th Theme, o Options, termWidth int, opts 
 			th.Accent.Fprintln(w, g+":")
 			prev = g
 		}
-		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Flag)
+		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description), th.Flag)
 	}
 }
 
@@ -153,12 +153,13 @@ func (a *App) collectRenderFlags() []Option {
 // RenderFlags writes the dedicated global flags overview: usage template,
 // grouped persistent flags, standard help flags, and guidance.
 func (a *App) RenderFlags(o Options) {
+	o = o.withApp(a)
 	a.pageOutput(o, func(w io.Writer) {
 		th := o.theme(a)
 		termWidth := o.width()
 
 		th.Hdr.Fprint(w, "Usage:  ")
-		fmt.Fprintln(w, inline(a.usageLine())) // see RenderGlobal
+		fmt.Fprintln(w, o.inline(a.usageLine())) // see RenderGlobal
 
 		fmt.Fprintln(w)
 		th.Body.Fprintln(w, "Global flags available to all commands:")
@@ -183,6 +184,7 @@ func (a *App) RenderGlobalFlags(o Options) {
 // full application overview, grouped global options, all command hierarchies,
 // parameters, local flags, examples, notes, and help topics.
 func (a *App) RenderMan(o Options) {
+	o = o.withApp(a)
 	a.pageOutput(o, func(w io.Writer) {
 		th := o.theme(a)
 		termWidth := o.width()
@@ -193,25 +195,25 @@ func (a *App) RenderMan(o Options) {
 		if a.Description != "" {
 			nameDesc += " - " + a.Description
 		}
-		reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", inline(nameDesc))
+		reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", o.inline(nameDesc))
 		fmt.Fprintln(w)
 
 		// 2. SYNOPSIS
 		th.Hdr.Fprintln(w, "SYNOPSIS")
-		reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", inline(a.usageLine()))
+		reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", o.inline(a.usageLine()))
 		fmt.Fprintln(w)
 
 		// 3. DESCRIPTION
 		if a.Description != "" || a.GlobalNote != "" {
 			th.Hdr.Fprintln(w, "DESCRIPTION")
 			if a.Description != "" {
-				reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", inline(a.Description))
+				reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", o.inline(a.Description))
 			}
 			if a.GlobalNote != "" {
 				if a.Description != "" {
 					fmt.Fprintln(w)
 				}
-				reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", inline(a.GlobalNote))
+				reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", o.inline(a.GlobalNote))
 			}
 			fmt.Fprintln(w)
 		}
@@ -250,17 +252,23 @@ func (a *App) RenderMan(o Options) {
 
 		// 6. HELP TOPICS
 		th.Hdr.Fprintln(w, "HELP TOPICS")
-		reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", fmt.Sprintf("Run '%s help <topic>' for specialized documentation topics:", appName(a)))
-		fmt.Fprintln(w)
-		topics := []Param{
-			{Name: "flags", Description: "Show all global flags and persistent options"},
-			{Name: "man", Description: "Display this complete reference manual (paged)"},
-		}
-		indent := colIndent(topics) + 4
-		for _, t := range topics {
-			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, t.Name, inline(t.Description), th.Subcommand)
-		}
+		a.renderManTopics(w, th, o, termWidth)
 	})
+}
+
+// renderManTopics closes the manual with the list of specialised help topics.
+func (a *App) renderManTopics(w io.Writer, th Theme, o Options, termWidth int) {
+	reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "",
+		fmt.Sprintf("Run '%s help <topic>' for specialized documentation topics:", appName(a)))
+	fmt.Fprintln(w)
+	topics := []Param{
+		{Name: "flags", Description: "Show all global flags and persistent options"},
+		{Name: "man", Description: "Display this complete reference manual (paged)"},
+	}
+	indent := colIndent(topics) + 4
+	for _, t := range topics {
+		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, t.Name, o.inline(t.Description), th.Subcommand)
+	}
 }
 
 func (a *App) renderManCommands(w io.Writer, th Theme, o Options, termWidth int, cmds []Command, parentPath []string) {
@@ -279,7 +287,7 @@ func (a *App) renderManCommands(w io.Writer, th Theme, o Options, termWidth int,
 			desc = c.Description
 		}
 		if desc != "" {
-			reflow(w, th.Body, wrapWidth(termWidth, 6, o.maxContent()), 6, "", inline(desc))
+			reflow(w, th.Body, wrapWidth(termWidth, 6, o.maxContent()), 6, "", o.inline(desc))
 		}
 
 		if len(c.Parameters) > 0 {
@@ -287,7 +295,7 @@ func (a *App) renderManCommands(w io.Writer, th Theme, o Options, termWidth int,
 			th.Hdr.Fprintln(w, "      Parameters:")
 			indent := colIndent(c.Parameters) + 6
 			for _, p := range c.Parameters {
-				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description))
+				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description))
 			}
 		}
 
@@ -311,7 +319,7 @@ func (a *App) renderManCommands(w io.Writer, th Theme, o Options, termWidth int,
 			}
 			indent := colIndent(optParams) + 6
 			for _, p := range optParams {
-				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Flag)
+				reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description), th.Flag)
 			}
 		}
 
@@ -336,7 +344,7 @@ func (a *App) renderManNotes(w io.Writer, th Theme, o Options, termWidth int, no
 	for _, n := range notes {
 		fmt.Fprintln(w)
 		if n.Heading != "" {
-			th.Hdr.Fprintf(w, "      %s:\n", inline(n.Heading))
+			th.Hdr.Fprintf(w, "      %s:\n", o.inline(n.Heading))
 		}
 		renderNoteContent(w, th, o, termWidth, 8, n)
 	}
@@ -344,6 +352,7 @@ func (a *App) renderManNotes(w io.Writer, th Theme, o Options, termWidth int, no
 
 // RenderHelpTopics writes the index of available help topics.
 func (a *App) RenderHelpTopics(o Options) {
+	o = o.withApp(a)
 	a.pageOutput(o, func(w io.Writer) {
 		th := o.theme(a)
 		termWidth := o.width()
@@ -356,7 +365,7 @@ func (a *App) RenderHelpTopics(o Options) {
 		}
 		indent := colIndent(topics)
 		for _, t := range topics {
-			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, t.Name, inline(t.Description), th.Subcommand)
+			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, t.Name, o.inline(t.Description), th.Subcommand)
 		}
 	})
 }

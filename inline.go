@@ -19,6 +19,15 @@ const (
 	sgrCodeOff   = "\x1b[39m"
 )
 
+// emphasize writes body wrapped in an SGR pair, or bare when plain is asked for.
+func emphasize(w io.Writer, plain bool, on, body, off string) {
+	if plain {
+		io.WriteString(w, body)
+		return
+	}
+	fmt.Fprintf(w, "%s%s%s", on, body, off)
+}
+
 // isASCIIPunct reports whether b is one of the characters CommonMark allows a
 // backslash to escape.
 func isASCIIPunct(b byte) bool {
@@ -106,13 +115,22 @@ func emphasisEnd(s string, start int, marker string) int {
 //
 // Recognized patterns (in priority order):
 //   - `code`          inline code (green foreground)
-//   - [text](url)     OSC 8 clickable hyperlink (or visible text when showURLs is true)
+//   - [text](url)     OSC 8 clickable hyperlink
 //   - **bold**        bold text
 //   - *italic*        italic text
 //   - ~~strikethrough~~  strikethrough text
-//   - \X              backslash escapes the next character
-func renderInline(w io.Writer, s string, showURLs ...bool) {
-	show := len(showURLs) > 0 && showURLs[0]
+//   - \X              backslash escapes ASCII punctuation
+//
+// The optional arguments select a plain-text form, which emits no escapes at
+// all. The first asks for plain text — needed when the theme's own colours have
+// already been suppressed, because these escapes used to survive that and leave
+// a redirected help page full of them. The second additionally spells a link out
+// as "text (url)", which is what a manual page needs and what terminal help
+// deliberately does not do: a visible URL in a help page is exactly what OSC 8
+// exists to avoid, and TestExampleAppNoBareMarkdownAndNoVisibleURLs says so.
+func renderInline(w io.Writer, s string, flags ...bool) {
+	plain := len(flags) > 0 && flags[0]
+	showURLs := len(flags) > 1 && flags[1]
 	s = sanitizeControl(s)
 	for i := 0; i < len(s); {
 		// backslash escape
@@ -130,7 +148,7 @@ func renderInline(w io.Writer, s string, showURLs ...bool) {
 		if s[i] == '`' {
 			j := strings.IndexByte(s[i+1:], '`')
 			if j >= 0 {
-				fmt.Fprintf(w, "%s%s%s", sgrCodeOn, s[i+1:i+1+j], sgrCodeOff)
+				emphasize(w, plain, sgrCodeOn, s[i+1:i+1+j], sgrCodeOff)
 				i += j + 2
 				continue
 			}
@@ -142,8 +160,10 @@ func renderInline(w io.Writer, s string, showURLs ...bool) {
 			if text == "" {
 				text = url
 			}
-			if show {
+			if showURLs {
 				fmt.Fprintf(w, "%s (%s)", text, url)
+			} else if plain {
+				io.WriteString(w, text)
 			} else {
 				fmt.Fprintf(w, "%s%s%s%s%s", osc8, oscSafeURL(url), oscEnd, text, osc8+oscEnd)
 			}
@@ -153,7 +173,7 @@ func renderInline(w io.Writer, s string, showURLs ...bool) {
 		// **bold**
 		if i+1 < len(s) && s[i] == '*' && s[i+1] == '*' {
 			if end := emphasisEnd(s, i+2, "**"); end >= 0 {
-				fmt.Fprintf(w, "%s%s%s", sgrBoldOn, s[i+2:end], sgrBoldOff)
+				emphasize(w, plain, sgrBoldOn, s[i+2:end], sgrBoldOff)
 				i = end + 2
 				continue
 			}
@@ -167,7 +187,7 @@ func renderInline(w io.Writer, s string, showURLs ...bool) {
 		// *italic*
 		if s[i] == '*' {
 			if end := emphasisEnd(s, i+1, "*"); end >= 0 {
-				fmt.Fprintf(w, "%s%s%s", sgrItalicOn, s[i+1:end], sgrItalicOff)
+				emphasize(w, plain, sgrItalicOn, s[i+1:end], sgrItalicOff)
 				i = end + 1
 				continue
 			}
@@ -176,7 +196,7 @@ func renderInline(w io.Writer, s string, showURLs ...bool) {
 		if i+1 < len(s) && s[i] == '~' && s[i+1] == '~' {
 			end := strings.Index(s[i+2:], "~~")
 			if end >= 0 {
-				fmt.Fprintf(w, "%s%s%s", sgrStrikeOn, s[i+2:i+2+end], sgrStrikeOff)
+				emphasize(w, plain, sgrStrikeOn, s[i+2:i+2+end], sgrStrikeOff)
 				i += end + 4
 				continue
 			}

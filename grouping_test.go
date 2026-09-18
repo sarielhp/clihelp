@@ -2,6 +2,8 @@ package clihelp
 
 import (
 	"bytes"
+
+	"github.com/fatih/color"
 	"strings"
 	"testing"
 )
@@ -108,6 +110,10 @@ func TestOptionsThemeLayersOntoAppTheme(t *testing.T) {
 // M6 — the blank-line decision was made on the markdown source, which is always
 // at least as wide as what is drawn, so one link double-spaced the whole list.
 func TestGroupedListSpacingIsDecidedOnWhatIsDrawn(t *testing.T) {
+	had := color.NoColor
+	color.NoColor = false // the claim is about the OSC 8 form, which is narrow
+	defer func() { color.NoColor = had }()
+
 	longURL := "https://example.com/" + strings.Repeat("docs/", 14) + "page.html"
 	render := func(desc string) string {
 		app := &App{Name: "probe", Commands: []Command{

@@ -228,7 +228,7 @@ func buildPersistentOptions(globals *GlobalOptions) []clihelp.Option {
 func buildApp() *clihelp.App {
 	var globals GlobalOptions
 
-	return &clihelp.App{
+	app := &clihelp.App{
 		Name:                      "podctl",
 		Description:               "[podctl](https://podctl.example.com) — A podcast distribution & audio processing tool.",
 		Version:                   "0.3.21",
@@ -253,6 +253,15 @@ func buildApp() *clihelp.App {
 			buildDeepTree(),
 		},
 	}
+
+	// --no-color is a promise to the user, so it has to reach the renderer. The
+	// flag was bound and never read: until App.NoColor existed there was no
+	// thread-safe way for an application to decline colour for itself.
+	app.BeforeRun = func(*clihelp.Context) error {
+		app.NoColor = globals.NoColor
+		return nil
+	}
+	return app
 }
 
 func main() {

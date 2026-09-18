@@ -46,8 +46,12 @@ const completionDescriptionWidth = 72
 // sentence only, and a cap in display columns. Sending the field raw put
 // "**deep** — … [deep command](https://example.com/deep) …" into fish's menu,
 // markup and all.
+// The colour form, then stripped: it is the visible text that belongs in a
+// completion menu. The plain form would be the wrong choice here — under
+// NoColor it spells nothing out, but asking for it couples this to whether
+// the shell happens to be a terminal.
 func completionDescription(s string) string {
-	flat := strings.Join(strings.Fields(stripANSI(inline(s))), " ")
+	flat := strings.Join(strings.Fields(stripANSI(renderInlineTo(s, false))), " ")
 	return runewidth.Truncate(sanitizeCompletionField(firstSentence(flat)), completionDescriptionWidth, "…")
 }
 

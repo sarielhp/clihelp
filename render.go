@@ -82,6 +82,11 @@ type Options struct {
 	// displaying a footer hint pointing to extended help. The result is held to
 	// ConciseMaxLines.
 	Concise bool
+	// NoColor renders this one call without colour, whatever the process-wide
+	// setting is. An application offering a --no-color flag had no thread-safe
+	// way to honour it: fatih/color's switch is global and decided from stdout at
+	// package init, and mutating it per render was removed because it raced.
+	NoColor bool
 	// ConciseMaxLines bounds concise (-h) output. Zero means the documented
 	// default of 24 lines; a negative value means no bound, which is what the
 	// concise tier did before the bound existed.
@@ -123,7 +128,44 @@ func (o Options) theme(a *App) Theme {
 	if a != nil {
 		th = applyTheme(th, a.Theme)
 	}
-	return applyTheme(th, o.Theme)
+	th = applyTheme(th, o.Theme)
+	if o.NoColor {
+		th = withoutColor(th)
+	}
+	return th
+}
+
+// withApp folds the application's own settings into the caller's options, so
+// that every render entry point below can read one struct.
+func (o Options) withApp(a *App) Options {
+	if a != nil && a.NoColor {
+		o.NoColor = true
+	}
+	return o
+}
+
+// noColor reports whether this render should emit no escapes at all.
+func (o Options) noColor() bool { return o.NoColor || color.NoColor }
+
+// inline renders inline markdown for this render, honouring Options.NoColor as
+// well as the global setting.
+func (o Options) inline(s string) string { return renderInlineTo(s, o.noColor()) }
+
+// withoutColor returns th with every colour disabled, leaving the structural
+// fields — Separator, TitlePrefix — alone.
+func withoutColor(th Theme) Theme {
+	for _, c := range []**color.Color{
+		&th.Hdr, &th.Body, &th.Accent, &th.Subcommand, &th.Flag,
+		&th.ExampleCmd, &th.ExampleFlag, &th.ExampleArg, &th.ExampleComment, &th.ExampleDesc,
+	} {
+		if *c == nil {
+			continue
+		}
+		plain := *(*c)
+		plain.DisableColor()
+		*c = &plain
+	}
+	return th
 }
 
 func applyTheme(th Theme, src *Theme) Theme {
@@ -248,11 +290,11 @@ func (a *App) renderCommandGrouped(w io.Writer, th Theme, o Options, termWidth i
 		if textWidth <= 0 {
 			textWidth = 40
 		}
-		// Measure what is drawn, not the markdown it came from. inline() only
+		// Measure what is drawn, not the markdown it came from. o.inline() only
 		// ever shrinks visible width, so measuring the source was a systematic
 		// false positive: one link in one description put a blank line between
 		// every entry in the list, none of which wrapped.
-		rendered := inline(p.Description)
+		rendered := o.inline(p.Description)
 		return visualLen(rendered) > textWidth || strings.Contains(rendered, "\n")
 	}
 
@@ -275,7 +317,7 @@ func (a *App) renderCommandGrouped(w io.Writer, th Theme, o Options, termWidth i
 		} else if anyMultiLine && i > 0 {
 			fmt.Fprintln(w)
 		}
-		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Subcommand)
+		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description), th.Subcommand)
 	}
 }
 
@@ -339,7 +381,7 @@ func renderOptionList(w io.Writer, th Theme, o Options, termWidth int, options [
 	params := optionsToParams(options)
 	indent := colIndent(params)
 	for _, p := range params {
-		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Flag)
+		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description), th.Flag)
 	}
 }
 
@@ -359,7 +401,7 @@ func (a *App) renderGlobalShortcuts(w io.Writer, th Theme, o Options, termWidth 
 	}
 	indent := colIndent(params)
 	for _, p := range params {
-		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description), th.Subcommand)
+		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description), th.Subcommand)
 	}
 	fmt.Fprintln(w)
 }
@@ -388,6 +430,7 @@ func (a *App) renderGlobalFlagsSection(w io.Writer, th Theme, o Options, termWid
 // template, description, command list with aliases, shortcut commands,
 // global flags, and help footer.
 func (a *App) RenderGlobal(o Options) {
+	o = o.withApp(a)
 	a.pageOutput(o, func(out io.Writer) {
 		a.budgeted(out, o, nil, func(w io.Writer) {
 			th := o.theme(a)
@@ -397,11 +440,11 @@ func (a *App) RenderGlobal(o Options) {
 			// inline(), as RenderCommand and RenderMan already do: App.UsageLine was
 			// rendered on two of the four paths, so the same app showed raw ** here
 			// and a URL the author had written as a link.
-			fmt.Fprintln(w, inline(a.usageLine()))
+			fmt.Fprintln(w, o.inline(a.usageLine()))
 
 			if a.Description != "" {
 				fmt.Fprintln(w)
-				reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", inline(a.Description))
+				reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", o.inline(a.Description))
 			}
 			fmt.Fprintln(w)
 
@@ -515,7 +558,7 @@ func (a *App) renderCommandSubcommands(w io.Writer, th Theme, o Options, termWid
 	if len(cmd.SubcommandEntries) > 0 {
 		indent := colIndent(subs)
 		for _, s := range subs {
-			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, s.Name, inline(s.Description), th.Subcommand)
+			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, s.Name, o.inline(s.Description), th.Subcommand)
 		}
 	} else {
 		a.renderCommandGrouped(w, th, o, termWidth, cmd.Subcommands)
@@ -529,7 +572,7 @@ func renderCommandParams(w io.Writer, th Theme, o Options, termWidth int, params
 	th.Hdr.Fprintln(w, "\nParameters:")
 	indent := colIndent(params)
 	for _, p := range params {
-		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, inline(p.Description))
+		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description))
 	}
 }
 
@@ -583,7 +626,7 @@ func renderNoteContent(w io.Writer, th Theme, o Options, termWidth, indent int, 
 	flushProse := func() {
 		if len(proseLines) > 0 {
 			prose := strings.Join(proseLines, "\n")
-			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, "", inline(prose))
+			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, "", o.inline(prose))
 			proseLines = nil
 		}
 	}
@@ -621,7 +664,7 @@ func renderCommandNotes(w io.Writer, th Theme, o Options, termWidth int, notes [
 			// a heading's markup (doc/md.go) and the terminal printed it raw, so
 			// "**Warning**" came out bold on the page and asterisked on screen.
 			// It also sanitises, which is why a heading needs no separate guard.
-			th.Hdr.Fprintln(w, "\n"+inline(note.Heading)+":")
+			th.Hdr.Fprintln(w, "\n"+o.inline(note.Heading)+":")
 		}
 		renderNoteContent(w, th, o, termWidth, 2, note)
 	}
@@ -678,6 +721,7 @@ func (a *App) renderCommandConciseFooter(w io.Writer, th Theme, o Options, termW
 // Subcommands, Parameters, Flags, Examples, Notes. Returns true if the path
 // exists.
 func (a *App) RenderCommand(o Options, path ...string) bool {
+	o = o.withApp(a)
 	cmd := a.LookupCommand(path...)
 	if cmd == nil {
 		return false
@@ -692,7 +736,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 
 			usage := a.buildDefaultUsage(cmd, path)
 			th.Hdr.Fprint(w, "Usage:  ")
-			fmt.Fprintln(w, inline(usage))
+			fmt.Fprintln(w, o.inline(usage))
 
 			desc := cmd.Description
 			if !o.Concise && cmd.LongDescription != "" {
@@ -700,7 +744,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 			}
 			if desc != "" {
 				fmt.Fprintln(w)
-				reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", inline(desc))
+				reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", o.inline(desc))
 			}
 
 			a.renderCommandSubcommands(w, th, o, termWidth, cmd)

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/fatih/color"
 )
 
 // openOSC counts OSC 8 openers on a line that have no terminator.
@@ -27,6 +29,10 @@ func assertEveryLineIsBalanced(t *testing.T, out string) {
 // terminator and the terminal hyperlinks everything it prints afterwards —
 // including the shell prompt, after the program has exited.
 func TestWrappedHyperlinkIsClosedOnEveryLine(t *testing.T) {
+	had := color.NoColor
+	color.NoColor = false
+	defer func() { color.NoColor = had }()
+
 	app := &App{
 		Name:        "demo",
 		Description: "Read [the complete operations manual for this command](https://example.com/m) before you begin.",
@@ -39,6 +45,10 @@ func TestWrappedHyperlinkIsClosedOnEveryLine(t *testing.T) {
 // The same thing through a note, where the author hard-wrapped the link across
 // two source lines — the ordinary case, not a hostile one.
 func TestHardWrappedHyperlinkIsClosed(t *testing.T) {
+	had := color.NoColor
+	color.NoColor = false
+	defer func() { color.NoColor = had }()
+
 	var buf bytes.Buffer
 	renderNoteContent(&buf, defaultTheme(), Options{}, 70, 2,
 		Note{Heading: "Reference", Text: "Read the [reference](https://example.com/very/long/path/to/the/reference) first, it matters."})
@@ -47,6 +57,10 @@ func TestHardWrappedHyperlinkIsClosed(t *testing.T) {
 
 // The consequence that made this high severity: Alt-H truncates by line.
 func TestExplainNeverLeavesAHyperlinkOpen(t *testing.T) {
+	had := color.NoColor
+	color.NoColor = false
+	defer func() { color.NoColor = had }()
+
 	app := &App{Name: "demo", Commands: []Command{{
 		Name: "sync",
 		Description: "Synchronises everything. Before you run this read " +
@@ -63,6 +77,10 @@ func TestExplainNeverLeavesAHyperlinkOpen(t *testing.T) {
 
 // A link that fits on one line must still be one link, not a reopened pair.
 func TestUnwrappedHyperlinkIsUntouched(t *testing.T) {
+	had := color.NoColor
+	color.NoColor = false // this is a claim about the escape, so emit escapes
+	defer func() { color.NoColor = had }()
+
 	out := inline("see [docs](https://example.com/d) now")
 	var buf bytes.Buffer
 	reflow(&buf, defaultTheme().Body, 70, 0, "", out)

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	"github.com/fatih/color"
 )
 
 // H3 — author strings reach the terminal byte for byte.
@@ -45,6 +47,10 @@ func TestAuthorStringsCannotSteerTheTerminal(t *testing.T) {
 // M5 — a space in a URL split the OSC 8 escape, so its bytes became visible
 // text and a bare newline landed inside an OSC string.
 func TestLinkURLCannotBreakTheEscape(t *testing.T) {
+	had := color.NoColor
+	color.NoColor = false // this is a claim about the escape, so emit escapes
+	defer func() { color.NoColor = had }()
+
 	for _, url := range []string{
 		"https://example.com/the big manual.html",
 		"https://example.com/a\nb",

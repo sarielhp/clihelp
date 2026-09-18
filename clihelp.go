@@ -153,6 +153,11 @@ type App struct {
 	// ExtendedHelpFlag enables -H as an opt-in single-letter shortcut for
 	// extended help (--help) on commands and root.
 	ExtendedHelpFlag bool
+	// NoColor disables every escape this library emits, for every render this
+	// application performs. It is the field a --no-color flag writes to:
+	// fatih/color's own switch is global and decided from stdout at package
+	// init, and mutating it per render was removed because it raced.
+	NoColor bool
 	// InteractiveFallback enables prompting for missing inputs/flags interactively.
 	InteractiveFallback bool
 	// AutoInstallCompletion when true keeps an already-installed shell

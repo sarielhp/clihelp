@@ -498,9 +498,20 @@ func colIndent(params []Param) int {
 	return maxW + 4
 }
 
-// inline renders inline markdown in s to a string with ANSI/OSC8 sequences.
+// inline renders inline markdown in s, honouring the global colour setting.
+//
+// fatih/color sets NoColor when stdout is not a terminal, and every theme colour
+// then disappears — but this renderer had its own hardcoded escapes and kept
+// emitting them, so `myapp --help > help.txt` produced a file that was not plain
+// text and `grep '^  --flag'` on it did not match. With colour off a link
+// becomes "text (url)", which is the form man.go already uses: a redirected help
+// file should not silently lose the link target.
 func inline(s string) string {
+	return renderInlineTo(s, color.NoColor)
+}
+
+func renderInlineTo(s string, plain bool) string {
 	var buf strings.Builder
-	renderInline(&buf, s)
+	renderInline(&buf, s, plain)
 	return buf.String()
 }
