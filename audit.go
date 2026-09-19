@@ -113,6 +113,13 @@ func validateOptionSpec(opt Option, spec flagSpec) error {
 	if opt.toggle || spec.isToggle {
 		return spec.validateToggle()
 	}
+	// The brackets say the value may be omitted, and only Optional makes that
+	// true. A spec promising it without the binding to match is a help page that
+	// lies, and the user finds out by typing the flag and getting an error.
+	if spec.optionalValue && opt.whenBare == "" {
+		return fmt.Errorf("flag spec %q: the placeholder is in brackets, which promises the value may be omitted; wrap the option in clihelp.Optional to make that so, or write the placeholder in angle brackets",
+			spec.raw)
+	}
 	return spec.validate()
 }
 

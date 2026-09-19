@@ -2,6 +2,14 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **An Option Whose Value May Be Omitted.** `-m` and `-m=someone@example.com` are different requests, and until now the only way to express that was to set `Option.Binder` by hand and name `pflag.NoOptDefVal` — which is why the one real application built on this library imported pflag at all. It is now `clihelp.Optional(clihelp.String(&move, "-m, --move [From]", "", "…"), "true")`: the flag alone puts the bare value in the target, `--move=x@y.z` puts the address there, and leaving it out leaves the default.
+- The value needs an equals sign, deliberately. `--move x@y.z` cannot be told from `--move` followed by a positional argument, and guessing is how a command name gets eaten — six instances of exactly that were fixed in v0.3.23. So a bare optional flag consumes nothing, and `spamcli -m scan` still runs `scan`.
+- **The spec and the binding cannot disagree.** The brackets are the usage-line convention for a value that may be omitted, and they are what the help page shows; `Optional` is what makes the flag accept it. Brackets without `Optional` is a help page that lies, so `Audit` rejects it, and `Optional` without brackets is refused when the flag binds. This is the pairing `Parameters` and `Args` have, for the same reason: two statements of one fact drift.
+- Checked against the real application: it replaces its hand-written binder with one `Optional` call, its suite passes, and **`pflag` drops to `// indirect` in its `go.mod`** — the decoupling begun in the API audit is now complete in practice, not only in the signature.
+
 ## [0.3.31] - 2026-09-18
 
 ### Added

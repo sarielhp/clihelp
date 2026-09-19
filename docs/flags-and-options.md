@@ -219,6 +219,32 @@ Constraint names may be written in any spelling the option declares — `"-a"` a
 >
 > Explicitly registering a help flag will return a validation error or cause a `pflag` conflict. Always let `clihelp` manage help flags and help text generation automatically.
 
+### An option whose value may be omitted
+
+`-m` on its own and `-m=someone@example.com` are different requests, and a flag
+that can be either is written with its placeholder in brackets and wrapped in
+`Optional`:
+
+```go
+clihelp.Optional(
+    clihelp.String(&moveSpam, "-m, --move [From]", "", "Move spam. Give a sender to move only theirs."),
+    "true",
+)
+```
+
+`--move` alone puts `"true"` in the target, `--move=x@y.z` puts the address
+there, and leaving the flag out leaves the default. The bare value must not be
+empty: it is what tells "given without a value" apart from "not given".
+
+The value needs an equals sign. `--move x@y.z` would be ambiguous — there is no
+way to tell the address from the next positional argument — and clihelp's
+resolution therefore treats a bare optional flag as consuming nothing, so the
+word after it is still available to be a command name.
+
+Brackets without `Optional` is a help page promising something the flag will
+not do, so `Audit` rejects it; `Optional` without brackets is refused when the
+flag binds. They cannot come to disagree.
+
 ### Why `--help-concise` exists
 
 `pflag` cannot bind a shorthand without a long name, so `-h` needs one. It is
