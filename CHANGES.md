@@ -2,6 +2,15 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **`help examples`.** Every example in the command tree on one page, grouped under the command that declares it. `help <command>` already shows one command's examples among its usage, parameters and flags; this is all of them and nothing else — the view for "how do I use this?" rather than "what does this flag do?". Hidden commands are skipped, a command with no examples of its own gets no empty heading, and an application that declares none says so plainly. `examples`, `example` and `eg` all reach it, and it is listed in `help topics`.
+- The feature was not invented here. A second application built on this library had already written it: roughly a hundred and fifty lines for the flag spelling (including bundled shorts like `-xE`), a brute-force command resolver, example collection across subcommands, a theme, and the rendering.
+
+### Fixed
+- **`ColorizeExampleLineWithApp` is exported again.** Unexporting it in 0.3.33 was reasoned wrongly: I checked which names the retired oracle was the last user of *in this repository* and removed the four it held up. But "nothing here uses it" is a different question from "nothing uses it", and only the second matters for a name that has shipped — a second application uses this one to colour examples in a view of its own, and stopped compiling. Its doc comment now records who it is for, so the next audit has the answer this repository could not give.
+
 ## [0.3.34] - 2026-09-19
 
 ### Fixed
