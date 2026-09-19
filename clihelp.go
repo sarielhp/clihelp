@@ -165,9 +165,14 @@ type Command struct {
 
 // App represents the root CLI application.
 type App struct {
-	Name              string
-	Description       string
-	Version           string
+	Name        string
+	Description string
+	Version     string
+	// GlobalNote is a note about the application as a whole: where to read
+	// more, who maintains it, what it is part of. It sits under Description on
+	// the extended help page, and appears in the manual page and the generated
+	// Markdown. It is left off the concise page (-h), which is a prompt rather
+	// than documentation, and is skipped when it merely repeats Description.
 	GlobalNote        string
 	UsageLine         string
 	PersistentOptions []Option

@@ -456,6 +456,17 @@ func (a *App) RenderGlobal(o Options) {
 				fmt.Fprintln(w)
 				reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", o.inline(a.Description))
 			}
+			// GlobalNote is the application's own note, and it belongs with the
+			// description on the page an author expects it on. It used to appear
+			// only in "help docs", "help more" and the manual page — so the two
+			// real applications that set one, including this library's own
+			// example, put a link in their help that nobody was shown. Extended
+			// help only, as Command.Notes are: the concise tier is a prompt, not
+			// documentation.
+			if a.GlobalNote != "" && a.GlobalNote != a.Description && !o.Concise {
+				fmt.Fprintln(w)
+				reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", o.inline(a.GlobalNote))
+			}
 			fmt.Fprintln(w)
 
 			var visibleCommands []Command

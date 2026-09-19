@@ -102,6 +102,9 @@ working against the library.** Check this document before writing it.
   group render ungrouped; if *any* sibling has one, the rest fall under a default
   heading rather than floating.
 - `Command.Hidden` — out of help and out of completion, still runnable.
+- `App.GlobalNote` — the application's own note: where to read more, who
+  maintains it. Under `Description` on the extended global help, in the manual
+  page, and in the generated Markdown; left off the concise tier.
 
 ### 7. How wide, how tall, and whether to page
 
