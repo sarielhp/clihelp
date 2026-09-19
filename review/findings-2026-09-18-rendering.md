@@ -1,5 +1,10 @@
 # Deep review: the terminal rendering path (2026-09-18)
 
+> **Reading this later.** Items below struck through have since been settled; the note
+> after each says how. The current state of the public API is
+> `review/api-surface-2026-09-18.md`, and `docs/how-clihelp-decides.md` is the
+> mechanism this library actually implements today.
+
 **Scope:** `render.go`, `format.go`, `topics.go`, `inline.go`, `pager.go` and their tests —
 about 2,000 lines that neither previous review opened. Prompt:
 `prompts/review-2026-09-18-rendering.md`. Five reviewers, one per dimension. Every
@@ -414,18 +419,21 @@ staticcheck baseline, or `make check` should be the only gate anyone reports on.
 ## What I would look at with more time
 
 - **Whether `Options` should carry the terminal instead of re-deriving it.** The same
-  `*os.File` type assertion appears three times with three different fallbacks
-  (`pageOutput`, `width()`, `height()`), and L12 is the consequence. One `termFd()` helper
-  would collapse it, and it is the precondition for honouring `$COLUMNS`.
-- **A golden-free rendering test strategy.** `example/mail_cli_fake`'s oracle is a second
+  `*os.File` type assertion appeared three times with three different fallbacks
+  (`pageOutput`, `width()`, `height()`), and L12 was the consequence.
+  *Half done:* the `termFd()` helper exists and all three now go through it — one type
+  assertion, in `render.go`. What remains is the design question the helper does not
+  answer: the terminal is still re-derived per render rather than resolved once and
+  carried, and honouring `$COLUMNS` still has nowhere to live.
+- ~~**A golden-free rendering test strategy.** `example/mail_cli_fake`'s oracle is a second
   renderer, and H6 is what that costs. The property tests that exist are worth more than
-  all the byte comparisons put together.
-- **Whether `Inline` should be exported at all**, given that the plain-text path for
+  all the byte comparisons put together.~~ **Done 2026-09-18:** the oracle is retired. 499 lines became ~190 of properties over the same corpus, at three widths rather than one; the three behaviours it alone guarded now have direct tests, and the survey is back to 38 of 38.
+- ~~**Whether `Inline` should be exported at all**, given that the plain-text path for
   `NoColor` (M7) and the sanitiser (H3) both want to live inside it, and `man.go` already
-  reaches past it for the `showURLs` form.
-- **`resolve.go`, 506 lines, zero citations in three reviews now.** It was out of scope
+  reaches past it for the `showURLs` form.~~ **Settled 2026-09-18:** unexported, along with `DisplayName`, `ColorizeExampleLineWithApp` and `DefaultMaxColIndent`. The oracle was the only thing outside the library using them.
+- ~~**`resolve.go`, 506 lines, zero citations in three reviews now.** It was out of scope
   here except where it feeds rendering. It is the last large file nobody has read
-  adversarially.
+  adversarially.~~ **Done:** reviewed in `findings-2026-09-18-resolve.md` — every finding closed — and mutation-surveyed to 25 of 26.
 
 ---
 
@@ -445,10 +453,10 @@ Two deviations from the roadmap as written, both recorded here rather than quiet
   behaviours it uniquely guarded are asserted in the library's own tests now
   (`TestGlobalHelpListsShortcutsAndConfig`), `oracleWidth` is a variable rather than a
   literal, and the comparison still runs at one width with a comment saying why.
-- **L15's dead exported code was kept and tested, not deleted.** `DisplayNameWithArgs`,
+- ~~**L15's dead exported code was kept and tested, not deleted.** `DisplayNameWithArgs`,
   `commandArgs`, `RenderGlobalFlags` and `CheckExample` have no caller in this module, but
   this is a published module with a `retract` directive already in `go.mod`, and removing
-  exported symbols to tidy an internal audit is not a trade worth making.
+  exported symbols to tidy an internal audit is not a trade worth making.~~ **Settled 2026-09-18:** `displayNameWithArgs` is unexported; the API audit removed the rest of the dead surface.
 
 Things the fix pass found that the review did not:
 
