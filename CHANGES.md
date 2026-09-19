@@ -2,7 +2,7 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
-## [Unreleased]
+## [0.3.37] - 2026-09-19
 
 ### Fixed
 - **`Audit` Rejected This Library's Own Examples When `CompletionCommand()` Was Mounted Anywhere but the Root.** `CompletionCommand()` ships the example `completion install --no-keys zsh`, written for a completion command at the top level. An application that mounts it under, say, `config` gets the path `config completion install`, and the example was then validated from the root, where `completion` names nothing — reported as `unknown flag: --no-keys`, by `Audit`, which the README tells people to run in CI. Found in a third application built on this library, which mounts it exactly that way.
