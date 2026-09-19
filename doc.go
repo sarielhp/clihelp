@@ -1,6 +1,13 @@
 // Package clihelp provides a declarative, lightweight CLI application framework
 // and width-aware, colorized help text formatter for Go applications.
 //
+// # Where to start
+//
+// docs/how-clihelp-decides.md is the mechanism: the decisions this library makes
+// on the author's behalf, what each one reads from App, Command and Option, and
+// what it assumes when a field is left undeclared. The rules in the other
+// documents follow from it.
+//
 // # Core Concepts
 //
 // clihelp combines declarative command and flag definitions with robust execution

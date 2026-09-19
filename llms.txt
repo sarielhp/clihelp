@@ -6,7 +6,7 @@
 
 - Import path: `github.com/sarielhp/clihelp`
 - Main entry point: `app.Execute(os.Args[1:])` or `app.ExecuteContext(ctx, os.Args[1:])`
-- Error rendering: `clihelp.PrintError(err)`
+- Error rendering: `app.PrintError(err)`
 - Tree rendering: `app.RenderTree(clihelp.Options{Writer: w})`
 
 ## Core Types
@@ -22,7 +22,7 @@ type App struct {
     OmitGlobalFlagsInCommands bool       // Suppress global flags table in subcommands, showing 1-line reference
     ExtendedHelpFlag          bool       // Enable -H as opt-in single-letter shortcut for extended help (--help)
     InteractiveFallback       bool       // Prompt interactively for missing required options in a TTY
-    AutoInstallCompletion     bool       // Keep an installed integration current; never creates a file
+    AutoRefreshIntegration    bool       // Keep an installed integration current; never creates a file
     Theme                     Theme      // ANSI styling configuration
     PersistentOptions         []Option
     Commands                  []Command
@@ -108,11 +108,11 @@ Abort Semantics:
 - Pre-Built Command: `clihelp.CompletionCommand()` (returns a standard Command providing `bash`, `zsh`, `fish`, `keys`, `install`, and `uninstall`).
 - One-Command Setup: `<app> completion install` writes `~/.config/<app>/shell/<shell>` and **a marked block in the user's shell startup file** (`~/.bashrc`, `~/.zshrc`; fish gets a `conf.d` drop-in and no shared file is touched). `completion uninstall` removes both. Nothing runs at shell startup.
 - Reserved Arguments: `__complete`, `__explain` and `__clihelp` answer in *every* clihelp program, whether or not the author mounted `CompletionCommand()`. `<app> __clihelp` lists the verbs; `-H` prints the exact paths it would write.
-- Alt-H: `clihelp.GenKeyBindings(app, shell, w)` emits a snippet that expands the command line and prints its help. `clihelp.App.Explain` is the Go entry point.
-- Manual Pages: `clihelp.GenManPage(app, w)` writes roff; `clihelp.InstallManPage(app, force)` installs it under `$XDG_DATA_HOME/man`.
-- Shell Integration API: `clihelp.InstallShellIntegration(app, shell, keys)` / `UninstallShellIntegration` / `IntegrationPath`.
+- Alt-H: `clihelp.GenKeyBindings(app, shell, w)` emits a snippet that expands the command line and prints its help. The protocol call `<app> __explain "<line>"` is the entry point.
+- Manual Pages: `clihelp.GenManPage(app, w)` writes roff to any writer. Installing it under `$XDG_DATA_HOME/man` is done by the setup command the user runs, not by an API a program calls on their behalf.
+- Shell Integration: mount `clihelp.CompletionCommand()`; the user runs `<app> completion install` once and gets completion, the Alt-H binding and the man page together. `clihelp.IntegrationPath(app, shell)` reports where the generated file lives.
 - App.Name must be letters, digits, `-`, `_`, `.` or `+` for any of the above: it becomes a file name and a shell symbol.
-- XDG Auto-Install: `clihelp.InstallCompletion(app, shell)` (installs for `"bash"`, `"zsh"`, `"fish"`, or detects active shell if empty).
+- Keeping it current: `App.AutoRefreshIntegration` rewrites an installed integration or man page when a clihelp upgrade changes the templates. It never creates a file and never edits a startup file.
 - Generators: `clihelp.GenBashCompletion(app, w)`, `clihelp.GenZshCompletion(app, w)`, `clihelp.GenFishCompletion(app, w)`.
 - Dynamic Option Completion: attach `Complete: func(toComplete string) []string` to any `Option`.
 
@@ -130,7 +130,7 @@ Abort Semantics:
 2. **Always bind pointers to persistent structs**: Pass `&opts.Field` or `&cfg.Field` to option constructors.
 3. **Always read positional parameters from `ctx.Args`**: In `Run` handlers, positional parameters are already validated and accessible via `ctx.Args[i]`. Do NOT inspect `os.Args`.
 4. **Use `Command.Subcommands` for nested routing**: Never manually parse subcommand words inside a root `Run` function.
-5. **Use `clihelp.PrintError(err)`**: Standardizes red-bold error prefix to `os.Stderr`.
+5. **Use `app.PrintError(err)`**: Standardizes red-bold error prefix to `os.Stderr`.
 
 ## Canonical Minimal Application
 
@@ -180,7 +180,7 @@ func main() {
     }
 
     if err := app.Execute(os.Args[1:]); err != nil {
-        clihelp.PrintError(err)
+        app.PrintError(err)
         os.Exit(1)
     }
 }

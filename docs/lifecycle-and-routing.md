@@ -108,11 +108,11 @@ app := &clihelp.App{
 
 - If flag parsing fails, positional argument validation fails, or **any hook returns a non-nil error**, downstream execution is aborted immediately.
 - The returned error is propagated up through `app.Execute()`.
-- Standardize your error output using `clihelp.PrintError(err)`.
+- Standardize your error output using `app.PrintError(err)`.
 
 ```go
 if err := app.Execute(os.Args[1:]); err != nil {
-    clihelp.PrintError(err) // Formats in bold red to stderr
+    app.PrintError(err) // Formats in bold red to stderr
     os.Exit(1)
 }
 ```

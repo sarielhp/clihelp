@@ -149,7 +149,7 @@ func main() {
 
 	// Execute parses os.Args[1:], routes commands, runs hooks, and handles errors
 	if err := app.Execute(os.Args[1:]); err != nil {
-		clihelp.PrintError(err)
+		app.PrintError(err)
 		os.Exit(1)
 	}
 }

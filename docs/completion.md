@@ -138,7 +138,7 @@ This is deliberately **not** part of the completion script: every shell loads th
 - **Every keymap is bound**, not just the one that happens to be current when the snippet is sourced: `emacs-standard`, `vi-insert` and `vi-command` in bash, `emacs`, `viins` and `vicmd` in zsh, `default` and `insert` in fish. Otherwise `set -o vi` would silently leave the key dead.
 - **`CLIHELP_NO_KEY_BINDINGS` declines the key.** Set it before your shell sources the integration file and nothing is bound — zsh's `run-help` and fish's man-page binding stay exactly as they were — while tab completion is unaffected. There is no portable way to ask readline what `\eh` is already bound to, so this is an opt-out rather than a check.
 - The shell passes its own `$LINES` and `$COLUMNS` through `CLIHELP_TERM_LINES` / `CLIHELP_TERM_COLUMNS`, because the binding captures the program's stdout and a pipe has no size to measure.
-- The underlying protocol call is `<app> __explain "<command line>"`, whose first output line is always the expanded command line. `App.Explain` is exported if you want to drive it yourself.
+- The underlying protocol call is `<app> __explain "<command line>"`, whose first output line is always the expanded command line. Its first output line is always the expanded command line, so a shell widget can use it without parsing the rest.
 
 ---
 

@@ -61,7 +61,7 @@ func main() {
 	}
 
 	if err := app.ExecuteContext(ctx, os.Args[1:]); err != nil {
-		clihelp.PrintError(err)
+		app.PrintError(err)
 		os.Exit(1)
 	}
 }
@@ -139,7 +139,7 @@ func TestAppSanity(t *testing.T) {
 The audit helper enforces consistent command structures by checking for word-set path duplicates (e.g. flagging a bad design where `mytool scan spam` and `mytool spam scan` are different paths). To allow valid structural overlaps, provide whitelisted path groupings:
 
 ```go
-err := clihelp.AuditWithOptions(app, clihelp.AuditOptions{
+err := clihelp.Audit(app, clihelp.AuditOptions{
 	AllowPathPermutations: [][]string{
 		{"job", "run"}, // allows both "run job" and "job run" paths
 	},
