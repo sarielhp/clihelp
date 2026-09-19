@@ -44,10 +44,10 @@ func startsComment(s string, i, tokenStart int) bool {
 // colorizeExampleLine applies ANSI syntax colors to a command-line example string.
 // It recognizes comments, shell prompts, subcommands, flags, values, and operators.
 func colorizeExampleLine(line string, th Theme) string {
-	return ColorizeExampleLineWithApp(nil, nil, line, th)
+	return colorizeExampleLineWithApp(nil, nil, line, th)
 }
 
-// ColorizeExampleLineWithApp applies ANSI syntax colors to an example string using the application
+// colorizeExampleLineWithApp applies ANSI syntax colors to an example string using the application
 // command tree to accurately identify subcommands, flags, and arguments.
 //
 // The line comes back as it was written, only colored. It used to be returned
@@ -55,7 +55,7 @@ func colorizeExampleLine(line string, th Theme) string {
 // swallowed the backslashes of "--path C:\temp\x", turned the asterisks of
 // "'*.go'" into emphasis, and ate the escape in "echo a\ b". A description is
 // prose and gets its own inline() pass; a command line is not.
-func ColorizeExampleLineWithApp(app *App, cmd *Command, line string, th Theme) string {
+func colorizeExampleLineWithApp(app *App, cmd *Command, line string, th Theme) string {
 	if line == "" {
 		return ""
 	}
@@ -278,7 +278,7 @@ func renderExamples(w io.Writer, app *App, cmd *Command, th Theme, o Options, te
 		}
 		lines := splitLines(ex.Line)
 		for _, l := range lines {
-			writeExampleLine(w, th, lineIndent, ColorizeExampleLineWithApp(app, cmd, l, th))
+			writeExampleLine(w, th, lineIndent, colorizeExampleLineWithApp(app, cmd, l, th))
 		}
 		if ex.Description != "" {
 			reflow(w, descColor, wrapWidth(termWidth, descIndent, o.maxContent()), descIndent, "", inline(ex.Description))

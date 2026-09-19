@@ -83,9 +83,9 @@ func oscSafeURL(url string) string {
 	return b.String()
 }
 
-// Inline renders inline markdown in s to a string with ANSI/OSC8 sequences.
+// inlineMarkdown renders inline markdown in s to a string with ANSI/OSC8 sequences.
 // It is the exported form of the internal inline helper used by the renderer.
-func Inline(s string) string {
+func inlineMarkdown(s string) string {
 	return inline(s)
 }
 

@@ -89,7 +89,7 @@ func TestLinkScanIsNotQuadratic(t *testing.T) {
 	measure := func(n int) time.Duration {
 		s := strings.Repeat("[a](", n)
 		start := time.Now()
-		_ = Inline(s)
+		_ = inlineMarkdown(s)
 		return time.Since(start)
 	}
 	small := measure(8000)
