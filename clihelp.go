@@ -99,7 +99,6 @@ type Note struct {
 }
 
 // ArgsValidator validates positional arguments after flag parsing.
-type ArgsValidator func(args []string) error
 
 // OptionsValidator validates command-line flags after parsing.
 type OptionsValidator func(opts Flags) error

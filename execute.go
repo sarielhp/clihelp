@@ -335,7 +335,20 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 	}
 
 	if targetCmd != nil && targetCmd.Args != nil {
-		if err := targetCmd.Args(fs.Args()); err != nil {
+		if err := targetCmd.Args.ValidateArgs(fs.Args()); err != nil {
+			// A command invoked with nothing at all is a user who does not know
+			// what to type, and the command's own help is the answer to that;
+			// "accepts 1 arg(s), received 0" is not, and it never names the
+			// parameter. A wrong *number* of arguments is a user who tried, and
+			// there a precise message beats a page of help.
+			//
+			// The help goes to stderr because it is a response to an error, and
+			// the error is still returned: a command that printed help instead of
+			// running has not succeeded, and a script that reads the exit code
+			// must not be told otherwise.
+			if len(fs.Args()) == 0 && !acceptsNoArgs(targetCmd.Args) {
+				a.RenderCommand(Options{Writer: a.stderr(), Theme: a.Theme}, path...)
+			}
 			return err
 		}
 	}

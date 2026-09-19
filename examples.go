@@ -510,7 +510,7 @@ func validateExampleTokens(app *App, targetCmd *Command, ancestors []*Command, r
 
 	cmdArgs := fs.Args()
 	if targetCmd != nil && targetCmd.Args != nil {
-		if err := targetCmd.Args(cmdArgs); err != nil {
+		if err := targetCmd.Args.ValidateArgs(cmdArgs); err != nil {
 			return fmt.Errorf("argument validation failed in example %q: %w", rawLine, err)
 		}
 	}
