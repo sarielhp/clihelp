@@ -2,7 +2,7 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
-## [Unreleased]
+## [0.3.38] - 2026-09-19
 
 ### Added
 - **`Count`**, for a flag that counts its own repetitions: `-v`, `-vv`, `-vvv`, or `--verbose=3` to set it directly. Like a toggle it consumes nothing, so `myapp -vv build` still runs `build` rather than reading the command name as a value — asserted directly and through the arity table command resolution reads.
