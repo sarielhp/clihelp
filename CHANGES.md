@@ -2,7 +2,7 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
-## [Unreleased]
+## [0.3.36] - 2026-09-19
 
 ### Added
 - **`help examples <command>`** narrows the page to one command and its subcommands, alongside `help examples` for the whole tree. The second application built on this library offered a per-command examples view of its own, so the whole-tree form alone would have cost its users something in exchange for deleting its code. A command the author has named `examples` still wins, because the command lookup runs first.
