@@ -2,7 +2,7 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
-## [Unreleased]
+## [0.3.35] - 2026-09-19
 
 ### Added
 - **`help examples`.** Every example in the command tree on one page, grouped under the command that declares it. `help <command>` already shows one command's examples among its usage, parameters and flags; this is all of them and nothing else — the view for "how do I use this?" rather than "what does this flag do?". Hidden commands are skipped, a command with no examples of its own gets no empty heading, and an application that declares none says so plainly. `examples`, `example` and `eg` all reach it, and it is listed in `help topics`.
