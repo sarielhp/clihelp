@@ -2,6 +2,12 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **`Count`**, for a flag that counts its own repetitions: `-v`, `-vv`, `-vvv`, or `--verbose=3` to set it directly. Like a toggle it consumes nothing, so `myapp -vv build` still runs `build` rather than reading the command name as a value — asserted directly and through the arity table command resolution reads.
+- It exists because two of the four applications built on this library had reached past it for a pflag feature it did not wrap: one for an optional value, which `Optional` now covers, and one for this, through a hand-written `Option.Binder` calling `pflag.CountVarP`. An escape hatch reached for by different people for the same standard idiom is a missing constructor, and `Binder` is the evidence trail that shows which.
+
 ## [0.3.37] - 2026-09-19
 
 ### Fixed
