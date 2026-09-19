@@ -2,7 +2,7 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
-## [Unreleased]
+## [0.3.32] - 2026-09-18
 
 ### Added
 - **An Option Whose Value May Be Omitted.** `-m` and `-m=someone@example.com` are different requests, and until now the only way to express that was to set `Option.Binder` by hand and name `pflag.NoOptDefVal` — which is why the one real application built on this library imported pflag at all. It is now `clihelp.Optional(clihelp.String(&move, "-m, --move [From]", "", "…"), "true")`: the flag alone puts the bare value in the target, `--move=x@y.z` puts the address there, and leaving it out leaves the default.
