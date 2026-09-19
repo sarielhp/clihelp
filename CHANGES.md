@@ -2,6 +2,12 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **`App.Options`**, the application's own flags: bound when the application itself runs, and not inherited by its commands. `Command` has always distinguished `Options` from `PersistentOptions`; `App` had only the inherited kind, and that asymmetry made a real shape inexpressible. An application whose root does the work — takes a directory and twenty-one flags — and whose subcommands reuse those names could not be written: as `PersistentOptions` the names collide and `Audit` refuses the application. Found while converting a program that does not use this library yet, which declares `--channel` nine times across its subcommands and again at the root.
+- They render on the root's help page and no other, count in the root's scope for `Audit` (so a name cannot be declared twice there, while a subcommand may reuse it), and are known to the arity probe — otherwise `myapp --url x somedir` would read the URL's value as a command name.
+
 ## [0.3.38] - 2026-09-19
 
 ### Added

@@ -327,7 +327,7 @@ func (a *App) usageLine() string {
 		return a.UsageLine
 	}
 	name := appName(a)
-	hasFlags := len(a.PersistentOptions) > 0 || len(a.GlobalFlags) > 0
+	hasFlags := len(a.PersistentOptions) > 0 || len(a.GlobalFlags) > 0 || len(a.Options) > 0
 	hasCmds := false
 	for _, c := range a.Commands {
 		if !c.Hidden {
@@ -420,6 +420,13 @@ func (a *App) renderGlobalFlagsSection(w io.Writer, th Theme, o Options, termWid
 		}
 	}
 	for _, f := range a.GlobalFlags {
+		if !f.Hidden {
+			globalFlags = append(globalFlags, f)
+		}
+	}
+	// The application's own options are the root's local flags. They belong on
+	// the root's page, and nowhere else — this section renders only there.
+	for _, f := range a.Options {
 		if !f.Hidden {
 			globalFlags = append(globalFlags, f)
 		}

@@ -50,7 +50,7 @@ func manHeading(b *strings.Builder, macro, title string) {
 
 func manGlobalOptions(a *App) []Option {
 	var opts []Option
-	for _, o := range append(append([]Option{}, a.PersistentOptions...), a.GlobalFlags...) {
+	for _, o := range append(append(append([]Option{}, a.PersistentOptions...), a.GlobalFlags...), a.Options...) {
 		if !o.Hidden {
 			opts = append(opts, o)
 		}

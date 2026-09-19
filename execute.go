@@ -96,6 +96,13 @@ func (a *App) setupFlagSet(targetCmd *Command, ancestors []*Command) (*pflag.Fla
 	if err := bindAndMark(fs, a.GlobalFlags); err != nil {
 		return nil, nil, err
 	}
+	// The application's own options are bound only when it is what is running,
+	// so that a subcommand may declare a flag of the same name.
+	if targetCmd == nil {
+		if err := bindAndMark(fs, a.Options); err != nil {
+			return nil, nil, err
+		}
+	}
 	for _, anc := range ancestors {
 		if err := bindAndMark(fs, anc.PersistentOptions); err != nil {
 			return nil, nil, err
@@ -160,6 +167,9 @@ func (a *App) collectAllActiveOptions(targetCmd *Command, ancestors []*Command) 
 	var allOptions []Option
 	allOptions = append(allOptions, a.PersistentOptions...)
 	allOptions = append(allOptions, a.GlobalFlags...)
+	if targetCmd == nil {
+		allOptions = append(allOptions, a.Options...)
+	}
 	for _, anc := range ancestors {
 		allOptions = append(allOptions, anc.PersistentOptions...)
 	}

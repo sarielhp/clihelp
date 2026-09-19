@@ -137,6 +137,18 @@ working against the library.** Check this document before writing it.
   promises an omittable value the flag does not accept is found by typing the
   flag.
 
+### 8b. Which flags a given command has
+
+- **Reads:** `App.PersistentOptions` and `App.GlobalFlags` (every command),
+  `App.Options` (the root alone), each ancestor's `PersistentOptions`, and the
+  target's own `PersistentOptions` and `Options`.
+- **The root distinction matters** when the root does real work and its
+  subcommands reuse its flag names. `App.Options` is the counterpart to
+  `Command.Options`: bound when the application itself runs, not inherited, so
+  a subcommand may declare `--channel` without colliding with the root's.
+- **Cost of using the inherited kind instead:** `Audit` refuses the application
+  for a duplicate option, which is the right answer to the wrong declaration.
+
 ### 9. What the shell offers at `<Tab>`
 
 - **Reads:** the command tree, the bound flags, and `Option.Complete` for dynamic
