@@ -305,6 +305,46 @@ func Int(target *int, flags string, defaultVal int, usage string) Option {
 	return opt
 }
 
+// Count binds a flag that counts its own repetitions: "-v" is one, "-vv" two,
+// "-vvv" three, and "--verbose=3" is three directly. It is the standard spelling
+// for verbosity.
+//
+// It exists because two of the four applications built on this library reached
+// past it for a pflag feature it did not wrap — one for an optional value, which
+// Optional now covers, and one for this, through a hand-written Option.Binder
+// calling pflag.CountVarP. An escape hatch used for the same standard idiom by
+// different people is a missing constructor.
+func Count(target *int, flags string, usage string) Option {
+	opt := countOption(target, flags, usage)
+	opt.scratch = countOption(new(int), flags, usage).Binder
+	return opt
+}
+
+func countOption(target *int, flags string, usage string) Option {
+	*target = 0
+	spec := parseFlagSpec(flags)
+	return Option{
+		// A counting flag never consumes the argument after it — pflag gives it a
+		// NoOptDefVal of "+1" — so resolution must not skip that argument looking
+		// for a value. Skipping it is how a command name becomes a positional and
+		// the program prints help and exits 0.
+		arity:       arityFlag,
+		Flags:       flags,
+		Description: usage,
+		Binder: func(fs *pflag.FlagSet) error {
+			return bindHelper(fs, spec, func(long, short string) {
+				if long != "" && short != "" {
+					fs.CountVarP(target, long, short, usage)
+				} else if long != "" {
+					fs.CountVar(target, long, usage)
+				} else if short != "" {
+					fs.CountVarP(target, "flag-"+short, short, usage)
+				}
+			})
+		},
+	}
+}
+
 func intOption(target *int, flags string, defaultVal int, usage string) Option {
 	*target = defaultVal
 	spec := parseFlagSpec(flags)

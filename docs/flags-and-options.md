@@ -219,6 +219,18 @@ Constraint names may be written in any spelling the option declares — `"-a"` a
 >
 > Explicitly registering a help flag will return a validation error or cause a `pflag` conflict. Always let `clihelp` manage help flags and help text generation automatically.
 
+### A flag that counts its repetitions
+
+`-v`, `-vv`, `-vvv` is the standard spelling for verbosity, and `Count` binds it:
+
+```go
+clihelp.Count(&verbosity, "-v, --verbose", "Increase verbosity; repeat for more.")
+```
+
+Each occurrence adds one, bundled or separate, and `--verbose=3` sets it
+directly. Like a toggle, it consumes nothing — so `myapp -vv build` still runs
+`build` rather than reading the command name as the flag's value.
+
 ### An option whose value may be omitted
 
 `-m` on its own and `-m=someone@example.com` are different requests, and a flag
