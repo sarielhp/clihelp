@@ -1,5 +1,13 @@
 # API surface audit, 2026-09-18
 
+> **Status, 2026-09-19 (v0.3.40).** The recommendations in this audit have been settled:
+> - **A1 (Test framework isolation):** Shipped in `clihelp/clihelptest`.
+> - **A2 (pflag decoupling):** Shipped; `OptionsValidator` takes `Flags` interface and `Var` takes `Value`.
+> - **A3 (Redundant aliases):** `RenderGlobalFlags`, `CheckExample`, `ValidateExamples`, `AuditWithOptions`, `ColorizeExampleLine` retired.
+> - **A4 & B1–B3 (Export pruning):** Internal installers and renderers unexported; queries (`IntegrationPath`, `CompletionPath`, `ManPagePath`, `IsCompletionInstalled`) and `Option.Binder` preserved for downstream CLI consumers (Addendum 2); shared helpers preserved or tested.
+> - **F1–F3 (Downstream feature additions):** All three shipped (F1 help on missing args, F2 unknown command handling with `App.Run`, F3 `Optional` flag values), plus positional completion (`Param.Complete` in v0.3.40).
+> The public callable API is down to 16 standalone functions and 14 cohesive types.
+
 **Scope.** The exported surface of `github.com/sarielhp/clihelp`, ahead of 1.0.
 Nothing here is about behaviour; four deep reviews and six mutation surveys have
 covered that. This is about what the package promises to keep.

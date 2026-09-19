@@ -1,13 +1,14 @@
 # Architectural Review: Proposed Features & Core Roadmaps
 
-> **Status, 2026-09-17.** Everything under "Should Be Done" below has shipped:
+> **Status, 2026-09-19.** Everything under "Should Be Done" below has shipped:
 > `Option.Deprecated` (`clihelp.go`, `man.go`), the declarative option validators
 > (`validation.go`), `TestExecute` and `Audit` (`testing.go`),
 > `InteractiveFallback` (`execute.go`) and the tiered `-h` / `--help` / `-H`
-> help (`ExtendedHelpFlag`). That half is kept for the reasoning, not as a
-> roadmap. The "Should Not Be Done" half is still live: it is the record of
-> seven designs that were considered and declined, and the reasons they were.
-> See also `suggestions/rejected/`.
+> help (`ExtendedHelpFlag`). Additionally, item 2.D (*Positional Argument Autocompletion*)
+> was reconsidered and shipped in v0.3.40 as `Param.Complete` and `Param.Variadic`, driven
+> by real CLI application requirements (`mail_cli`). That half is kept for the reasoning,
+> not as a roadmap. The "Should Not Be Done" half records the remaining designs that were
+> considered and declined, and the reasons they were. See also `suggestions/rejected/`.
 
 To keep `clihelp` lightweight, coherent, and idiomatic to Go, we must strictly filter out feature bloat. A good library does one thing well: command routing, POSIX flag binding, and beautiful help rendering. 
 
@@ -89,9 +90,9 @@ To maintain simplicity and package coherence, the following features are rejecte
 * **Critique:** Merging flags, environment variables, and config files is the domain of config managers (such as `Viper` or `Figment`).
 * **Why it fails simplicity:** Trying to cram configuration management into `clihelp` violates the single-responsibility principle. Keeping `clihelp` focused strictly on CLI routing and formatting prevents code bloat.
 
-### D. Positional Argument Autocompletion — REJECTED
-* **Critique:** Autocompleting flags is straightforward, but autocompleting positional arguments (e.g. looking up database rows or dynamic branch lists) requires custom dynamic completion hooks per shell.
-* **Why it fails simplicity:** Extremely high implementation and maintenance complexity for a niche feature that is rarely needed by most CLI applications.
+### D. Positional Argument Autocompletion — RECONSIDERED & SHIPPED (v0.3.40)
+* **Initial Critique:** Autocompleting positional arguments was thought to carry high implementation complexity for a niche feature.
+* **Why it was reconsidered:** Downstream CLI applications like `mail_cli` needed dynamic completion for positional arguments (e.g. `mail_cli scan %IN<TAB>` completing mailbox names). Re-implementing command resolution, flag arity scanning, and shell protocol handling downstream proved error-prone. In v0.3.40, `Param.Complete` and `Param.Variadic` were introduced upstream with full slot tracking, terminator (`--`) safety, and audit checks.
 
 ### E. Modular Command Registration (`Register` method) — REJECTED
 * **Critique:** Adding a method like `app.Register(Cmd)` to register subcommands.
