@@ -2,7 +2,7 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
-## [Unreleased]
+## [0.3.34] - 2026-09-19
 
 ### Fixed
 - **`App.GlobalNote` Was Shown Almost Nowhere.** It rendered in `help docs`, `help more` and the manual page, and on none of `-h`, `--help`, `help`, or a bare invocation — so the two applications that set one, this library's own example among them, had each put a link in their help that no reader was ever shown. It now sits under `Description` on the extended help page, where `Command.Notes` already sit, and is left off the concise tier, which is a prompt rather than documentation. A note that merely repeats the description is still skipped. The field was also undocumented, in godoc and in every guide; it says what it is for now.
