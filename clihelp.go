@@ -121,6 +121,20 @@ type Example struct {
 type Param struct {
 	Name        string
 	Description string
+
+	// Complete supplies candidates for this positional slot, in the same form
+	// as Option.Complete: one candidate per string, optionally "value\tdescription".
+	// It is called with the word under the cursor, which may be empty.
+	//
+	// Setting it declares that this Param occupies a positional slot (see
+	// Variadic). It is ignored on Command.SubcommandEntries, which are display
+	// entries rather than argument slots.
+	Complete func(toComplete string) []string
+
+	// Variadic marks the last slot as unbounded: it keeps completing for every
+	// argument from its own index onward. Declared rather than read out of Name,
+	// because Name is display text.
+	Variadic bool
 }
 
 // Note carries an optional heading (rendered as a section label) and a body

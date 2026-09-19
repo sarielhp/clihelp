@@ -2,6 +2,21 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.40] - 2026-09-19
+
+### Added
+- **`Param.Complete` and `Param.Variadic`**: Dynamic shell tab-completion callbacks for positional arguments on leaf commands, matching the signature and behavior of `Option.Complete`. `Parameters[0]` completes slot 0, `Parameters[1]` completes slot 1, and `Variadic: true` on the final parameter continues completing unbounded trailing arguments. Driven by `mail_cli`'s redesign where mailbox labels use a `%` sigil (`mail_cli scan %inbox`) and needed `scan %IN<TAB>` to complete against the live folder list without reimplementing hundreds of lines of command resolution and flag arity scanning.
+- **`Audit` Parameter Validation**: `Audit` statically enforces that `Variadic: true` appears only on the terminal parameter of `Command.Parameters`, and rejects `Complete` or `Variadic` on `Command.SubcommandEntries` display entries.
+
+- **Option Collectors & Arity Agreement**: Documented the comparison matrix across option collectors (`leadingFlagArity`, `positionalArity`, and `CollectOptions`), and added an agreement test asserting exact parity between `positionalArity` and `pflag` for commands with local and hidden options.
+- **Cognitive Sizing Tiers**: Aligned `tools/audit_lines.rb` and `AGENTS.md` with `GUIDELINES.md` cognitive tiers (soft warn at 80, hard limit 110 for logic; 150/200 for dispatchers).
+- **Agent Guidelines & Documentation Index**: Added `## Start Here` navigation block and full `docs/` index in `AGENTS.md` linking directly to `llms.txt` and `docs/how-clihelp-decides.md`.
+
+### Fixed
+- **Subcommands Offered Past Slot 0**: Subcommand completion is now strictly suppressed once positional arguments or subcommands have been entered (`n > 0`).
+- **Terminator (`--`) Clean Boundary**: Tab completion past `--` now strictly completes positional arguments, suppressing both subcommands and flags.
+- **Shorthand Cluster Flag Value Callbacks**: When a flag taking a value was written inside a cluster like `-vo <TAB>`, `completePrevFlagValue` previously failed to match `-o` against `-vo` and silently dropped the callback. Resolved via `effectiveFlagToken`.
+
 ## [0.3.39] - 2026-09-19
 
 ### Added

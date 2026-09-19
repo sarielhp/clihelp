@@ -548,3 +548,74 @@ func TestAuditHelper(t *testing.T) {
 		t.Errorf("expected whitelisted permutation to pass audit, got error: %v", err)
 	}
 }
+
+func TestAuditParameters(t *testing.T) {
+	t.Run("variadic on non-final parameter fails audit", func(t *testing.T) {
+		app := &App{
+			Commands: []Command{
+				{
+					Name:        "send",
+					Description: "Send message",
+					Parameters: []Param{
+						{Name: "<files...>", Variadic: true},
+						{Name: "<dest>"},
+					},
+				},
+			},
+		}
+		err := Audit(app)
+		if err == nil || !strings.Contains(err.Error(), "Variadic may only be set on the last Parameter") {
+			t.Fatalf("expected error for non-terminal Variadic, got: %v", err)
+		}
+	})
+
+	t.Run("variadic on final parameter passes audit", func(t *testing.T) {
+		app := &App{
+			Commands: []Command{
+				{
+					Name:        "send",
+					Description: "Send message",
+					Parameters: []Param{
+						{Name: "<dest>"},
+						{Name: "<files...>", Variadic: true},
+					},
+				},
+			},
+		}
+		if err := Audit(app); err != nil {
+			t.Fatalf("expected audit to pass for terminal Variadic, got: %v", err)
+		}
+	})
+
+	t.Run("SubcommandEntries with Complete or Variadic fails audit", func(t *testing.T) {
+		app1 := &App{
+			Commands: []Command{
+				{
+					Name:        "config",
+					Description: "Config command",
+					SubcommandEntries: []Param{
+						{Name: "show", Complete: func(string) []string { return nil }},
+					},
+				},
+			},
+		}
+		if err := Audit(app1); err == nil || !strings.Contains(err.Error(), "SubcommandEntries cannot set Complete or Variadic") {
+			t.Fatalf("expected error for Complete on SubcommandEntries, got: %v", err)
+		}
+
+		app2 := &App{
+			Commands: []Command{
+				{
+					Name:        "config",
+					Description: "Config command",
+					SubcommandEntries: []Param{
+						{Name: "show", Variadic: true},
+					},
+				},
+			},
+		}
+		if err := Audit(app2); err == nil || !strings.Contains(err.Error(), "SubcommandEntries cannot set Complete or Variadic") {
+			t.Fatalf("expected error for Variadic on SubcommandEntries, got: %v", err)
+		}
+	})
+}

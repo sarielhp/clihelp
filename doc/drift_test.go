@@ -28,7 +28,7 @@ func TestSubcommandEntriesAgreesWithClihelp(t *testing.T) {
 			t.Fatalf("%s: %d entries, clihelp says %d", cmd.Name, len(got), len(want))
 		}
 		for i := range got {
-			if got[i] != want[i] {
+			if got[i].Name != want[i].Name || got[i].Description != want[i].Description {
 				t.Errorf("%s entry %d: %+v, clihelp says %+v", cmd.Name, i, got[i], want[i])
 			}
 		}

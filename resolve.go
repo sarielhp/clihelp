@@ -424,6 +424,14 @@ func addFlagArity(arity map[string]bool, opts []Option) {
 // because binding writes each declared default through the consumer's own
 // pointer: a probe built by binding reset a running program's own variables
 // every time its arguments were resolved.
+//
+// Option collectors and arity maps across clihelp:
+//
+//	Collector         Includes own Options?  Includes Hidden?  Purpose
+//	----------------  ---------------------  ----------------  ---------------------------------
+//	leadingFlagArity  No                     Yes               Leading flag / command resolution
+//	positionalArity   Yes                    Yes               Positional slot indexing (completion.go)
+//	CollectOptions    Yes                    No                User-facing help rendering
 func (a *App) leadingFlagArity(resolved []*Command) map[string]bool {
 	arity := make(map[string]bool)
 	for _, name := range a.helpFlagNames() {

@@ -280,9 +280,11 @@ podctl completion fish > ~/.config/fish/completions/podctl.fish
 
 ---
 
-## Dynamic Completion Callbacks
+## Dynamic Completion Callbacks (Flags & Positionals)
 
-Attach a `Complete` callback to any `Option` to provide dynamic, contextual suggestions:
+Attach a `Complete` callback to any `Option` or `Param` to provide dynamic suggestions:
+
+### Flags
 
 ```go
 clihelp.Option{
@@ -300,6 +302,49 @@ clihelp.Option{
     },
 }
 ```
+
+### Positional Arguments
+
+Attach `Complete` to entries in `Command.Parameters`:
+
+```go
+clihelp.Command{
+    Name:        "scan",
+    Description: "Scan a mailbox folder",
+    Parameters: []clihelp.Param{
+        {
+            Name:        "<folder>",
+            Description: "Folder name to scan",
+            Complete: func(toComplete string) []string {
+                folders := []string{"%inbox\tPrimary inbox", "%archive\tArchived mail", "%spam\tSpam"}
+                var results []string
+                for _, f := range folders {
+                    if strings.HasPrefix(f, toComplete) {
+                        results = append(results, f)
+                    }
+                }
+                return results
+            },
+        },
+        {
+            Name:        "<message-id...>",
+            Description: "Message IDs to inspect",
+            Variadic:    true,
+            Complete: func(toComplete string) []string {
+                return fetchCachedMessageIDs(toComplete)
+            },
+        },
+    },
+    Run: runScan,
+}
+```
+
+#### Rules & Constraints
+- **Slot alignment:** `Parameters[0]` completes the first positional argument, `Parameters[1]` the second, and so on. `Parameters` is opt-in; slots without `Complete` return no candidates, allowing shells to fall back to default filename completion.
+- **Variadic tail:** Mark the final parameter with `Variadic: true` to keep completing for every argument from its index onward. `Audit` enforces that `Variadic: true` appears only on the final parameter.
+- **Context boundary:** The callback receives only `toComplete string` (the current token under the cursor). Positional callbacks cannot inspect earlier positionals or flags on the same command line.
+- **Unknown flags:** Unrecognized flags before a positional argument cannot be classified for arity and are counted as single positional words.
+- **SubcommandEntries:** `Complete` and `Variadic` are ignored on `Command.SubcommandEntries`, which are display entries rather than argument slots (enforced by `Audit`).
 
 ---
 

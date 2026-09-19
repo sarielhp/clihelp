@@ -107,3 +107,59 @@ func TestArityProbeKnowsEveryFlagPflagBinds(t *testing.T) {
 	}
 	_ = fmt.Sprint()
 }
+
+// TestPositionalArityKnowsEveryCommandFlagPflagBinds verifies the agreement between
+// positionalArity and the FlagSet constructed for a command. Every flag pflag binds
+// on the command (including ancestor persistent options, local Options, and Hidden flags)
+// must be known to positionalArity with the exact same value-taking arity.
+func TestPositionalArityKnowsEveryCommandFlagPflagBinds(t *testing.T) {
+	hide := func(o Option) Option { o.Hidden = true; return o }
+	app := &App{
+		Name: "app",
+		PersistentOptions: []Option{
+			Bool(new(bool), "--global-dry-run", false, "Dry run."),
+		},
+		Commands: []Command{
+			{
+				Name: "parent",
+				PersistentOptions: []Option{
+					String(new(string), "--parent-opt <val>", "", "Parent opt."),
+				},
+				Subcommands: []Command{
+					{
+						Name: "child",
+						Options: []Option{
+							String(new(string), "--local-opt <val>", "", "Local opt."),
+							hide(Bool(new(bool), "--local-hidden", false, "Hidden opt.")),
+							hide(String(new(string), "--local-hidden-val <val>", "", "Hidden val.")),
+						},
+						Run: func(*Context) error { return nil },
+					},
+				},
+			},
+		},
+	}
+
+	parent := &app.Commands[0]
+	child := &parent.Subcommands[0]
+	ancestors := []*Command{parent}
+
+	fs, _, err := app.setupFlagSet(child, ancestors)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	res := resolution{ancestors: ancestors, cmd: child}
+	arity := app.positionalArity(res, child)
+
+	fs.VisitAll(func(f *pflag.Flag) {
+		takesValue, known := arity["--"+f.Name]
+		if !known {
+			t.Errorf("pflag binds --%s and positionalArity does not know it", f.Name)
+			return
+		}
+		if want := f.NoOptDefVal == ""; takesValue != want {
+			t.Errorf("--%s: positionalArity says takesValue=%v, pflag says %v", f.Name, takesValue, want)
+		}
+	})
+}

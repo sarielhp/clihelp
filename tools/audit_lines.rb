@@ -1,21 +1,29 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Audit Go source files for function length and file length.
-# Production functions (*.go, excluding *_test.go):
-#   - Hard limit: 80 lines
-#   - Declarative builders exception: build* with cyclomatic branches <= 2: 150 lines
-# Test functions (*_test.go):
-#   - Relaxed limit: 200 lines
+# Audit Go source files for function length and file length according to
+# /home/sariel/prog/standards/go/GUIDELINES.md (Cognitive Tiering):
+#   - Standard Logic: comfort 20-60, soft warn 80, hard limit 110
+#   - Declarative Builders (build*, init*, render*, generate*): soft warn 120, hard limit 160 (branches <= 2)
+#   - Event / Key Dispatchers (handle*, dispatch*, Execute*): soft warn 150, hard limit 200
+#   - Table-Driven Tests: soft warn 180, hard limit 250
 # File sizing:
 #   - Production: comfort 300-700, warn > 800, hard limit 1100
 #   - Tests: comfort 300-1000, warn > 1200, hard limit 1600
 
 EXCLUDED_PREFIXES = ["vendor/", ".git/"].freeze
 
-PROD_FUNC_LIMIT = 80
-BUILDER_FUNC_LIMIT = 150
-TEST_FUNC_LIMIT = 200
+PROD_FUNC_WARN = 80
+PROD_FUNC_MAX = 110
+
+BUILDER_FUNC_WARN = 120
+BUILDER_FUNC_MAX = 160
+
+DISPATCHER_FUNC_WARN = 150
+DISPATCHER_FUNC_MAX = 200
+
+TEST_FUNC_WARN = 180
+TEST_FUNC_MAX = 250
 
 PROD_FILE_WARN = 800
 PROD_FILE_MAX = 1100
@@ -99,21 +107,28 @@ files.each do |file|
         func_lines = lines[(start_line - 1)..idx]
 
         if is_test
-          limit = TEST_FUNC_LIMIT
-          if length > limit
-            errors << "#{file}:#{start_line}: test func #{func_name} is #{length} lines (hard limit #{limit})"
-          end
-        elsif func_name.start_with?("build")
+          warn_limit = TEST_FUNC_WARN
+          hard_limit = TEST_FUNC_MAX
+          tier_name = "test func"
+        elsif func_name =~ /^(build|init|render|generate|View)/
           branches = count_branches(func_lines)
-          limit = branches <= 2 ? BUILDER_FUNC_LIMIT : PROD_FUNC_LIMIT
-          if length > limit
-            errors << "#{file}:#{start_line}: builder func #{func_name} is #{length} lines (hard limit #{limit}, branches=#{branches})"
-          end
+          warn_limit = BUILDER_FUNC_WARN
+          hard_limit = branches <= 2 ? BUILDER_FUNC_MAX : PROD_FUNC_MAX
+          tier_name = "builder func"
+        elsif func_name =~ /^(handle|dispatch|Execute)/ || func_name.end_with?("Key", "Route")
+          warn_limit = DISPATCHER_FUNC_WARN
+          hard_limit = DISPATCHER_FUNC_MAX
+          tier_name = "dispatcher func"
         else
-          limit = PROD_FUNC_LIMIT
-          if length > limit
-            errors << "#{file}:#{start_line}: func #{func_name} is #{length} lines (hard limit #{limit})"
-          end
+          warn_limit = PROD_FUNC_WARN
+          hard_limit = PROD_FUNC_MAX
+          tier_name = "func"
+        end
+
+        if length > hard_limit
+          errors << "#{file}:#{start_line}: #{tier_name} #{func_name} is #{length} lines (hard limit #{hard_limit})"
+        elsif length > warn_limit
+          warnings << "#{file}:#{start_line}: #{tier_name} #{func_name} is #{length} lines (soft warn #{warn_limit})"
         end
 
         in_func = false

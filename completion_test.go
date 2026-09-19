@@ -505,3 +505,434 @@ func TestAutoRefreshHappensOnlyWhenAsked(t *testing.T) {
 		})
 	}
 }
+
+func TestPositionalIndex(t *testing.T) {
+	arity := map[string]bool{
+		"--verbose":    false,
+		"--out":        true,
+		"-o":           true,
+		"-v":           false,
+		"--opt":        false, // Optional flag
+		"--hidden-val": true,
+	}
+
+	tests := []struct {
+		name           string
+		remaining      []string
+		wantIndex      int
+		wantTerminator bool
+	}{
+		{"empty", nil, 0, false},
+		{"switch consumes nothing", []string{"--verbose"}, 0, false},
+		{"value flag consumes two", []string{"--out", "file"}, 0, false},
+		{"inline value is one word", []string{"--out=file"}, 0, false},
+		{"shorthand with value", []string{"-o", "file"}, 0, false},
+		{"cluster, value on last short", []string{"-vo", "file"}, 0, false},
+		{"Optional flag never consumes next word", []string{"--opt", "x"}, 1, false},
+		{"hidden flags are in the map", []string{"--hidden-val", "x"}, 0, false},
+		{"one positional typed", []string{"alpha"}, 1, false},
+		{"flag after a positional", []string{"alpha", "--verbose"}, 1, false},
+		{"bare dash is positional", []string{"-"}, 1, false},
+		{"terminator alone", []string{"--"}, 0, true},
+		{"flag after terminator is positional", []string{"--", "--verbose"}, 1, true},
+		{"unknown flag counted as word", []string{"--unknown", "alpha"}, 2, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotIndex, gotTerm := positionalIndex(arity, tt.remaining)
+			if gotIndex != tt.wantIndex || gotTerm != tt.wantTerminator {
+				t.Errorf("positionalIndex(%v) = (%d, %v), want (%d, %v)",
+					tt.remaining, gotIndex, gotTerm, tt.wantIndex, tt.wantTerminator)
+			}
+		})
+	}
+}
+
+func TestPositionalArityRawOptionsAndNilCmd(t *testing.T) {
+	app := &App{
+		Name: "testapp",
+		GlobalFlags: []Option{
+			{Flags: "-g, --global <val>", Description: "global", arity: arityValue},
+		},
+		Commands: []Command{
+			{
+				Name: "sub",
+				Options: []Option{
+					{Flags: "--local <val>", Description: "local", arity: arityValue},
+					{Flags: "--hidden-local <tok>", Description: "hidden", arity: arityValue, Hidden: true},
+				},
+			},
+		},
+	}
+
+	resRoot := resolution{}
+	arityRoot := app.positionalArity(resRoot, nil)
+	if !arityRoot["--global"] {
+		t.Errorf("expected arityRoot to contain --global")
+	}
+
+	cmd := &app.Commands[0]
+	resSub := resolution{cmd: cmd}
+	aritySub := app.positionalArity(resSub, cmd)
+	if !aritySub["--local"] {
+		t.Errorf("expected aritySub to contain --local")
+	}
+	if !aritySub["--hidden-local"] {
+		t.Errorf("expected aritySub to contain --hidden-local (hidden options must be preserved)")
+	}
+}
+
+func TestFlagValueGuard(t *testing.T) {
+	var out bytes.Buffer
+	app := &App{
+		Name:   "mycli",
+		Stdout: &out,
+		Commands: []Command{
+			{
+				Name: "scan",
+				Options: []Option{
+					{Flags: "--output <file>", Description: "Output file", arity: arityValue},
+					{
+						Flags:       "-v, --verbose",
+						Description: "Verbose",
+					},
+					{
+						Flags:       "-o, --out <format>",
+						Description: "Format",
+						arity:       arityValue,
+						Complete: func(toComplete string) []string {
+							return []string{"json\tJSON format", "yaml\tYAML format"}
+						},
+					},
+					{
+						Flags:       "-f <file>",
+						Description: "File with inline",
+						arity:       arityValue,
+					},
+				},
+				Parameters: []Param{
+					{
+						Name: "<prefix>",
+						Complete: func(toComplete string) []string {
+							return []string{"%inbox", "%spam"}
+						},
+					},
+				},
+				Run: func(*Context) error { return nil },
+			},
+		},
+	}
+
+	t.Run("flag with nil Complete emits nothing", func(t *testing.T) {
+		out.Reset()
+		err := app.ExecuteContext(context.Background(), []string{"__complete", "scan", "--output", ""})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if out.Len() != 0 {
+			t.Errorf("expected empty output for flag without Complete callback, got: %q", out.String())
+		}
+	})
+
+	t.Run("shorthand cluster -vo reaches -o callback", func(t *testing.T) {
+		out.Reset()
+		err := app.ExecuteContext(context.Background(), []string{"__complete", "scan", "-vo", ""})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(out.String(), "json\tJSON format") {
+			t.Errorf("expected -o callback to be invoked for -vo cluster, got: %q", out.String())
+		}
+	})
+
+	t.Run("shorthand with inline value -fo does not fire guard", func(t *testing.T) {
+		out.Reset()
+		err := app.ExecuteContext(context.Background(), []string{"__complete", "scan", "-fo", ""})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(out.String(), "%inbox") {
+			t.Errorf("expected positional completion after -fo inline value, got: %q", out.String())
+		}
+	})
+}
+
+func TestPositionalCompletionSlotsAndVariadic(t *testing.T) {
+	var out bytes.Buffer
+	app := &App{
+		Name:   "mycli",
+		Stdout: &out,
+		Commands: []Command{
+			{
+				Name: "copy",
+				Parameters: []Param{
+					{
+						Name: "<src>",
+						Complete: func(toComplete string) []string {
+							return []string{"src1", "src2"}
+						},
+					},
+					{
+						Name: "<dest>",
+						Complete: func(toComplete string) []string {
+							return []string{"dst1", "dst2"}
+						},
+					},
+				},
+				Run: func(*Context) error { return nil },
+			},
+			{
+				Name: "upload",
+				Parameters: []Param{
+					{
+						Name: "<target>",
+						Complete: func(toComplete string) []string {
+							return []string{"bucketA"}
+						},
+					},
+					{
+						Name:     "<files...>",
+						Variadic: true,
+						Complete: func(toComplete string) []string {
+							return []string{"f1", "f2"}
+						},
+					},
+				},
+				Run: func(*Context) error { return nil },
+			},
+			{
+				Name: "flags",
+				Options: []Option{
+					{Flags: "--mode <m>", Description: "Mode", arity: arityValue},
+					{Flags: "--secret <key>", Description: "Secret", arity: arityValue, Hidden: true},
+					Optional(Option{Flags: "--opt [val]", Description: "Optional"}, "default"),
+				},
+				Parameters: []Param{
+					{
+						Name: "<param>",
+						Complete: func(toComplete string) []string {
+							return []string{"slot0"}
+						},
+					},
+					{
+						Name: "<param2>",
+						Complete: func(toComplete string) []string {
+							return []string{"slot1"}
+						},
+					},
+				},
+				Run: func(*Context) error { return nil },
+			},
+		},
+	}
+
+	t.Run("slot 0 and slot 1 complete independently", func(t *testing.T) {
+		out.Reset()
+		_ = app.ExecuteContext(context.Background(), []string{"__complete", "copy", ""})
+		if !strings.Contains(out.String(), "src1") || strings.Contains(out.String(), "dst1") {
+			t.Errorf("slot 0 mismatch: %q", out.String())
+		}
+
+		out.Reset()
+		_ = app.ExecuteContext(context.Background(), []string{"__complete", "copy", "src1", ""})
+		if !strings.Contains(out.String(), "dst1") || strings.Contains(out.String(), "src1") {
+			t.Errorf("slot 1 mismatch: %q", out.String())
+		}
+
+		out.Reset()
+		_ = app.ExecuteContext(context.Background(), []string{"__complete", "copy", "src1", "dst1", ""})
+		if out.Len() != 0 {
+			t.Errorf("slot 2 should not complete on non-variadic command: %q", out.String())
+		}
+	})
+
+	t.Run("variadic parameter keeps completing", func(t *testing.T) {
+		out.Reset()
+		_ = app.ExecuteContext(context.Background(), []string{"__complete", "upload", "bucketA", ""})
+		if !strings.Contains(out.String(), "f1") {
+			t.Errorf("slot 1 mismatch: %q", out.String())
+		}
+
+		out.Reset()
+		_ = app.ExecuteContext(context.Background(), []string{"__complete", "upload", "bucketA", "f1", ""})
+		if !strings.Contains(out.String(), "f1") {
+			t.Errorf("slot 2 variadic mismatch: %q", out.String())
+		}
+
+		out.Reset()
+		_ = app.ExecuteContext(context.Background(), []string{"__complete", "upload", "bucketA", "f1", "f2", ""})
+		if !strings.Contains(out.String(), "f1") {
+			t.Errorf("slot 3 variadic mismatch: %q", out.String())
+		}
+	})
+
+	t.Run("flags before positionals do not shift slot", func(t *testing.T) {
+		out.Reset()
+		_ = app.ExecuteContext(context.Background(), []string{"__complete", "flags", "--mode", "fast", ""})
+		if !strings.Contains(out.String(), "slot0") {
+			t.Errorf("expected slot 0 after value flag, got: %q", out.String())
+		}
+
+		out.Reset()
+		_ = app.ExecuteContext(context.Background(), []string{"__complete", "flags", "--secret", "xyz", ""})
+		if !strings.Contains(out.String(), "slot0") {
+			t.Errorf("expected slot 0 after hidden value flag, got: %q", out.String())
+		}
+
+		out.Reset()
+		_ = app.ExecuteContext(context.Background(), []string{"__complete", "flags", "--opt", "x", ""})
+		if !strings.Contains(out.String(), "slot1") {
+			t.Errorf("expected slot 1 after Optional flag and positional arg, got: %q", out.String())
+		}
+	})
+}
+
+func TestTerminatorGatingAndSubcommands(t *testing.T) {
+	var out bytes.Buffer
+	app := &App{
+		Name:   "demo",
+		Stdout: &out,
+		Commands: []Command{
+			{
+				Name: "unspam",
+				Options: []Option{
+					{Flags: "--output <f>", arity: arityValue},
+				},
+				Subcommands: []Command{
+					{Name: "folder", Description: "Folder subcommand"},
+				},
+				Parameters: []Param{
+					{
+						Name: "<msg_id>",
+						Complete: func(toComplete string) []string {
+							return []string{"msg1", "msg2"}
+						},
+					},
+					{
+						Name: "<dest>",
+						Complete: func(toComplete string) []string {
+							return []string{"destA", "destB"}
+						},
+					},
+				},
+				Run: func(*Context) error { return nil },
+			},
+		},
+	}
+
+	t.Run("slot 0 offers subcommands and positionals", func(t *testing.T) {
+		out.Reset()
+		_ = app.ExecuteContext(context.Background(), []string{"__complete", "unspam", ""})
+		res := out.String()
+		if !strings.Contains(res, "folder\tFolder subcommand") {
+			t.Errorf("expected subcommand at slot 0: %q", res)
+		}
+		if !strings.Contains(res, "msg1") {
+			t.Errorf("expected positional at slot 0: %q", res)
+		}
+	})
+
+	t.Run("slot 1 does not offer subcommands", func(t *testing.T) {
+		out.Reset()
+		_ = app.ExecuteContext(context.Background(), []string{"__complete", "unspam", "msg1", ""})
+		res := out.String()
+		if strings.Contains(res, "folder") {
+			t.Errorf("subcommand must not appear at slot 1: %q", res)
+		}
+		if !strings.Contains(res, "destA") {
+			t.Errorf("expected positional slot 1: %q", res)
+		}
+	})
+
+	t.Run("terminator gates guard and completes positionals", func(t *testing.T) {
+		out.Reset()
+		_ = app.ExecuteContext(context.Background(), []string{"__complete", "unspam", "--", "--output", ""})
+		res := out.String()
+		if !strings.Contains(res, "destA") {
+			t.Errorf("expected positional slot 1 after -- --output, got: %q", res)
+		}
+	})
+
+	t.Run("flags and subcommands suppressed after terminator", func(t *testing.T) {
+		out.Reset()
+		_ = app.ExecuteContext(context.Background(), []string{"__complete", "unspam", "--", "-"})
+		res := out.String()
+		if strings.Contains(res, "--output") {
+			t.Errorf("flags must not be offered after --: %q", res)
+		}
+
+		out.Reset()
+		_ = app.ExecuteContext(context.Background(), []string{"__complete", "unspam", "--", ""})
+		res = out.String()
+		if strings.Contains(res, "folder\tFolder subcommand") {
+			t.Errorf("subcommands must not be offered after --: %q", res)
+		}
+	})
+}
+
+func TestPositionalCandidateSanitization(t *testing.T) {
+	var out bytes.Buffer
+	app := &App{
+		Name:   "demo",
+		Stdout: &out,
+		Commands: []Command{
+			{
+				Name: "test",
+				Parameters: []Param{
+					{
+						Name:        "<item>",
+						Description: "Item parameter description",
+						Complete: func(toComplete string) []string {
+							return []string{
+								"simple",
+								"tabbed\tFirst tab\tsecond tab",
+								"multi\nline\tDescription",
+							}
+						},
+					},
+				},
+				Run: func(*Context) error { return nil },
+			},
+		},
+	}
+
+	_ = app.ExecuteContext(context.Background(), []string{"__complete", "test", ""})
+	res := out.String()
+
+	if !strings.Contains(res, "simple\t\n") {
+		t.Errorf("expected bare candidate to have empty description: %q", res)
+	}
+	if !strings.Contains(res, "tabbed\tFirst tab second tab\n") {
+		t.Errorf("expected tab split on first tab: %q", res)
+	}
+	if strings.Contains(res, "\nline") {
+		t.Errorf("newline in candidate should be sanitized: %q", res)
+	}
+}
+
+func TestRootCompletionDoesNotPanic(t *testing.T) {
+	var out bytes.Buffer
+	app := &App{
+		Name:   "mycli",
+		Stdout: &out,
+		GlobalFlags: []Option{
+			{Flags: "--global", Description: "Global switch"},
+		},
+		Commands: []Command{
+			{Name: "run", Description: "Run command"},
+		},
+	}
+
+	for _, args := range [][]string{
+		{"__complete", ""},
+		{"__complete", "-"},
+		{"__complete", "--"},
+		{"__complete", "--global", ""},
+	} {
+		out.Reset()
+		if err := app.ExecuteContext(context.Background(), args); err != nil {
+			t.Fatalf("args %v failed: %v", args, err)
+		}
+	}
+}

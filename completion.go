@@ -206,6 +206,81 @@ func (a *App) completeSubcommands(w io.Writer, currentCmd *Command, toComplete s
 	}
 }
 
+// effectiveFlagToken reduces a shorthand cluster to the flag that actually takes
+// the value: in "-vo <val>" that is "-o". Only meaningful once scanLeadingFlag has
+// reported that the word consumes the next argument, which guarantees every short
+// before the last takes no value.
+func effectiveFlagToken(prevWord string) string {
+	if strings.HasPrefix(prevWord, "--") || !strings.HasPrefix(prevWord, "-") || len(prevWord) <= 2 {
+		return prevWord
+	}
+	return "-" + prevWord[len(prevWord)-1:]
+}
+
+// positionalArity maps every flag legal at this command to whether it consumes
+// the following argument, hidden flags included. It is leadingFlagArity plus the
+// command's own Options: those cannot precede the command, but they are exactly
+// the flags that precede its positionals.
+func (a *App) positionalArity(res resolution, cmd *Command) map[string]bool {
+	resolved := append([]*Command{}, res.ancestors...)
+	if cmd != nil {
+		resolved = append(resolved, cmd)
+	}
+	arity := a.leadingFlagArity(resolved)
+	if cmd != nil {
+		addFlagArity(arity, cmd.Options)
+	}
+	return arity
+}
+
+func positionalIndex(arity map[string]bool, remaining []string) (n int, afterTerminator bool) {
+	for i := 0; i < len(remaining); {
+		arg := remaining[i]
+		if arg == "--" {
+			return n + len(remaining) - i - 1, true
+		}
+		if strings.HasPrefix(arg, "-") && len(arg) > 1 {
+			if count, known := scanLeadingFlag(arity, remaining[i:]); known {
+				i += count
+				continue
+			}
+		}
+		n++
+		i++
+	}
+	return n, false
+}
+
+// paramAt returns the Param occupying slot n, or nil. Past the end only a
+// Variadic final parameter answers; Audit enforces that Variadic appears
+// nowhere else, so the last entry is the only one that can be unbounded.
+func paramAt(params []Param, n int) *Param {
+	if n < 0 || len(params) == 0 {
+		return nil
+	}
+	if n < len(params) {
+		return &params[n]
+	}
+	if last := &params[len(params)-1]; last.Variadic {
+		return last
+	}
+	return nil
+}
+
+func completePositional(w io.Writer, cmd *Command, n int, toComplete string) {
+	if cmd == nil {
+		return
+	}
+	p := paramAt(cmd.Parameters, n)
+	if p == nil || p.Complete == nil {
+		return
+	}
+	for _, res := range p.Complete(toComplete) {
+		cand, desc, _ := strings.Cut(res, "\t")
+		emitCandidate(w, cand, desc)
+	}
+}
+
 func (a *App) handleComplete(_ context.Context, args []string) error {
 	w := a.stdout()
 	if len(args) == 0 {
@@ -226,17 +301,25 @@ func (a *App) handleComplete(_ context.Context, args []string) error {
 	currentCmd := res.cmd
 
 	activeOptions := a.collectOptions(res.path, currentCmd)
+	arity := a.positionalArity(res, currentCmd)
+	n, afterTerminator := positionalIndex(arity, res.remaining)
 
-	if completePrevFlagValue(w, activeOptions, prevWord, toComplete) {
-		return nil
+	if !afterTerminator {
+		// A value-taking flag owns the next word. Whether or not the flag has a
+		// callback, nothing else may answer for it -- see plan §3.4.
+		if count, known := scanLeadingFlag(arity, []string{prevWord, toComplete}); known && count == 2 {
+			completePrevFlagValue(w, activeOptions, effectiveFlagToken(prevWord), toComplete)
+			return nil
+		}
+		if strings.HasPrefix(toComplete, "-") {
+			completeFlags(w, activeOptions, toComplete)
+			return nil
+		}
+		if n == 0 {
+			a.completeSubcommands(w, currentCmd, toComplete) // a subcommand only ever sits at slot 0
+		}
 	}
-
-	if strings.HasPrefix(toComplete, "-") {
-		completeFlags(w, activeOptions, toComplete)
-		return nil
-	}
-
-	a.completeSubcommands(w, currentCmd, toComplete)
+	completePositional(w, currentCmd, n, toComplete)
 	return nil
 }
 

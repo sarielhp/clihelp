@@ -156,8 +156,27 @@ func auditCommandTree(cmds []Command, currentPath []string, allPaths *[]commandP
 			return err
 		}
 
+		if err := auditCommandParameters(cmd, cmdPath); err != nil {
+			return err
+		}
+
 		if err := auditCommandTree(cmd.Subcommands, cmdPath, allPaths, persistent, opts); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+func auditCommandParameters(cmd Command, currentPath []string) error {
+	pathStr := strings.Join(currentPath, " ")
+	for i, p := range cmd.Parameters {
+		if p.Variadic && i != len(cmd.Parameters)-1 {
+			return fmt.Errorf("command %q under path %q: Variadic may only be set on the last Parameter", cmd.Name, pathStr)
+		}
+	}
+	for _, p := range cmd.SubcommandEntries {
+		if p.Complete != nil || p.Variadic {
+			return fmt.Errorf("command %q under path %q: SubcommandEntries cannot set Complete or Variadic", cmd.Name, pathStr)
 		}
 	}
 	return nil

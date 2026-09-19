@@ -1,5 +1,12 @@
 # AGENTS.md — Guidelines for AI-assisted development (Go)
 
+## Start Here
+
+- **Read `llms.txt` first**: It is the top-level conceptual index for the repository.
+- **Before modifying resolution, flags, completion, or help**: Read [`docs/how-clihelp-decides.md`](docs/how-clihelp-decides.md) before inspecting the source code.
+  - Pay special attention to **"Invariants you can rely on"** (§ Invariants) — they are normative behavioral specifications, not advisory guidelines.
+  - Be aware of the distinct option collectors and arity scopes (`scopeLeading` vs `scopePositional` vs `CollectOptions`): do not pick internal helpers without verifying their inclusion/exclusion rules regarding command `Options` and `Hidden` flags.
+
 ## Build & Quality
 
 - **Go 1.26+** — package `clihelp` with `example/` demo application
@@ -83,11 +90,13 @@ make run
 
 Two limits, and they are not equally important:
 
-### Functions — hard limit 80 lines (exceptions apply)
+### Functions — cognitive tiering (GUIDELINES.md)
 
-- **Production functions** (`*.go`, excluding `*_test.go`): Hard limit **80 lines**. This limit protects correctness, so when it conflicts with anything else, it wins. Extracting a function is a *semantic* edit: the extracted piece needs a name, parameters and return values, and the compiler checks every call site.
-  - **Declarative builders exception**: Functions named `build*` with cyclomatic branches <= 2 have a relaxed limit of **150 lines** (e.g. static CLI command tree builders).
-- **Test functions** (`*_test.go`): Relaxed limit of **200 lines** to permit thorough table-driven test cases without unnatural fragmentation.
+Follow `/home/sariel/prog/standards/go/GUIDELINES.md` (§3):
+- **Standard Logic**: Comfort 20–60 lines, soft warn **80 lines**, hard limit **110 lines**.
+- **Declarative Builders** (`build*`, `init*`, `render*`, `generate*`, `View`): Soft warn **120 lines**, hard limit **160 lines** (branches <= 2).
+- **Event / Key Dispatchers** (`handle*`, `dispatch*`, `Execute*`, `*Key`, `*Route`): Soft warn **150 lines**, hard limit **200 lines**.
+- **Table-Driven Tests** (`Test*`): Soft warn **180 lines**, hard limit **250 lines**.
 
 ### Files — comfort metrics, warnings, and hard limits
 
@@ -213,7 +222,10 @@ a redirecting caller sees it, and that caller wants it.
 | `explain_test.go`, `explain_shell_test.go` | Command-line expansion, the height budget, and the live shell key bindings |
 | `shellquote_test.go` | Shell quoting of generated source and `App.Name` validation |
 | `doc/` | Subpackage for GitHub-friendly markdown documentation site generation (`doc.RenderMarkdown`) |
+| `docs/` | User and developer documentation guides, site index, and generated markdown reference sites |
+| `docs_drift_test.go` | Guard verifying that documentation prose only names real exported symbols and members |
 | `tree/` | Subpackage for command hierarchy tree visualization (`tree.Render`) |
+| `audit.go` | Static analysis audit (`Audit`) verifying command uniqueness, flag collision, and parameter invariants |
 | `examples.go` | Example command syntax colorizer, shell tokenizer, and static example validator (`ValidateExample`, `ValidateAllExamples`) |
 | `examples_test.go` | Unit tests for example shell splitting, ANSI syntax colorization, and CLI constraint validation |
 | `clihelp_test.go` | Unit tests for help formatting, command dispatch, ANSI stripping, and usage output |
@@ -224,6 +236,25 @@ a redirecting caller sees it, and that caller wants it.
 | `VERSION` | Version source of truth |
 | `CHANGES.md` | Version changelog |
 | `tools/` | Automation shell and ruby scripts |
+
+### Documentation Guides (`docs/`)
+
+The `docs/` directory contains GitHub Pages/Jekyll documentation and guides for the library:
+
+| File / Subdirectory | Purpose |
+|---------------------|---------|
+| `docs/index.md` | Documentation hub and guide index |
+| `docs/how-clihelp-decides.md` | Decision matrix: resolution rules, help-tier selection, line budgets, and error reporting |
+| `docs/flags-and-options.md` | Flags and options: option constructors, flag specifications, groups, toggles, and arity |
+| `docs/lifecycle-and-routing.md` | Command lifecycle: resolution, leading flags, argument validators, and error routing |
+| `docs/completion.md` | Shell completion: installation protocols, Bash/Zsh/Fish script generation, and dynamic callbacks |
+| `docs/recipes-and-patterns.md` | Idiomatic recipes: command patterns, configuration binding, interactive prompts, and migration |
+| `docs/comparison-with-cobra.md` | Architectural differences, cognitive complexity limits, and trade-offs compared to `spf13/cobra` |
+| `docs/markdown-generation.md` | Documentation site generation guide via the `doc` subpackage (`doc.RenderMarkdown`) |
+| `docs/clihelp/` | Generated Markdown documentation site for the `clihelp` tool itself |
+| `docs/mail_cli_fake/` | Generated Markdown documentation site for the demonstration `mail_cli` command tree |
+| `docs/mailcli/` | Generated Markdown documentation site for `mailcli` |
+
 
 **The shell-integration surface is layered, and the layering is load-bearing.** It was a
 dependency cycle across five files until it was untangled; keep it acyclic:
