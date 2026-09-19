@@ -10,12 +10,13 @@ import (
 )
 
 type flagSpec struct {
-	raw         string
-	longNames   []string
-	shortNames  []string
-	placeholder string
-	isToggle    bool
-	baseToggle  string
+	raw           string
+	longNames     []string
+	shortNames    []string
+	placeholder   string
+	optionalValue bool
+	isToggle      bool
+	baseToggle    string
 }
 
 // aliasGroupAnnotation labels every pflag flag that stands for one Option with
@@ -82,6 +83,9 @@ func parseFlagSpec(spec string) flagSpec {
 		}
 		if strings.HasPrefix(token, "<") || strings.HasPrefix(token, "[") || strings.ToUpper(token) == token {
 			fs.placeholder = token
+			// "[From]" is the usage-line convention for a value that may be
+			// omitted, and it read identically to "<From>" until now.
+			fs.optionalValue = strings.HasPrefix(token, "[")
 		}
 	}
 	return fs
@@ -645,6 +649,48 @@ type Value interface {
 	String() string
 	Set(string) error
 	Type() string
+}
+
+// optionalBinder wraps a binder so that every spelling the option was registered
+// under accepts the flag without a value. pflag decides that from NoOptDefVal,
+// and the option's spellings are only known once bind has run.
+func optionalBinder(inner func(fs *pflag.FlagSet) error, flags, whenBare string) func(fs *pflag.FlagSet) error {
+	if inner == nil {
+		return nil
+	}
+	return func(fs *pflag.FlagSet) error {
+		if err := checkOptionalSpec(flags, whenBare); err != nil {
+			return err
+		}
+		if err := inner(fs); err != nil {
+			return err
+		}
+		primary := parseFlagSpec(flags).primaryFlagName()
+		fs.VisitAll(func(f *pflag.Flag) {
+			if optionGroup(f) == primary {
+				f.NoOptDefVal = whenBare
+			}
+		})
+		return nil
+	}
+}
+
+// checkOptionalSpec keeps the two halves of an optional value from disagreeing:
+// the brackets in the spec string are what the user sees, and whenBare is what
+// the flag does. A spec that promises one thing while the binding does another is
+// the drift this library has been bitten by before, so it is refused at bind
+// time rather than discovered from a help page.
+func checkOptionalSpec(flags, whenBare string) error {
+	spec := parseFlagSpec(flags)
+	if whenBare == "" {
+		return fmt.Errorf("flag spec %q: Optional needs a value for the bare form; it is what tells %q apart from the flag being absent",
+			flags, spec.primaryFlagName())
+	}
+	if !spec.optionalValue {
+		return fmt.Errorf("flag spec %q: Optional requires the placeholder in brackets, as in %q, because that is how the help page says the value may be omitted",
+			flags, "--"+spec.primaryFlagName()+" ["+strings.Trim(spec.placeholder, "<>")+"]")
+	}
+	return nil
 }
 
 // Var binds a custom option whose target implements Value. Only the caller's

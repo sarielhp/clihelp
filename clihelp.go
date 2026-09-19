@@ -40,6 +40,10 @@ type Option struct {
 	// back to a stand-in derived from its flag spec.
 	scratch func(fs *pflag.FlagSet) error
 
+	// whenBare is the value an optional-value option takes when written without
+	// one. Empty means the option's value is mandatory.
+	whenBare string
+
 	// toggle marks an option built by BoolToggle. A spec written without the
 	// "--[no-]" marker looks like any other boolean to a reader of Flags, but it
 	// still needs a long name to derive its negative spelling from, and Audit has
@@ -67,6 +71,36 @@ const Version = "0.3.31"
 // Required marks an Option as required.
 func Required(opt Option) Option {
 	opt.Required = true
+	return opt
+}
+
+// Optional makes an option's value optional: the flag may be written on its own,
+// in which case the target receives whenBare, or with an explicit value after an
+// equals sign. "myapp scan -m" moves everything; "myapp scan --move=x@y.z" moves
+// one sender's mail.
+//
+// The spec string must write the placeholder in brackets — "-m, --move [From]" —
+// which is the usage-line convention for a value that may be omitted, and which
+// is what the help page shows. Declaring one without the other is an error, so
+// the two cannot come to disagree.
+//
+// whenBare must not be empty: it is what distinguishes "given without a value"
+// from "not given at all", and pflag treats an empty one as no default at all.
+// An equals sign is required for the value because the alternative is
+// ambiguous — with "--move x" there is no way to tell the sender from the next
+// positional argument, and guessing is how a command name gets eaten.
+//
+// This exists because it was the last thing an author could only reach by
+// setting Option.Binder by hand and naming pflag.NoOptDefVal, which made pflag
+// the application's own dependency.
+func Optional(opt Option, whenBare string) Option {
+	opt.whenBare = whenBare
+	// An optional-value flag never consumes the argument after it, so command
+	// resolution must not skip that argument looking for a value: that is how a
+	// command name becomes a positional and the program prints help and exits 0.
+	opt.arity = arityFlag
+	opt.Binder = optionalBinder(opt.Binder, opt.Flags, whenBare)
+	opt.scratch = optionalBinder(opt.scratch, opt.Flags, whenBare)
 	return opt
 }
 

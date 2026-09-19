@@ -120,6 +120,19 @@ working against the library.** Check this document before writing it.
   alone — never as a bare URL. Only the manual page asks for the `text (url)`
   form, and it asks explicitly.
 
+### 8a. Whether a flag's value may be omitted
+
+- **Reads:** the placeholder's brackets in the spec string, and `Optional`.
+  `"--move [From]"` wrapped in `clihelp.Optional(opt, "true")` accepts `--move`
+  on its own — the target gets `"true"` — or `--move=x@y.z`.
+- **An equals sign is required for the value.** With `--move x` there is no way
+  to tell the value from the next positional argument, and guessing is how a
+  command name gets eaten.
+- **The two halves must agree.** Brackets without `Optional` is caught by
+  `Audit`; `Optional` without brackets is refused at bind time. A help page that
+  promises an omittable value the flag does not accept is found by typing the
+  flag.
+
 ### 9. What the shell offers at `<Tab>`
 
 - **Reads:** the command tree, the bound flags, and `Option.Complete` for dynamic
@@ -203,6 +216,9 @@ makes the library blind to something in exchange.
 - **`ArgsFunc(fn)`** — a positional rule the built-ins cannot express. Its arity
   is unknowable, so decisions 2 and 3 fall back to *asking* it, and the usage
   line cannot be generated from it.
+- **`Optional(opt, whenBare)`** — a value that may be omitted. The cost is the
+  sentinel: `whenBare` has to be a string the real values cannot be, because
+  that is what tells "given bare" from "given a value".
 - **`Var(target, …)`** — a custom value type. Example validation cannot write
   through it, so it binds a permissive stand-in instead.
 
