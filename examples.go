@@ -44,10 +44,10 @@ func startsComment(s string, i, tokenStart int) bool {
 // colorizeExampleLine applies ANSI syntax colors to a command-line example string.
 // It recognizes comments, shell prompts, subcommands, flags, values, and operators.
 func colorizeExampleLine(line string, th Theme) string {
-	return ColorizeExampleLineWithApp(nil, nil, line, th)
+	return colorizeExampleLineWithApp(nil, nil, line, th)
 }
 
-// ColorizeExampleLineWithApp applies ANSI syntax colors to an example string using the application
+// colorizeExampleLineWithApp applies ANSI syntax colors to an example string using the application
 // command tree to accurately identify subcommands, flags, and arguments.
 //
 // The line comes back as it was written, only colored. It used to be returned
@@ -55,7 +55,7 @@ func colorizeExampleLine(line string, th Theme) string {
 // swallowed the backslashes of "--path C:\temp\x", turned the asterisks of
 // "'*.go'" into emphasis, and ate the escape in "echo a\ b". A description is
 // prose and gets its own inline() pass; a command line is not.
-func ColorizeExampleLineWithApp(app *App, cmd *Command, line string, th Theme) string {
+func colorizeExampleLineWithApp(app *App, cmd *Command, line string, th Theme) string {
 	if line == "" {
 		return ""
 	}
@@ -278,7 +278,7 @@ func renderExamples(w io.Writer, app *App, cmd *Command, th Theme, o Options, te
 		}
 		lines := splitLines(ex.Line)
 		for _, l := range lines {
-			writeExampleLine(w, th, lineIndent, ColorizeExampleLineWithApp(app, cmd, l, th))
+			writeExampleLine(w, th, lineIndent, colorizeExampleLineWithApp(app, cmd, l, th))
 		}
 		if ex.Description != "" {
 			reflow(w, descColor, wrapWidth(termWidth, descIndent, o.maxContent()), descIndent, "", inline(ex.Description))
@@ -306,6 +306,13 @@ func writeExampleLine(w io.Writer, th Theme, indent int, colored string) {
 	fmt.Fprintln(w, indentStr+colored)
 }
 
+// cleanExampleCommandLine reduces one example line to the command it shows: the
+// shell prompt a reader copies along with it is dropped.
+//
+// It takes one line. A multi-line Example is several commands, and
+// validateExample splits it before reaching here — a branch that cut at the
+// first newline used to sit in this function, unreachable, implying a
+// command-plus-output form that this library does not have.
 func cleanExampleCommandLine(line string) string {
 	trimmed := strings.TrimSpace(line)
 	if trimmed == "" {
@@ -313,9 +320,6 @@ func cleanExampleCommandLine(line string) string {
 	}
 	if strings.HasPrefix(trimmed, "$ ") || strings.HasPrefix(trimmed, "> ") || strings.HasPrefix(trimmed, "% ") {
 		trimmed = strings.TrimSpace(trimmed[2:])
-	}
-	if idx := strings.IndexByte(trimmed, '\n'); idx != -1 {
-		trimmed = strings.TrimSpace(trimmed[:idx])
 	}
 	return trimmed
 }
@@ -479,7 +483,7 @@ func validateExampleTokens(app *App, targetCmd *Command, ancestors []*Command, r
 	// on, while this bound only --help with -h. An example using a help flag the
 	// application really accepts was reported as "invalid flag in example" — by
 	// Audit, which the README recommends running in CI.
-	_ = app.bindHelpFlags(fs, cmdName)
+	help := app.bindHelpFlags(fs, cmdName)
 
 	allOptions := app.collectAllActiveOptions(targetCmd, ancestors)
 	// Scratch binding: validating an example must not write through the pointers
@@ -492,6 +496,18 @@ func validateExampleTokens(app *App, targetCmd *Command, ancestors []*Command, r
 
 	if parseErr := fs.Parse(remaining); parseErr != nil {
 		return fmt.Errorf("invalid flag in example %q: %w", rawLine, parseErr)
+	}
+
+	// An example asking for help is not an example of running the command, and
+	// at run time a help flag short-circuits everything below: required flags are
+	// not demanded, constraints are not applied, arguments are not counted. The
+	// "help <command>" form was already skipped, by resolution; the flag form was
+	// not, so "myapp process --help" on a command declaring ExactArgs(1) was
+	// reported as "argument validation failed" by Audit — for a line that prints
+	// the help page and exits 0. That is the defect v0.3.24 fixed for the flag
+	// names themselves, in the other half of the same function.
+	if help.requested() {
+		return nil
 	}
 
 	if missing := getMissingRequiredFlags(fs, allOptions); len(missing) > 0 {

@@ -2,498 +2,191 @@ package main
 
 import (
 	"bytes"
-	"fmt"
-	"io"
+	"regexp"
 	"strings"
 	"testing"
 
-	"github.com/fatih/color"
 	"github.com/sarielhp/clihelp"
 )
 
-// --- Oracle: a faithful re-implementation of mail_cli's usage formatter ---
+// This package used to hold a 499-line second renderer that reproduced clihelp's
+// output so the two could be compared byte for byte. It was retired.
+//
+// The reason is measured rather than argued. A mutation survey of the rendering
+// path — render.go, format.go, inline.go — killed 27 of 38 mutations with the
+// oracle in place: a 29% escape rate, indistinguishable from install.go and
+// man.go at 29% and doc/ and tree/ at 32%, neither of which has an oracle. A
+// second implementation of the same logic makes the same assumptions; what it
+// catches is a typo, and what it costs is maintaining a renderer nobody ships.
+// It also had to be pinned to one width, because making it agree at every width
+// would have meant maintaining it as a real renderer.
+//
+// What replaces it is this: the same 43-page corpus — a realistic command tree
+// with grouped commands, aliases, notes, examples, hyperlinks and hidden
+// entries — checked against properties that must hold of any correct rendering,
+// at several widths rather than one. A property does not have to be kept in step
+// with the code it checks.
 
-var (
-	oHdr    = color.New(color.FgYellow, color.Bold)
-	oBody   = color.New(color.FgWhite)
-	oAccent = color.New(color.FgCyan, color.Bold)
-	oSub    = color.New(color.FgGreen)
-	oFlag   = color.New(color.FgCyan)
-
-	oracleTheme = clihelp.Theme{
-		Hdr:            oHdr,
-		Body:           oBody,
-		Accent:         oAccent,
-		Subcommand:     oSub,
-		Flag:           oFlag,
-		ExampleCmd:     color.New(color.FgGreen, color.Bold),
-		ExampleFlag:    color.New(color.FgCyan),
-		ExampleArg:     color.New(color.FgWhite),
-		ExampleComment: color.New(color.FgHiBlack),
-		ExampleDesc:    color.New(color.FgHiBlack),
+func paths(t *testing.T) (*clihelp.App, [][]string) {
+	t.Helper()
+	app := buildApp()
+	p := detailedPaths(app)
+	if len(p) < 40 {
+		t.Fatalf("the corpus has shrunk to %d pages; these properties are only worth "+
+			"as much as the tree they run over", len(p))
 	}
+	return app, p
+}
+
+func render(t *testing.T, app *clihelp.App, width int, path []string) string {
+	t.Helper()
+	var buf bytes.Buffer
+	if len(path) == 0 {
+		app.RenderGlobal(clihelp.Options{Writer: &buf, Width: width})
+	} else if !app.RenderCommand(clihelp.Options{Writer: &buf, Width: width}, path...) {
+		t.Fatalf("no page for %q", strings.Join(path, " "))
+	}
+	if strings.TrimSpace(clihelp.StripANSI(buf.String())) == "" {
+		t.Fatalf("%q rendered nothing, so every property below holds vacuously",
+			strings.Join(path, " "))
+	}
+	return buf.String()
+}
+
+// A line goes over its width only when a single unbreakable token makes it
+// unavoidable — a path, a URL, a long flag spelling. If every word on an
+// over-wide line would have fitted, the line could have been broken and was not.
+//
+// Example lines are exempt outright: they are emitted verbatim so that one can
+// be copied and pasted, which examples.go documents and a test in the library
+// pins. The same reasoning covers App.ConfigPath, which is printed as written so
+// the path survives a copy — at a narrow width it overflows, and no arrangement
+// of it would not.
+func TestEveryPageFitsItsWidth(t *testing.T) {
+	app, pages := paths(t)
+	for _, width := range []int{40, 70, 100} {
+		for _, path := range append([][]string{nil}, pages...) {
+			inExamples := false
+			for _, line := range strings.Split(render(t, app, width, path), "\n") {
+				plain := clihelp.StripANSI(line)
+				if trimmed := strings.TrimSpace(plain); strings.HasSuffix(trimmed, ":") {
+					inExamples = trimmed == "Examples:"
+				}
+				if inExamples || clihelp.VisualWidth(line) <= width {
+					continue
+				}
+				// A continuation line starts at its column, and the column is
+				// decided by the layout rather than by wrapping — so the room a
+				// wrapper actually had is the width less the indent.
+				indent := clihelp.VisualWidth(plain) - clihelp.VisualWidth(strings.TrimLeft(plain, " "))
+				widest := 0
+				for _, word := range strings.Fields(plain) {
+					if w := clihelp.VisualWidth(word); w > widest {
+						widest = w
+					}
+				}
+				if indent+widest <= width {
+					t.Errorf("width %d, page %q: a line of %d columns whose widest word is "+
+						"%d could have been broken and was not:\n%q",
+						width, strings.Join(path, " "), clihelp.VisualWidth(line), widest, plain)
+				}
+			}
+		}
+	}
+}
+
+// Nothing the author wrote as markdown reaches the terminal as markdown, and no
+// URL is ever spelled out: that is what OSC 8 exists for.
+var (
+	bareMarkdown = regexp.MustCompile(`\*\*|\[[^\]]*\]\([^)]*\)|` + "`")
+	bareURL      = regexp.MustCompile(`https?://`)
 )
 
-// oracleWidth pins the layout width to the same 70 columns the tests inject
-// into clihelp, so the comparison is deterministic regardless of TTY state.
-// oracleTestWidth is the width the current comparison runs at. It is a variable
-// so the oracle can be exercised at more than one width: pinned at 70 it was not
-// an independent specification of the layout but a transcript of one column
-// count, and changing the injected width produced a 110-line diff that said
-// nothing about the renderer.
-var oracleTestWidth = 70
-
-func oracleWidth() int {
-	return oracleTestWidth
+func TestNoPageLeaksMarkupOrURLs(t *testing.T) {
+	app, pages := paths(t)
+	for _, path := range append([][]string{nil}, pages...) {
+		plain := clihelp.StripANSI(render(t, app, 70, path))
+		if m := bareMarkdown.FindString(plain); m != "" {
+			t.Errorf("page %q shows raw markdown %q", strings.Join(path, " "), m)
+		}
+		if m := bareURL.FindString(plain); m != "" {
+			t.Errorf("page %q shows a bare URL (%q); the label is what a reader sees",
+				strings.Join(path, " "), m)
+		}
+	}
 }
 
-func oracleSplitLines(text string) []string {
-	if text == "" {
-		return nil
-	}
-	var out []string
-	start := 0
-	for i, r := range text {
-		if r == '\n' {
-			out = append(out, text[start:i])
-			start = i + 1
-		}
-	}
-	out = append(out, text[start:])
-	return out
-}
-
-func oracleFormatPrefix(out io.Writer, c, prefixColor *color.Color, margin, indent int, prefix string, noWords bool) (string, int, bool) {
-	prefixDisplay := strings.Repeat(" ", margin) + prefix
-	if prefixColor != nil {
-		prefixDisplay = prefixColor.Sprint(prefixDisplay)
-	}
-	if oracleVisualLen(prefixDisplay)+2 > indent {
-		c.Fprintln(out, prefixDisplay)
-		if noWords {
-			return "", 0, true
-		}
-		return strings.Repeat(" ", indent), indent, false
-	}
-	if noWords {
-		c.Fprintln(out, prefixDisplay)
-		return "", 0, true
-	}
-	prefixStr := strings.Repeat(" ", margin) + padRight(prefix, indent-margin)
-	if prefixColor != nil {
-		prefixStr = prefixColor.Sprint(prefixStr)
-	}
-	return prefixStr, oracleVisualLen(prefixStr), false
-}
-
-// oracleReflowWords mirrors clihelp's reflowWords. Two properties it did not
-// mirror, both of which it silently pinned as correct until they were fixed:
-// the lead is written outside the ambient colour, because a nested colour closes
-// with a full SGR reset and killed the body colour for the rest of the row; and
-// "does this line hold anything yet" is a boolean, not a width comparison, which
-// is what stopped an over-long first word flushing a line of pure padding.
-func oracleReflowWords(out io.Writer, c *color.Color, width, indent int, initialStr string, initialLen int, words []string) {
-	indentStr := strings.Repeat(" ", indent)
-	lead := initialStr
-	var current strings.Builder
-	curLen := initialLen
-	lineHasWords := initialLen > indent
-	wrote := false
-	emit := func() {
-		text := strings.TrimRight(current.String(), " ")
-		if text == "" {
-			fmt.Fprintln(out, strings.TrimRight(lead, " "))
-			return
-		}
-		fmt.Fprintln(out, lead+c.Sprint(text))
-	}
-	for _, word := range words {
-		wlen := oracleVisualLen(word)
-		space := 0
-		if lineHasWords {
-			space = 1
-		}
-		if lineHasWords && curLen+space+wlen > width {
-			emit()
-			lead = indentStr
-			current.Reset()
-			current.WriteString(word)
-			curLen = indent + wlen
-		} else {
-			if space > 0 {
-				current.WriteString(" ")
-				curLen++
+// Every escape this library opens on a line is closed on that line. A hyperlink
+// left open at a line break bleeds into everything after it, including the
+// shell prompt.
+func TestEveryPageClosesWhatItOpens(t *testing.T) {
+	app, pages := paths(t)
+	for _, path := range append([][]string{nil}, pages...) {
+		for i, line := range strings.Split(render(t, app, 70, path), "\n") {
+			opens := strings.Count(line, "\x1b]8;;")
+			if opens%2 != 0 {
+				t.Errorf("page %q line %d leaves a hyperlink open: %q",
+					strings.Join(path, " "), i, line)
 			}
-			current.WriteString(word)
-			curLen += wlen
-		}
-		lineHasWords = true
-		wrote = true
-	}
-	if wrote || curLen > indent {
-		emit()
-	}
-}
-
-func oracleReflowSegment(out io.Writer, c *color.Color, prefixColor *color.Color, width, indent int, prefix, text string) {
-	oracleReflowSegmentMargin(out, c, prefixColor, width, 2, indent, prefix, text)
-}
-
-func oracleReflowSegmentMargin(out io.Writer, c *color.Color, prefixColor *color.Color, width, margin, indent int, prefix, text string) {
-	words := strings.Fields(text)
-	if prefix != "" {
-		initialStr, initialLen, done := oracleFormatPrefix(out, c, prefixColor, margin, indent, prefix, len(words) == 0)
-		if done {
-			return
-		}
-		oracleReflowWords(out, c, width, indent, initialStr, initialLen, words)
-		return
-	}
-
-	if len(words) == 0 {
-		return
-	}
-	oracleReflowWords(out, c, width, indent, strings.Repeat(" ", indent), indent, words)
-}
-
-// oracleVisualLen returns the visible width of s, ignoring ANSI escape codes.
-func oracleVisualLen(s string) int {
-	return len([]rune(clihelp.StripANSI(s)))
-}
-
-// oracleReflowIndent is oracleReflow with an explicit margin, which the prefix
-// column needs now that a nested list can sit inside another section.
-func oracleReflowIndent(out io.Writer, c *color.Color, prefixColor *color.Color, margin, indent int, prefix, text string) {
-	width := oracleWidth()
-	if width > 80 {
-		width = 80
-	}
-	// Segment by line, as oracleReflow does: an author who writes a multi-line
-	// UsageLine means those lines, and flattening them into one flow is what the
-	// first version of this helper did.
-	for _, seg := range oracleSplitLines(strings.TrimSpace(text)) {
-		if seg == "" {
-			continue
-		}
-		oracleReflowSegmentMargin(out, c, prefixColor, width, margin, indent, prefix, seg)
-		prefix = ""
-		margin = indent
-	}
-}
-
-func oracleReflow(out io.Writer, c *color.Color, prefixColor *color.Color, indent int, prefix, text string) {
-	width := oracleWidth()
-	if width > 80 {
-		width = 80
-	}
-	if prefix != "" && indent < 2 {
-		indent = 2
-	}
-	segments := oracleSplitLines(strings.TrimSpace(text))
-	for i, seg := range segments {
-		if seg == "" && i+1 < len(segments) {
-			if prefix != "" {
-				prefixStr := "  " + padRight(prefix, indent-2)
-				if prefixColor != nil {
-					prefixStr = prefixColor.Sprint(prefixStr)
-				}
-				c.Fprintln(out, prefixStr)
-				prefix = ""
-			} else {
-				c.Fprintln(out, strings.Repeat(" ", indent))
-			}
-			continue
-		}
-		if seg == "" {
-			continue
-		}
-		oracleReflowSegment(out, c, prefixColor, width, indent, prefix, seg)
-		prefix = ""
-	}
-}
-
-// oracleSubs mirrors clihelp.subcommandEntries: prefer explicit entries.
-func oracleSubs(cmd *clihelp.Command) []clihelp.Param {
-	if len(cmd.SubcommandEntries) > 0 {
-		return cmd.SubcommandEntries
-	}
-	var out []clihelp.Param
-	for i := range cmd.Subcommands {
-		out = append(out, clihelp.Param{Name: cmd.Subcommands[i].Name, Description: cmd.Subcommands[i].Description})
-	}
-	return out
-}
-
-func oracleColIndent(params []clihelp.Param) int {
-	maxW := 0
-	for _, p := range params {
-		l := oracleVisualLen(p.Name)
-		if l+4 <= clihelp.DefaultMaxColIndent && l > maxW {
-			maxW = l
-		}
-	}
-	if maxW == 0 {
-		return clihelp.DefaultMaxColIndent
-	}
-	return maxW + 4
-}
-
-func oracleDefaultUsage(a *clihelp.App, path []string, cmd *clihelp.Command) string {
-	if cmd.UsageLine != "" {
-		return cmd.UsageLine
-	}
-	fullPath := strings.Join(append([]string{a.Name}, path...), " ")
-	hasFlags := len(cmd.Options) > 0
-	hasSubs := len(cmd.Subcommands) > 0
-	switch {
-	case hasSubs && hasFlags:
-		return fmt.Sprintf("%s [flags] <subcommand> [args]", fullPath)
-	case hasSubs:
-		return fmt.Sprintf("%s <subcommand> [args]", fullPath)
-	case hasFlags:
-		return fmt.Sprintf("%s [flags] [args]", fullPath)
-	default:
-		return fmt.Sprintf("%s [args]", fullPath)
-	}
-}
-
-func oracleCollectGlobalOptions(a *clihelp.App, path []string, cmd *clihelp.Command) []clihelp.Option {
-	var globalOpts []clihelp.Option
-	addOpts := func(list []clihelp.Option) {
-		for _, o := range list {
-			if !o.Hidden {
-				globalOpts = append(globalOpts, o)
+			if strings.Contains(line, "\x1b[") && !strings.Contains(line, "\x1b[0m") &&
+				strings.Count(line, "\x1b[") == 1 {
+				t.Errorf("page %q line %d opens a colour it never closes: %q",
+					strings.Join(path, " "), i, line)
 			}
 		}
 	}
-	addOpts(a.PersistentOptions)
-	addOpts(a.GlobalFlags)
-	var ancPath []string
-	for _, p := range path[:len(path)-1] {
-		ancPath = append(ancPath, p)
-		if anc := a.LookupCommand(ancPath...); anc != nil {
-			addOpts(anc.PersistentOptions)
-		}
-	}
-	addOpts(cmd.PersistentOptions)
-	return globalOpts
 }
 
-func oracleRenderOptions(out io.Writer, heading string, opts []clihelp.Option) {
-	if len(opts) == 0 {
-		return
-	}
-	oHdr.Fprintln(out, "\n"+heading+":")
-	params := make([]clihelp.Param, 0, len(opts))
-	for _, o := range opts {
-		params = append(params, clihelp.Param{Name: o.Flags, Description: o.Description})
-	}
-	indent := oracleColIndent(params)
-	for _, p := range params {
-		oracleReflow(out, oBody, oFlag, indent, p.Name, p.Description)
-	}
-}
-
-func oracleDetailedUsage(out io.Writer, a *clihelp.App, path []string, cmd *clihelp.Command) {
-	usage := oracleDefaultUsage(a, path, cmd)
-	// "Usage:" is the prefix column now, so a long usage line wraps under
-	// itself rather than overflowing the terminal.
-	oracleReflowIndent(out, oBody, oHdr, 0, 8, "Usage:", clihelp.Inline(usage))
-	if cmd.Description != "" {
-		io.WriteString(out, "\n")
-		oracleReflow(out, oBody, nil, 0, "", cmd.Description)
-	}
-	if subs := oracleSubs(cmd); len(subs) > 0 {
-		oHdr.Fprintln(out, "\nSubcommands:")
-		indent := oracleColIndent(subs)
-		for _, s := range subs {
-			oracleReflow(out, oBody, oSub, indent, s.Name, s.Description)
-		}
-	}
-	if len(cmd.Parameters) > 0 {
-		oHdr.Fprintln(out, "\nParameters:")
-		indent := oracleColIndent(cmd.Parameters)
-		for _, pp := range cmd.Parameters {
-			oracleReflow(out, oBody, nil, indent, pp.Name, pp.Description)
-		}
-	}
-
-	var localOpts []clihelp.Option
-	for _, o := range cmd.Options {
-		if !o.Hidden {
-			localOpts = append(localOpts, o)
-		}
-	}
-	globalOpts := oracleCollectGlobalOptions(a, path, cmd)
-
-	oracleRenderOptions(out, "Flags", localOpts)
-	oracleRenderOptions(out, "Global Flags", globalOpts)
-
-	if len(cmd.Examples) > 0 {
-		oHdr.Fprintln(out, "\nExamples:")
-		for _, e := range cmd.Examples {
-			oracleReflow(out, oBody, nil, 2, "", clihelp.ColorizeExampleLineWithApp(a, cmd, e.Line, oracleTheme))
-		}
-	}
-	for _, n := range cmd.Notes {
-		if n.Heading != "" {
-			oHdr.Fprintln(out, "\n"+n.Heading+":")
-		}
-		oracleReflow(out, oBody, nil, 2, "", n.Text)
-	}
-	io.WriteString(out, "\n")
-}
-
-func oracleGlobalUsage(out io.Writer, a *clihelp.App) {
-	oracleReflowIndent(out, oBody, oHdr, 0, 8, "Usage:", a.Name+" [flags] <command> [args]")
-	io.WriteString(out, "\n")
-	if a.Description != "" {
-		oracleReflow(out, oBody, nil, 0, "", a.Description)
-		io.WriteString(out, "\n")
-	}
-	oAccent.Fprintln(out, "Commands:")
-	{
-		params := make([]clihelp.Param, 0, len(a.Commands))
-		for _, c := range a.Commands {
-			params = append(params, clihelp.Param{Name: clihelp.DisplayName(c), Description: clihelp.FirstSentence(c.Description)})
-		}
-		indent := oracleColIndent(params)
-		anyMultiLine := false
-		for _, p := range params {
-			// The rendered description, and the width in force — not the source
-			// text against a hardcoded 70. Both of those were divergences from
-			// the renderer this oracle exists to check.
-			rendered := clihelp.StripANSI(clihelp.Inline(p.Description))
-			if oracleVisualLen(p.Name)+4 > indent || oracleVisualLen(rendered) > oracleWidth()-indent || strings.Contains(rendered, "\n") {
-				anyMultiLine = true
-				break
+// No line ends in whitespace. It is invisible until someone copies the output
+// into a file that a linter reads.
+func TestNoPageHasTrailingWhitespace(t *testing.T) {
+	app, pages := paths(t)
+	for _, path := range append([][]string{nil}, pages...) {
+		for i, line := range strings.Split(strings.TrimRight(render(t, app, 70, path), "\n"), "\n") {
+			plain := clihelp.StripANSI(line)
+			if plain != strings.TrimRight(plain, " \t") {
+				t.Errorf("page %q line %d ends in whitespace: %q",
+					strings.Join(path, " "), i, plain)
 			}
 		}
-		for i, p := range params {
-			if anyMultiLine && i > 0 {
-				io.WriteString(out, "\n")
+	}
+}
+
+// Rendering is a pure function of the declaration: the same page twice is the
+// same bytes. Map iteration over groups or options would show up here.
+func TestRenderingIsDeterministic(t *testing.T) {
+	app, pages := paths(t)
+	for _, path := range append([][]string{nil}, pages...) {
+		first := render(t, app, 70, path)
+		for i := 0; i < 3; i++ {
+			if again := render(t, app, 70, path); again != first {
+				t.Fatalf("page %q differs between renders:\n--- first ---\n%s\n--- again ---\n%s",
+					strings.Join(path, " "), first, again)
 			}
-			oracleReflow(out, oBody, oSub, indent, p.Name, p.Description)
-		}
-	}
-	io.WriteString(out, "\n")
-	if len(a.Shortcuts) > 0 {
-		oAccent.Fprintln(out, "Shortcut Commands:")
-		params := make([]clihelp.Param, 0, len(a.Shortcuts))
-		for _, s := range a.Shortcuts {
-			params = append(params, clihelp.Param{Name: clihelp.DisplayName(s), Description: clihelp.FirstSentence(s.Description)})
-		}
-		indent := oracleColIndent(params)
-		for _, p := range params {
-			oracleReflow(out, oBody, oSub, indent, p.Name, p.Description)
-		}
-		io.WriteString(out, "\n")
-	}
-	var globalFlags []clihelp.Option
-	for _, f := range a.PersistentOptions {
-		if !f.Hidden {
-			globalFlags = append(globalFlags, f)
-		}
-	}
-	for _, f := range a.GlobalFlags {
-		if !f.Hidden {
-			globalFlags = append(globalFlags, f)
-		}
-	}
-	if len(globalFlags) > 0 {
-		oAccent.Fprintln(out, "Global Flags:")
-		params := make([]clihelp.Param, 0, len(globalFlags))
-		for _, f := range globalFlags {
-			desc := f.Description
-			if f.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
-				desc = desc + " (default: " + f.DefaultText + ")"
-			}
-			params = append(params, clihelp.Param{Name: f.Flags, Description: desc})
-		}
-		indent := oracleColIndent(params)
-		for _, p := range params {
-			oracleReflow(out, oBody, oFlag, indent, p.Name, p.Description)
-		}
-		io.WriteString(out, "\n")
-	}
-	oracleReflow(out, oBody, nil, 0, "", fmt.Sprintf("Run '%s <command> -h' for command help, or '%s help [flags|man]'.", a.Name, a.Name))
-	if a.ConfigPath != "" {
-		io.WriteString(out, "\n")
-		oHdr.Fprint(out, "Config: ")
-		io.WriteString(out, a.ConfigPath+"\n")
-	}
-}
-
-// padRight pads s to width w using fmt's %-*s semantics.
-func padRight(s string, w int) string {
-	if len(s) >= w {
-		return s
-	}
-	return s + strings.Repeat(" ", w-len(s))
-}
-
-// --- Tests ---
-
-func TestMailCLIReconstruction(t *testing.T) { reconstructAt(t, 70) }
-
-// reconstructAt takes a width because oracleWidth is a variable now, but the
-// comparison runs at one: this oracle is a second renderer, and making it agree
-// at every width would mean maintaining it as one. The five behaviours it used
-// to be the only guard for are asserted in the library's own tests instead —
-// see TestGlobalHelpListsShortcutsAndConfig in render_properties_test.go.
-func reconstructAt(t *testing.T, width int) {
-	color.NoColor = false
-	defer func() { color.NoColor = true }()
-	oracleTestWidth = width
-	defer func() { oracleTestWidth = 70 }()
-
-	app := buildApp()
-	paths := detailedPaths(app)
-	if len(paths) != 43 {
-		t.Fatalf("expected 43 detailed usage pages, got %d", len(paths))
-	}
-
-	for _, path := range paths {
-		var got, want bytes.Buffer
-		app.RenderCommand(clihelp.Options{Writer: &got, Width: width}, path...)
-		cmd := app.LookupCommand(path...)
-		oracleDetailedUsage(&want, app, path, cmd)
-
-		if got.String() != want.String() {
-			t.Errorf("detailed page %q mismatch (raw)\n--- got ---\n%s\n--- want ---\n%s",
-				strings.Join(path, " "), got.String(), want.String())
-		}
-		if clihelp.StripANSI(got.String()) != clihelp.StripANSI(want.String()) {
-			t.Errorf("detailed page %q mismatch (ansi-stripped): %q",
-				strings.Join(path, " "), clihelp.StripANSI(got.String()))
 		}
 	}
 }
 
-func TestMailCLIGlobalOverview(t *testing.T) { overviewAt(t, 70) }
-
-func overviewAt(t *testing.T, width int) {
-	color.NoColor = false
-	defer func() { color.NoColor = true }()
-	oracleTestWidth = width
-	defer func() { oracleTestWidth = 70 }()
-
-	app := buildApp()
-	var got, want bytes.Buffer
-	app.RenderGlobal(clihelp.Options{Writer: &got, Width: width})
-	oracleGlobalUsage(&want, app)
-
-	if got.String() != want.String() {
-		t.Errorf("global overview mismatch (raw)\n--- got ---\n%s\n--- want ---\n%s", got.String(), want.String())
-	}
-	if clihelp.StripANSI(got.String()) != clihelp.StripANSI(want.String()) {
-		t.Errorf("global overview mismatch (ansi-stripped)")
+// Each page is about its own command: it names it, and no two pages are the
+// same. A renderer that ignored the path would pass everything above.
+func TestEachPageIsAboutItsOwnCommand(t *testing.T) {
+	app, pages := paths(t)
+	seen := map[string]string{}
+	for _, path := range pages {
+		body := clihelp.StripANSI(render(t, app, 70, path))
+		leaf := path[len(path)-1]
+		if !strings.Contains(body, leaf) {
+			t.Errorf("page %q never names %q", strings.Join(path, " "), leaf)
+		}
+		if prev, dup := seen[body]; dup {
+			t.Errorf("pages %q and %q render identically", prev, strings.Join(path, " "))
+		}
+		seen[body] = strings.Join(path, " ")
 	}
 }
 
 func TestMailCLIPagerEnabled(t *testing.T) {
-	app := buildApp()
-	if !app.Pager {
-		t.Errorf("expected buildApp().Pager to be true, got false")
+	if app := buildApp(); !app.Pager {
+		t.Error("expected buildApp().Pager to be true, got false")
 	}
 }

@@ -155,15 +155,15 @@ func TestBackslashOnlyEscapesPunctuation(t *testing.T) {
 		`\*literal\*`:      `*literal*`,
 		`a\\b`:             `a\b`,
 	} {
-		if got := Inline(in); got != want {
-			t.Errorf("Inline(%q) = %q, want %q", in, got, want)
+		if got := inlineMarkdown(in); got != want {
+			t.Errorf("inlineMarkdown(%q) = %q, want %q", in, got, want)
 		}
 	}
 }
 
 // L9 — a link with empty text rendered nothing visible at all.
 func TestEmptyLinkTextFallsBackToTheURL(t *testing.T) {
-	if got := StripANSI(Inline("[](http://x)")); got == "" {
-		t.Errorf("[](url) rendered nothing visible: %q", Inline("[](http://x)"))
+	if got := StripANSI(inlineMarkdown("[](http://x)")); got == "" {
+		t.Errorf("[](url) rendered nothing visible: %q", inlineMarkdown("[](http://x)"))
 	}
 }

@@ -252,7 +252,7 @@ func TestEmphasisDoesNotBindAcrossSpaces(t *testing.T) {
 		{"a *b* c", "a b c"},
 	} {
 		if got := StripANSI(renderInlineTo(tt.in, false)); got != tt.want {
-			t.Errorf("Inline(%q) rendered as %q, want %q", tt.in, got, tt.want)
+			t.Errorf("inlineMarkdown(%q) rendered as %q, want %q", tt.in, got, tt.want)
 		}
 	}
 }
@@ -278,5 +278,121 @@ func TestConciseBudgetShrinksToAShortTerminal(t *testing.T) {
 			t.Errorf("conciseBudgetFor(%d, %d) = %d, want %d",
 				tt.configured, tt.height, got, tt.want)
 		}
+	}
+}
+
+// A name too wide for its column takes a line of its own, with the description
+// beginning on the next line at the column. Padding it in place would push every
+// description on that row out of alignment, or run the two together.
+//
+// This and TestAnUngroupedListGetsNoHeading are the two behaviours that
+// example/mail_cli_fake's oracle was the only guard for. Retiring the oracle —
+// 499 lines reproducing the renderer to compare against it — cost exactly these
+// two mutations out of 38, which is what the survey was run to find out.
+func TestAnOverWideNameTakesItsOwnLine(t *testing.T) {
+	const width, indent = 60, 12
+	var buf bytes.Buffer
+	long := "--an-extremely-long-flag-name-far-past-its-column"
+	reflow(&buf, color.New(color.FgWhite), width, indent, long,
+		"The description belongs on the next line, at the column.")
+	lines := strings.Split(strings.TrimRight(StripANSI(buf.String()), "\n"), "\n")
+
+	if len(lines) < 2 {
+		t.Fatalf("the name and its description shared one line:\n%q", buf.String())
+	}
+	if strings.TrimSpace(lines[0]) != long {
+		t.Errorf("the first line is not the name alone: %q", lines[0])
+	}
+	if strings.Contains(lines[0], "description") {
+		t.Errorf("the description was run onto the name's line: %q", lines[0])
+	}
+	for _, line := range lines[1:] {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		if got := len(line) - len(strings.TrimLeft(line, " ")); got != indent {
+			t.Errorf("a continuation line starts at column %d, not the column %d: %q",
+				got, indent, line)
+		}
+	}
+
+	// A name that does fit keeps its description beside it.
+	buf.Reset()
+	reflow(&buf, color.New(color.FgWhite), width, indent, "-s", "Short.")
+	if first := strings.Split(StripANSI(buf.String()), "\n")[0]; !strings.Contains(first, "Short.") {
+		t.Errorf("a name that fits was given its own line anyway: %q", first)
+	}
+}
+
+// Group headings appear only when something is grouped. Giving every entry a
+// fallback heading when none is grouped puts a heading above a list that has no
+// groups in it — a section title for a section that is the whole list.
+func TestAnUngroupedListGetsNoHeading(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		in   []string
+		want []string
+	}{
+		{"nothing grouped", []string{"", "", ""}, []string{"", "", ""}},
+		{"all grouped", []string{"A", "B"}, []string{"A", "B"}},
+		{"some grouped", []string{"A", "", "B"}, []string{"A", "Other", "B"}},
+		{"one grouped", []string{"", "A", ""}, []string{"Other", "A", "Other"}},
+		{"empty", nil, nil},
+	} {
+		got := normalizeGroups(tt.in, "Other")
+		if strings.Join(got, "|") != strings.Join(tt.want, "|") {
+			t.Errorf("%s: normalizeGroups(%v) = %v, want %v", tt.name, tt.in, got, tt.want)
+		}
+	}
+
+	// And through a render: an application whose commands are all ungrouped
+	// shows no heading above them.
+	app := &App{
+		Name: "plain",
+		Commands: []Command{
+			{Name: "build", Description: "Build it.", Run: func(*Context) error { return nil }},
+			{Name: "clean", Description: "Clean it.", Run: func(*Context) error { return nil }},
+		},
+	}
+	var buf bytes.Buffer
+	app.RenderGlobal(Options{Writer: &buf, Width: 80})
+	body := StripANSI(buf.String())
+	for _, line := range strings.Split(body, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "Other" || trimmed == "Other:" {
+			t.Errorf("a fallback group heading appeared above an ungrouped list:\n%s", body)
+		}
+	}
+}
+
+// A name far wider than the column is left out of the column's calculation
+// rather than allowed to set it. One 50-column flag among a dozen short ones
+// would otherwise push every description half a screen to the right, to line up
+// with a name that takes its own line anyway.
+//
+// The third and last behaviour example/mail_cli_fake's oracle was the only guard
+// for.
+func TestAnOverWideNameDoesNotWidenTheColumn(t *testing.T) {
+	short := []Param{{Name: "-v"}, {Name: "--verbose"}}
+	base := colIndent(short)
+	if base > defaultMaxColIndent {
+		t.Fatalf("a column of short names is already over the cap: %d", base)
+	}
+
+	huge := Param{Name: "--an-extremely-long-flag-name-past-any-reasonable-column"}
+	withHuge := colIndent(append(append([]Param{}, short...), huge))
+	if withHuge != base {
+		t.Errorf("one over-wide name moved the column from %d to %d; it should be "+
+			"ignored and take its own line instead", base, withHuge)
+	}
+	if withHuge > defaultMaxColIndent {
+		t.Errorf("the column reached %d, past the %d cap", withHuge, defaultMaxColIndent)
+	}
+
+	// A list of nothing but over-wide names falls back to the cap rather than to
+	// zero, so the descriptions still have a column to start at.
+	if only := colIndent([]Param{huge}); only != defaultMaxColIndent {
+		t.Errorf("a list of only over-wide names gave a column of %d, want the cap %d",
+			only, defaultMaxColIndent)
 	}
 }

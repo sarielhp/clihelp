@@ -27,7 +27,7 @@ func TestAuthorStringsCannotSteerTheTerminal(t *testing.T) {
 		{"bare carriage return overwrites the row", "keep this\rGONE"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			out := Inline(tt.in)
+			out := inlineMarkdown(tt.in)
 			for _, b := range []byte(out) {
 				if b == 0x1b || b == 0x07 || b == '\r' {
 					// Only escapes this package emits are allowed, and it emits
@@ -57,7 +57,7 @@ func TestLinkURLCannotBreakTheEscape(t *testing.T) {
 		"https://example.com/a\tb",
 		"https://example.com/a\x7fb",
 	} {
-		out := Inline("see [the manual](" + url + ") now")
+		out := inlineMarkdown("see [the manual](" + url + ") now")
 		payload := out
 		if i := strings.Index(payload, osc8); i >= 0 {
 			payload = payload[i+len(osc8):]

@@ -273,7 +273,7 @@ func (a *App) renderCommandGrouped(w io.Writer, th Theme, o Options, termWidth i
 			continue
 		}
 		params = append(params, Param{
-			Name:        DisplayName(c),
+			Name:        displayNameWithAliases(c),
 			Description: firstSentence(c.Description),
 		})
 		groups = append(groups, c.Group)
@@ -396,7 +396,7 @@ func (a *App) renderGlobalShortcuts(w io.Writer, th Theme, o Options, termWidth 
 	for _, s := range a.Shortcuts {
 		if !s.Hidden {
 			params = append(params, Param{
-				Name:        DisplayName(s),
+				Name:        displayNameWithAliases(s),
 				Description: firstSentence(s.Description),
 			})
 		}

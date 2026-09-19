@@ -1,5 +1,10 @@
 # Deep review: command resolution (`resolve.go`, 2026-09-18)
 
+> **Reading this later.** Items below struck through have since been settled; the note
+> after each says how. The current state of the public API is
+> `review/api-surface-2026-09-18.md`, and `docs/how-clihelp-decides.md` is the
+> mechanism this library actually implements today.
+
 **Scope:** `resolve.go` in full — 506 lines with zero citations across the three previous
 deep reviews — plus `leading_flags_test.go`, `resolution_purity_test.go` and the resolution
 parts of `execute_test.go`. Prompt: `prompts/review-2026-09-18-resolve.md`. Three

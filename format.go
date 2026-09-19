@@ -10,9 +10,9 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-// DefaultMaxColIndent defines the standard column threshold for description
+// defaultMaxColIndent defines the standard column threshold for description
 // text alignment in two-column command and option listings (GNU standard: 24).
-const DefaultMaxColIndent = 24
+const defaultMaxColIndent = 24
 
 var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;:?<=>!]*[@-~]|\x1b\][^\x1b\x07]*(?:\x07|\x1b\\)?`)
 
@@ -492,8 +492,11 @@ func commandArgs(cmd Command) string {
 	return strings.Join(args, " ")
 }
 
-// DisplayName renders a command name followed by its aliases in parentheses.
-func DisplayName(c Command) string {
+// displayNameWithAliases renders a command name followed by its aliases in
+// parentheses. The name says which of the two it is: doc/ has its own
+// displayName that deliberately returns the bare name, because a Markdown
+// heading carrying aliases is not a heading anyone can link to.
+func displayNameWithAliases(c Command) string {
 	if len(c.Aliases) == 0 {
 		return c.Name
 	}
@@ -502,7 +505,7 @@ func DisplayName(c Command) string {
 
 // displayNameWithArgs renders a command name with aliases and positional argument signature.
 func displayNameWithArgs(c Command) string {
-	name := DisplayName(c)
+	name := displayNameWithAliases(c)
 	args := commandArgs(c)
 	if args != "" {
 		name += " " + args
@@ -541,7 +544,7 @@ func SubcommandList(c Command) []Param {
 	for i := range c.Subcommands {
 		if !c.Subcommands[i].Hidden {
 			out = append(out, Param{
-				Name:        DisplayName(c.Subcommands[i]),
+				Name:        displayNameWithAliases(c.Subcommands[i]),
 				Description: c.Subcommands[i].Description,
 			})
 		}
@@ -563,7 +566,7 @@ func appName(a *App) string {
 	return "app"
 }
 
-// colIndent returns the indent (max visible width + 4, capped at DefaultMaxColIndent)
+// colIndent returns the indent (max visible width + 4, capped at defaultMaxColIndent)
 // so that entries line up cleanly without excessive horizontal spacing.
 // colIndentFor is colIndent, reduced so that at least minText columns are left
 // for the description.
@@ -600,12 +603,12 @@ func colIndent(params []Param) int {
 	maxW := 0
 	for _, p := range params {
 		l := visualLen(p.Name)
-		if l+4 <= DefaultMaxColIndent && l > maxW {
+		if l+4 <= defaultMaxColIndent && l > maxW {
 			maxW = l
 		}
 	}
 	if maxW == 0 {
-		return DefaultMaxColIndent
+		return defaultMaxColIndent
 	}
 	return maxW + 4
 }

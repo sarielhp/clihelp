@@ -1,5 +1,10 @@
 # Deep review — shell integration surface (2026-09-17, v0.3.14)
 
+> **Reading this later.** Items below struck through have since been settled; the note
+> after each says how. The current state of the public API is
+> `review/api-surface-2026-09-18.md`, and `docs/how-clihelp-decides.md` is the
+> mechanism this library actually implements today.
+
 Evidence-based review of the code added after v0.3.9 and released as 0.3.12–0.3.14:
 `explain.go`, `install.go`, `man.go`, `protocol.go`, and the generated-script templates in
 `completion.go`. That surface had never been independently reviewed. Everything else in the
@@ -322,10 +327,15 @@ Behaviour changes a user will notice, all of which fail visibly rather than sile
   and `commandline` with shell functions. It found nothing on its own, but SH-6, SH-7 and
   SH-8 were all provable the moment it existed — which is the point, since all three had
   reached a release through shells that were only ever syntax-checked.
-- **Whether `AutoInstallCompletion` should exist at all.** Every finding here is more severe
+- ~~**Whether `AutoInstallCompletion` should exist at all.** Every finding here is more severe
   because it runs unattended, and its kill switches are opt-out rather than opt-in. It is
-  also why the safety rules for this review had to forbid running the example binary.
+  also why the safety rules for this review had to forbid running the example binary.~~ **Settled 2026-09-18:** kept, and renamed `AutoRefreshIntegration` because the old name described something it cannot do. Without it a user who upgrades keeps the script and man page from the previous version indefinitely, with no symptom. Measured cost: 6.4 µs per run.
 - **`example/main.go` setting it to `true`** — a demonstration app that installs into the
   reader's home directory the first time they try it is a questionable thing to be modelling.
+  *Partly answered 2026-09-18:* the flag is `AutoRefreshIntegration` now and can only refresh
+  a file that already exists, so the example can no longer create anything. What remains is
+  whether a demonstration should be doing anything unasked on every run at all; nobody has
+  revisited that since the rule changed.
 - **A fault-injection seam for the filesystem.** There is no way to test the error paths in
-  this surface today, because `os` is called directly.
+  this surface today, because `os` is called directly. *Still open*, and `atomicwrite_faults_test.go`
+  covers only the writer's own seam.

@@ -95,8 +95,8 @@ func TestInlineKeepsUnterminatedEmphasis(t *testing.T) {
 		{"**bold**", "bold"},
 		{"*italic*", "italic"},
 	} {
-		if got := strip(Inline(tt.in)); got != tt.want {
-			t.Errorf("Inline(%q) = %q, want %q", tt.in, got, tt.want)
+		if got := strip(inlineMarkdown(tt.in)); got != tt.want {
+			t.Errorf("inlineMarkdown(%q) = %q, want %q", tt.in, got, tt.want)
 		}
 	}
 }
