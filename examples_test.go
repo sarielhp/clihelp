@@ -149,7 +149,7 @@ func TestColorizeExampleLine(t *testing.T) {
 	t.Run("command line with app context", func(t *testing.T) {
 		app := testExampleApp()
 		line := "podctl build episode01.wav -o ep01.mp3 --bitrate 320"
-		colored := colorizeExampleLineWithApp(app, nil, line, th)
+		colored := ColorizeExampleLineWithApp(app, nil, line, th)
 		if !strings.Contains(colored, "\x1b[") {
 			t.Errorf("expected ANSI colors in command line, got %q", colored)
 		}
