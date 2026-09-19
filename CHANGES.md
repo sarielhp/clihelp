@@ -2,6 +2,20 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.33] - 2026-09-18
+
+### Fixed
+- **`Audit` Rejected `<command> --help` on Any Command Taking Arguments.** `myapp process --help`, where `process` declares `ExactArgs(1)`, was reported as "argument validation failed in example". That line prints the help page and exits 0: a help flag short-circuits required flags, option constraints and argument counting, none of which the example validator knew. The `help <command>` form was already skipped, by resolution, so only one of the two spellings was wrong — which is how it survived a deep review and six surveys. `Audit` is what the README tells people to run in CI, and it was failing builds over examples that work. The same skip also covers an application with a required option of its own, since both help forms run without it.
+
+### Internal
+- **The Renderer Oracle Is Retired.** `example/mail_cli_fake` held 499 lines reproducing clihelp's output so the two could be compared byte for byte. The decision was measured: a mutation survey of the rendering path killed 27 of 38 *with* the oracle in place — 29%, indistinguishable from `install.go`/`man.go` at 29% and `doc/`/`tree/` at 32%, neither of which has one. A second implementation shares the assumptions of the thing it checks, and this one had to be pinned to a single width because agreeing at every width would have meant maintaining it as a real renderer. It was also checked *after*: retiring it cost exactly three mutations, each now covered by a direct test, and the survey is back to **38 of 38**. What replaces it is ~190 lines of properties over the same 43-page corpus at three widths — no line over its width unless an unbreakable token makes it unavoidable, no leaked markdown or bare URL, every escape closed on the line that opened it, no trailing whitespace, deterministic output, and each page naming its own command.
+- With the oracle gone, `Inline`, `DisplayName`, `ColorizeExampleLineWithApp` and `DefaultMaxColIndent` are unexported — it was the only thing outside the library using them. **No `internal/` package is needed after all**: the two names `doc/` and `tree/` share cannot move without an import cycle, and `StripANSI` and `VisualWidth` are worth keeping for anyone measuring this library's output, as the new property tests do.
+- **`examples.go` Surveyed: 14 of 20, Then 23 of 23.** Beyond the defect above, the survey found the tokenizer's and validator's decisions unasserted: which lines are skipped as comments, the application name stripped in each of its three spellings, an example written without its command name, both help spellings, a multi-line example, and a shell operator ending the command clihelp is responsible for. `cleanExampleCommandLine`'s newline branch was removed as dead code — its only caller receives one line at a time, so the branch implied a command-plus-output form this library does not have.
+- The mutation harness is **15× faster** — 2m37s against roughly 40 minutes — by reusing worker trees instead of copying the repository per mutation, stopping at the first failure, and running eight at a time. Two lessons paid for along the way: the first parallel version let two mutations share a working directory, which showed up as the survivor count moving between runs; and a red baseline makes every mutant look killed, which briefly produced a meaningless clean sweep while one new test was failing.
+
+### Documentation
+- Four review documents listed work under "what I would look at with more time", and eight of those items had since been done or decided. Each is struck through with a note saying how, and each document now opens with a pointer to where the current state lives. Two are annotated rather than closed because only half of each was answered, and one — a fault-injection seam for the filesystem — is untouched.
+
 ## [0.3.32] - 2026-09-18
 
 ### Added
