@@ -162,6 +162,11 @@ These are always true, so code that re-checks them is dead weight:
    API on purpose is `Option.Binder`.
 6. `-h`, `--help`, `--help-concise` and `-H` are bound for you on every command.
 7. Everything after `--` is a positional argument.
+8. **A binding target must outlive the declaration.** `clihelp.String(&cfg.Output, …)`
+   stores the pointer and writes through it during `Execute`, long after the
+   declaration returned. Point at a field of a struct that lives as long as the
+   application, or at a package-level variable — never at a local that goes out
+   of scope, which is the one memory-shaped mistake this API makes easy.
 
 ---
 
@@ -213,3 +218,80 @@ help, usage, suggestions, errors about arguments — ask which of the eleven
 decisions above it belongs to, and whether declaring a field would get it for
 free. It usually does, and the declared form is the one the help page, the
 completion script, the manual page and `Audit` can all see.
+
+---
+
+## A complete application
+
+Everything above, in the shape it is meant to be written: one struct literal, no
+`init()` wiring, and every decision expressed as a declaration.
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/sarielhp/clihelp"
+)
+
+// The targets outlive the declaration — invariant 8.
+type config struct {
+	Verbose bool
+	Output  string
+}
+
+func main() {
+	var cfg config
+
+	app := &clihelp.App{
+		Name:        "myapp",
+		Description: "Sample CLI tool",
+		Version:     "1.0.0",
+		Pager:       true,
+		// The root takes no positional arguments, so an unrecognised first word
+		// is a typo and gets a suggestion — decision 2.
+		Args: clihelp.NoArgs,
+		PersistentOptions: []clihelp.Option{
+			clihelp.Bool(&cfg.Verbose, "-v, --verbose", false, "Enable verbose output"),
+		},
+		Commands: []clihelp.Command{
+			{
+				Name:        "process",
+				Description: "Process input file",
+				UsageLine:   "myapp process [options] <input>",
+				// Arity: one argument. Decisions 2 and 3 both read this, so
+				// "myapp process" prints this command's help rather than
+				// "accepts 1 arg(s), received 0".
+				Args: clihelp.ExactArgs(1),
+				// What that argument is — decision 4.
+				Parameters: []clihelp.Param{
+					{Name: "<input>", Description: "File to process."},
+				},
+				Options: []clihelp.Option{
+					clihelp.String(&cfg.Output, "-o, --output PATH", "out.bin", "Output file path"),
+				},
+				Examples: []clihelp.Example{
+					{Line: "myapp process notes.txt -o notes.bin"},
+				},
+				Run: func(ctx *clihelp.Context) error {
+					// ctx.Args has already passed ExactArgs(1) — invariant 2.
+					fmt.Fprintf(ctx.Stdout, "Processing %s -> %s (verbose=%v)\n",
+						ctx.Args[0], cfg.Output, cfg.Verbose)
+					return nil
+				},
+			},
+			clihelp.CompletionCommand(), // one command, and the user runs it once
+		},
+	}
+
+	if err := app.Execute(os.Args[1:]); err != nil {
+		app.PrintError(err) // a method on App, not a package function
+		os.Exit(1)
+	}
+}
+```
+
+Run `clihelp.Audit(app)` in CI: it walks the tree and checks that every example
+above still parses against the commands and flags that exist.

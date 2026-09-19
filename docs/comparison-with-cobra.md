@@ -22,7 +22,7 @@ While Cobra excels at building large CLI ecosystems, `clihelp` offers a differen
 | **Key Binding** | None | Alt-H expands the abbreviated command line and prints that command's help, capped at two thirds of the screen |
 | **Setup Without the Author** | Not available: completion exists only if the author wired it up | Every program answers `__clihelp`, so a dotfiles script or packager can set one up regardless |
 | **Tiered Progressive Help** | `-h` and `--help` render identical help output | `-h` provides concise help (<= 24 lines); `--help` / `-H` renders full documentation |
-| **AI Agent Prompting** | Multi-step `init()` wiring patterns | Self-contained struct literal with `llms.txt` spec |
+| **AI Agent Prompting** | Multi-step `init()` wiring patterns | Self-contained struct literal, with the decision model written down |
 
 ---
 

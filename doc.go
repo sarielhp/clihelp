@@ -139,7 +139,7 @@
 //
 // # AI & LLM Context
 //
-// A token-optimized specification file (llms.txt) is provided at the repository root
+// An index for LLM tooling (llms.txt) is provided at the repository root
 // for AI coding agents and LLMs to ingest complete API signatures, lifecycle rules,
 // and canonical examples in a single context window.
 package clihelp
