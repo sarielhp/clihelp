@@ -90,6 +90,13 @@ func (a *App) lookupCommandPath(path []string) (*Command, []string) {
 	}
 	return found, resolvedPath
 }
+
+// isExamplesTopic reports whether topic names the examples page.
+func (a *App) isExamplesTopic(topic string) bool {
+	return topic == "examples" || topic == "example" || topic == "eg" ||
+		(a.AbbrevCommands && topic != "" && strings.HasPrefix("examples", topic))
+}
+
 func (a *App) handleRootHelpTopic(topic string) (bool, error) {
 	if topic == "" {
 		// Every topic below is matched by prefix, and "" is a prefix of all of
@@ -104,7 +111,7 @@ func (a *App) handleRootHelpTopic(topic string) (bool, error) {
 	case topic == "man" || topic == "all" || topic == "full" || topic == "manual" || (a.AbbrevCommands && (strings.HasPrefix("man", topic) || strings.HasPrefix("manual", topic))):
 		a.renderManPage(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
 		return true, nil
-	case topic == "examples" || topic == "example" || topic == "eg" || (a.AbbrevCommands && strings.HasPrefix("examples", topic)):
+	case a.isExamplesTopic(topic):
 		a.renderExamplesPage(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
 		return true, nil
 	case topic == "topics" || topic == "help" || (a.AbbrevCommands && strings.HasPrefix("topics", topic)):
@@ -147,6 +154,13 @@ func (a *App) handleHelpInvocation(helpPath []string) (bool, error) {
 	}
 	if helpCmd, resolvedPath := a.lookupCommandPath(helpPath); helpCmd != nil {
 		a.RenderCommand(o, resolvedPath...)
+		return true, nil
+	}
+	// "help examples <command>" narrows the page to one command and its
+	// subcommands. A command of the author's own named "examples" still wins,
+	// because the lookup above ran first.
+	if a.isExamplesTopic(helpPath[0]) {
+		a.renderExamplesPage(o, helpPath[1:]...)
 		return true, nil
 	}
 	if len(helpPath) == 1 {

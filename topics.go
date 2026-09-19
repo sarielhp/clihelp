@@ -359,7 +359,7 @@ func (a *App) renderTopicsPage(o Options) {
 		topics := []Param{
 			{Name: "help <command>", Description: fmt.Sprintf("Show help for a specific command (or '%s <command> -h')", appName(a))},
 			{Name: "help flags", Description: "Show all global flags and persistent options"},
-			{Name: "help examples", Description: "Show every example in one place, grouped by command"},
+			{Name: "help examples", Description: "Show every example in one place; add a command to narrow it"},
 			{Name: "help man", Description: "Display the complete reference manual (paged)"},
 		}
 		indent := colIndentFor(topics, termWidth, minTextColumns)
@@ -382,7 +382,7 @@ func (a *App) renderTopicsPage(o Options) {
 // Hidden commands are skipped, as they are everywhere else, and a command
 // without examples of its own is passed over rather than given an empty
 // heading.
-func (a *App) renderExamplesPage(o Options) {
+func (a *App) renderExamplesPage(o Options, path ...string) {
 	o = o.withApp(a)
 	a.pageOutput(o, func(w io.Writer) {
 		th := o.theme(a)
@@ -394,7 +394,19 @@ func (a *App) renderExamplesPage(o Options) {
 			examples []Example
 		}
 		var groups []group
-		if len(a.Examples) > 0 {
+		// With a path, the page is that command and its subcommands; without
+		// one, the whole tree including the application's own examples.
+		root := a.Commands
+		var rootPath []string
+		if len(path) > 0 {
+			target, resolved := a.lookupCommandPath(path)
+			if target == nil {
+				fmt.Fprintf(w, "No command %q, so no examples for it.\n", strings.Join(path, " "))
+				return
+			}
+			root = []Command{*target}
+			rootPath = resolved[:len(resolved)-1]
+		} else if len(a.Examples) > 0 {
 			groups = append(groups, group{examples: a.Examples})
 		}
 		var walk func(cmds []Command, prefix []string)
@@ -411,10 +423,14 @@ func (a *App) renderExamplesPage(o Options) {
 				walk(c.Subcommands, path)
 			}
 		}
-		walk(a.Commands, nil)
+		walk(root, rootPath)
 
 		if len(groups) == 0 {
-			fmt.Fprintf(w, "No examples are declared for %s.\n", appName(a))
+			what := appName(a)
+			if len(path) > 0 {
+				what += " " + strings.Join(path, " ")
+			}
+			fmt.Fprintf(w, "No examples are declared for %s.\n", what)
 			return
 		}
 

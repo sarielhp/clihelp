@@ -322,3 +322,86 @@ func TestHelpExamplesWithNoneDeclared(t *testing.T) {
 		t.Errorf("expected a plain statement, got:\n%s", body)
 	}
 }
+
+// "help examples <command>" narrows the page to one command and its
+// subcommands, which is what an application that offered a per-command examples
+// view needed in order to stop maintaining its own.
+func TestHelpExamplesForOneCommand(t *testing.T) {
+	app := &App{
+		Name:     "demo",
+		Examples: []Example{{Line: "demo build x", Description: "Top level."}},
+		Commands: []Command{
+			{
+				Name: "build", Description: "Build it.",
+				Examples: []Example{{Line: "demo build --fast x", Description: "Build's own."}},
+				Run:      func(*Context) error { return nil },
+				Subcommands: []Command{{
+					Name: "all", Description: "Everything.",
+					Examples: []Example{{Line: "demo build all", Description: "Nested."}},
+					Run:      func(*Context) error { return nil },
+				}},
+			},
+			{
+				Name: "serve", Description: "Serve it.",
+				Examples: []Example{{Line: "demo serve", Description: "Elsewhere."}},
+				Run:      func(*Context) error { return nil },
+			},
+		},
+	}
+
+	t.Run("one command and its subtree", func(t *testing.T) {
+		out := silentApp(app)
+		if err := app.Execute([]string{"help", "examples", "build"}); err != nil {
+			t.Fatal(err)
+		}
+		body := StripANSI(out.String())
+		for _, want := range []string{"Build's own.", "Nested."} {
+			if !strings.Contains(body, want) {
+				t.Errorf("missing %q:\n%s", want, body)
+			}
+		}
+		for _, unwanted := range []string{"Elsewhere.", "Top level."} {
+			if strings.Contains(body, unwanted) {
+				t.Errorf("%q leaked into a narrowed page:\n%s", unwanted, body)
+			}
+		}
+	})
+
+	t.Run("a nested path", func(t *testing.T) {
+		out := silentApp(app)
+		if err := app.Execute([]string{"help", "examples", "build", "all"}); err != nil {
+			t.Fatal(err)
+		}
+		body := StripANSI(out.String())
+		if !strings.Contains(body, "Nested.") || strings.Contains(body, "Build's own.") {
+			t.Errorf("a nested path did not narrow to its own command:\n%s", body)
+		}
+		if !strings.Contains(body, "demo build all") {
+			t.Errorf("the heading lost the full path:\n%s", body)
+		}
+	})
+
+	t.Run("a command that does not exist", func(t *testing.T) {
+		out := silentApp(app)
+		if err := app.Execute([]string{"help", "examples", "nosuch"}); err != nil {
+			t.Fatal(err)
+		}
+		if body := StripANSI(out.String()); !strings.Contains(body, "No command") {
+			t.Errorf("expected a plain statement, got:\n%s", body)
+		}
+	})
+
+	t.Run("a command of the author's own named examples still wins", func(t *testing.T) {
+		own := &App{Name: "demo", Commands: []Command{{
+			Name: "examples", Description: "The author's own command.",
+			Run: func(*Context) error { return nil },
+		}}}
+		out := silentApp(own)
+		if err := own.Execute([]string{"help", "examples"}); err != nil {
+			t.Fatal(err)
+		}
+		if body := StripANSI(out.String()); !strings.Contains(body, "The author's own command.") {
+			t.Errorf("the topic shadowed a real command:\n%s", body)
+		}
+	})
+}
