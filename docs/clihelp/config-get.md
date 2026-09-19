@@ -13,6 +13,12 @@ Display, inspect, and print configured attribute values. Reads from the persiste
 podctl config get <attribute>
 ```
 
+## Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `<attribute>` | Configuration attribute to display |
+
 ## Flags
 
 | Flag | Description |

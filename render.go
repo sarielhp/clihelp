@@ -237,28 +237,31 @@ func (o Options) width() int {
 		return o.Width
 	}
 	fd, isTerm := o.termFd()
-	if !isTerm {
-		return 70
+	if isTerm {
+		if w, _, err := term.GetSize(fd); err == nil && w > 0 {
+			return w
+		}
 	}
-	w, _, err := term.GetSize(fd)
-	if err != nil || w <= 0 {
-		return 70
+	if c := envInt("COLUMNS"); c > 0 {
+		return c
 	}
-	return w
+	return 70
 }
 
 // height resolves the layout height: the Writer's terminal height is used
-// when it is a terminal file, falling back to stdout. Returns 0 for non-terminals.
+// when it is a terminal file. For non-terminals, the LINES environment variable
+// is used when set, falling back to 0.
 func (o Options) height() int {
 	fd, isTerm := o.termFd()
-	if !isTerm {
-		return 0
+	if isTerm {
+		if _, h, err := term.GetSize(fd); err == nil && h > 0 {
+			return h
+		}
 	}
-	_, h, err := term.GetSize(fd)
-	if err != nil || h <= 0 {
-		return 0
+	if l := envInt("LINES"); l > 0 {
+		return l
 	}
-	return h
+	return 0
 }
 
 // renderCommandGrouped writes a grouped, aligned command list to w. A group

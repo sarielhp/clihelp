@@ -13,6 +13,12 @@ Set maximum disk space allocation for temporary cache and build artifacts. Confi
 podctl config set space <megabytes> [options]
 ```
 
+## Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `<megabytes>` | Storage allocation limit in megabytes |
+
 ## Flags
 
 | Flag | Description |

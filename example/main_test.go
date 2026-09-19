@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"strings"
 	"testing"
 
@@ -80,5 +81,26 @@ func TestPodctl_RenderCommandSmoke(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("Walk failed: %v", err)
+	}
+}
+
+// TestPodctl_ConfigGetCompletion verifies that podctl's dynamic positional
+// parameter completion works for "config get".
+func TestPodctl_ConfigGetCompletion(t *testing.T) {
+	app := buildApp()
+	var out bytes.Buffer
+	app.Stdout = &out
+
+	err := app.ExecuteContext(context.Background(), []string{"__complete", "config", "get", "sp"})
+	if err != nil {
+		t.Fatalf("ExecuteContext failed: %v", err)
+	}
+
+	got := out.String()
+	if !strings.Contains(got, "space\tMax disk space allocation") {
+		t.Errorf("expected 'space' completion candidate, got: %q", got)
+	}
+	if strings.Contains(got, "endpoint") {
+		t.Errorf("unexpected candidate 'endpoint' for prefix 'sp', got: %q", got)
 	}
 }

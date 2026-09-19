@@ -2,6 +2,12 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.41] - 2026-09-19
+
+### Added
+- **`COLUMNS` and `LINES` Environment Variable Layout Precedence**: When output is not a terminal (e.g. piped, redirected, or inside test buffers), `Options.width()` and `Options.height()` now consult `$COLUMNS` and `$LINES` environment variables before falling back to default dimensions (70 cols, 0 lines). Explicit programmatic `Options.Width` continues to take highest priority.
+- **Example Parameters & Positional Completion Showcase**: Demonstrates `Command.Parameters` across `podctl build`, `podctl config set space`, and dynamic positional completion via `Param.Complete` on `podctl config get <attribute>`. Added test coverage verifying `podctl` positional argument completion under `__complete`.
+
 ## [0.3.40] - 2026-09-19
 
 ### Added

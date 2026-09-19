@@ -12,6 +12,12 @@ Compile, encode, and package raw audio into MP3 podcast episodes. Supports confi
 podctl build [options] <source-file>
 ```
 
+## Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `<source-file>` | Input raw audio file (.wav, .flac, .aiff) |
+
 ## Flags
 
 | Flag | Description |

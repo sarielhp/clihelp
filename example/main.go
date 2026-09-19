@@ -35,6 +35,12 @@ func buildBuildCommand() clihelp.Command {
 		Description: "Compile, encode, and package raw audio into MP3 podcast episodes. Supports configurable bitrate, loudness normalization, and embedded ID3 tags for distribution across Apple Podcasts, Spotify, and Google Podcasts.",
 		UsageLine:   "podctl build [options] <source-file>",
 		Args:        clihelp.ExactArgs(1),
+		Parameters: []clihelp.Param{
+			{
+				Name:        "<source-file>",
+				Description: "Input raw audio file (.wav, .flac, .aiff)",
+			},
+		},
 		Options: []clihelp.Option{
 			clihelp.String(&buildOutput, "-o, --output PATH", "", "Write compiled MP3 output to specified PATH"),
 			clihelp.Int(&buildBitrate, "-b, --bitrate KBPS", 192, "Set target audio encoding bitrate in kbps"),
@@ -98,6 +104,12 @@ func buildConfigSpaceCommand() clihelp.Command {
 		Description: "Set maximum disk space allocation for temporary cache and build artifacts. Configurable in megabytes or gigabytes with an optional automatic cleanup policy.",
 		UsageLine:   "podctl config set space <megabytes> [options]",
 		Args:        clihelp.ExactArgs(1),
+		Parameters: []clihelp.Param{
+			{
+				Name:        "<megabytes>",
+				Description: "Storage allocation limit in megabytes",
+			},
+		},
 		Options: []clihelp.Option{
 			clihelp.Enum(&configSpaceUnit, "--unit SIZE", []string{"MB", "GB"}, "MB", "Space allocation unit"),
 			clihelp.Bool(&configSpaceAuto, "--auto-cleanup", false, "Purge oldest temporary cache files"),
@@ -131,6 +143,26 @@ func buildConfigCommand() clihelp.Command {
 				Description: "Display, inspect, and print configured attribute values. Reads from the persistent store or falls back to built-in defaults when no explicit user configuration value has been set.",
 				UsageLine:   "podctl config get <attribute>",
 				Args:        clihelp.ExactArgs(1),
+				Parameters: []clihelp.Param{
+					{
+						Name:        "<attribute>",
+						Description: "Configuration attribute to display",
+						Complete: func(toComplete string) []string {
+							attrs := []string{
+								"space\tMax disk space allocation",
+								"endpoint\tCloud API endpoint URL",
+								"token\tPublishing authentication token",
+							}
+							var matches []string
+							for _, a := range attrs {
+								if strings.HasPrefix(a, toComplete) {
+									matches = append(matches, a)
+								}
+							}
+							return matches
+						},
+					},
+				},
 				Examples: []clihelp.Example{
 					{Line: "podctl config get space", Description: "Inspect current storage space limit."},
 				},

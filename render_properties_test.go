@@ -265,3 +265,34 @@ func TestGlobalHelpListsShortcutsAndConfig(t *testing.T) {
 		t.Errorf("the command list shows more than the first sentence:\n%s", out)
 	}
 }
+
+func TestColumnsAndLinesFromEnvironment(t *testing.T) {
+	for _, tt := range []struct {
+		name       string
+		envCols    string
+		envLines   string
+		optWidth   int
+		wantWidth  int
+		wantHeight int
+	}{
+		{"default fallback when unset", "", "", 0, 70, 0},
+		{"COLUMNS and LINES set", "110", "45", 0, 110, 45},
+		{"explicit Width overrides COLUMNS", "110", "45", 95, 95, 45},
+		{"invalid COLUMNS falls back to 70", "invalid", "", 0, 70, 0},
+		{"negative COLUMNS falls back to 70", "-10", "", 0, 70, 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("COLUMNS", tt.envCols)
+			t.Setenv("LINES", tt.envLines)
+
+			var buf bytes.Buffer
+			opts := Options{Writer: &buf, Width: tt.optWidth}
+			if got := opts.width(); got != tt.wantWidth {
+				t.Errorf("opts.width() = %d, want %d", got, tt.wantWidth)
+			}
+			if got := opts.height(); got != tt.wantHeight {
+				t.Errorf("opts.height() = %d, want %d", got, tt.wantHeight)
+			}
+		})
+	}
+}
