@@ -172,7 +172,7 @@ func (a *App) printClihelpVerbs(w io.Writer, extended bool) {
 	for _, v := range clihelpVerbs() {
 		fmt.Fprintf(w, "  %s %-*s  %s\n", protoClihelp, width, strings.TrimSpace(v.name+" "+v.args), v.about)
 	}
-	fmt.Fprintf(w, "\nSupported shells: %s\n", strings.Join(SupportedShells, ", "))
+	fmt.Fprintf(w, "\nSupported shells: %s\n", strings.Join(supportedShells, ", "))
 	if !extended {
 		fmt.Fprintf(w, "Run '%s %s -H' for what install writes and which names are reserved.\n", appName(a), protoClihelp)
 		return
@@ -365,7 +365,7 @@ func printWrapperRegistration(w io.Writer, app *App, name string, args []string)
 		fmt.Fprintf(w, "#   %s\n", line)
 		return
 	}
-	for _, s := range SupportedShells {
+	for _, s := range supportedShells {
 		fmt.Fprintf(w, "#   %-5s %s\n", s+":", lines[s])
 	}
 }

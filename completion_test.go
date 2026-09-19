@@ -166,9 +166,9 @@ func TestInstallCompletion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.shell, func(t *testing.T) {
-			path, err := InstallCompletion(app, tt.shell)
+			path, err := installCompletion(app, tt.shell)
 			if err != nil {
-				t.Fatalf("InstallCompletion(%q) failed: %v", tt.shell, err)
+				t.Fatalf("installCompletion(%q) failed: %v", tt.shell, err)
 			}
 			if !strings.Contains(path, tt.expectedSub) || filepath.Base(path) != tt.wantFile {
 				t.Errorf("unexpected path %q, want filename %q in %q", path, tt.wantFile, tt.expectedSub)
@@ -181,9 +181,9 @@ func TestInstallCompletion(t *testing.T) {
 
 	t.Run("DefaultShellDetection", func(t *testing.T) {
 		t.Setenv("SHELL", "/bin/zsh")
-		path, err := InstallCompletion(app, "")
+		path, err := installCompletion(app, "")
 		if err != nil {
-			t.Fatalf("InstallCompletion(\"\") with SHELL=zsh failed: %v", err)
+			t.Fatalf("installCompletion(\"\") with SHELL=zsh failed: %v", err)
 		}
 		if filepath.Base(path) != "_testcli" {
 			t.Errorf("expected zsh installation, got: %s", path)
@@ -191,7 +191,7 @@ func TestInstallCompletion(t *testing.T) {
 	})
 
 	t.Run("UnsupportedShell", func(t *testing.T) {
-		_, err := InstallCompletion(app, "unknown_shell")
+		_, err := installCompletion(app, "unknown_shell")
 		if err == nil {
 			t.Fatal("expected error for unsupported shell, got nil")
 		}
@@ -352,12 +352,12 @@ func TestCompletionPathAndIsInstalled(t *testing.T) {
 		t.Errorf("expected IsCompletionInstalled to be false before install")
 	}
 
-	installedPath, err := InstallCompletion(app, "zsh")
+	installedPath, err := installCompletion(app, "zsh")
 	if err != nil {
-		t.Fatalf("InstallCompletion error: %v", err)
+		t.Fatalf("installCompletion error: %v", err)
 	}
 	if installedPath != expectedZsh {
-		t.Errorf("InstallCompletion path = %q, want %q", installedPath, expectedZsh)
+		t.Errorf("installCompletion path = %q, want %q", installedPath, expectedZsh)
 	}
 
 	if !IsCompletionInstalled(app, "zsh") {
@@ -380,12 +380,9 @@ func TestAutoInstallCompletionOnExecute(t *testing.T) {
 	t.Setenv("TERM", "xterm-256color")
 
 	ran := false
-	// Deliberately the deprecated spelling: AutoRefreshIntegration is the name
-	// now, and an application written against the old one must keep working.
-	// TestEitherAutoRefreshFieldEnablesTheRefresh pairs the two directly.
 	app := &App{
-		Name:                  "autocli",
-		AutoInstallCompletion: true,
+		Name:                   "autocli",
+		AutoRefreshIntegration: true,
 		Run: func(ctx *Context) error {
 			ran = true
 			return nil
@@ -442,8 +439,8 @@ func TestAutoInstallCompletionKillSwitch(t *testing.T) {
 	t.Setenv("NO_AUTO_COMPLETION", "1")
 
 	app := &App{
-		Name:                  "autocli",
-		AutoInstallCompletion: true,
+		Name:                   "autocli",
+		AutoRefreshIntegration: true,
 		Run: func(ctx *Context) error {
 			return nil
 		},
@@ -459,20 +456,18 @@ func TestAutoInstallCompletionKillSwitch(t *testing.T) {
 	}
 }
 
-// The field was renamed because the old name describes something it cannot do:
-// it has never installed anything since the unattended path was narrowed to
-// refreshing, and it refreshes the man page as well as the completion script.
-// Both spellings must mean the same thing, and neither may act on its own.
-func TestEitherAutoRefreshFieldEnablesTheRefresh(t *testing.T) {
+// The unattended refresh happens when the author asked for it and not otherwise.
+// It may never act on its own: an ordinary program run writing into a home
+// directory nobody pointed it at is the defect this whole path was narrowed to
+// avoid.
+func TestAutoRefreshHappensOnlyWhenAsked(t *testing.T) {
 	for _, tt := range []struct {
 		name        string
 		set         func(*App)
 		wantRefresh bool
 	}{
-		{"the current name", func(a *App) { a.AutoRefreshIntegration = true }, true},
-		{"the deprecated name", func(a *App) { a.AutoInstallCompletion = true }, true},
-		{"both", func(a *App) { a.AutoRefreshIntegration = true; a.AutoInstallCompletion = true }, true},
-		{"neither", func(a *App) {}, false},
+		{"asked for", func(a *App) { a.AutoRefreshIntegration = true }, true},
+		{"not asked for", func(a *App) {}, false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			tmpDir := t.TempDir()

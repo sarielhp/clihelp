@@ -17,7 +17,7 @@ import (
 // maybeRefreshIntegration brings an already-installed integration up to date,
 // silently, if the author asked for it.
 func (a *App) maybeRefreshIntegration(args []string) {
-	if a == nil || !(a.AutoRefreshIntegration || a.AutoInstallCompletion) {
+	if a == nil || !a.AutoRefreshIntegration {
 		return
 	}
 	// Never run during an internal protocol call — a setup call must not have an
@@ -72,7 +72,7 @@ func (a *App) maybeRefreshIntegration(args []string) {
 		return
 	}
 	if isGeneratedCompletionScript(path) && !completionIsCurrent(a, sh) {
-		_, installErr := InstallCompletion(a, sh)
+		_, installErr := installCompletion(a, sh)
 		autoDebug(a, installErr)
 	}
 }

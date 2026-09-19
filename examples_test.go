@@ -99,17 +99,17 @@ func TestSplitExampleCommandLine(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := SplitExampleCommandLine(tt.input)
+			got, err := splitExampleCommandLine(tt.input)
 			if (err != nil) != tt.wantErr {
-				t.Fatalf("SplitExampleCommandLine(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+				t.Fatalf("splitExampleCommandLine(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
 			}
 			if !tt.wantErr {
 				if len(got) != len(tt.want) {
-					t.Fatalf("SplitExampleCommandLine(%q) = %v (len %d), want %v (len %d)", tt.input, got, len(got), tt.want, len(tt.want))
+					t.Fatalf("splitExampleCommandLine(%q) = %v (len %d), want %v (len %d)", tt.input, got, len(got), tt.want, len(tt.want))
 				}
 				for i := range got {
 					if got[i] != tt.want[i] {
-						t.Errorf("SplitExampleCommandLine(%q)[%d] = %q, want %q", tt.input, i, got[i], tt.want[i])
+						t.Errorf("splitExampleCommandLine(%q)[%d] = %q, want %q", tt.input, i, got[i], tt.want[i])
 					}
 				}
 			}
@@ -126,7 +126,7 @@ func TestColorizeExampleLine(t *testing.T) {
 
 	t.Run("full comment line", func(t *testing.T) {
 		line := "# Compile episode with high bitrate"
-		colored := ColorizeExampleLine(line, th)
+		colored := colorizeExampleLine(line, th)
 		if !strings.Contains(colored, "\x1b[") {
 			t.Errorf("expected ANSI colors in comment line, got %q", colored)
 		}
@@ -137,7 +137,7 @@ func TestColorizeExampleLine(t *testing.T) {
 
 	t.Run("command line with flags and args", func(t *testing.T) {
 		line := "podctl build episode01.wav -o ep01.mp3 --bitrate 320"
-		colored := ColorizeExampleLine(line, th)
+		colored := colorizeExampleLine(line, th)
 		if !strings.Contains(colored, "\x1b[") {
 			t.Errorf("expected ANSI colors in command line, got %q", colored)
 		}
@@ -160,7 +160,7 @@ func TestColorizeExampleLine(t *testing.T) {
 
 	t.Run("prompt prefix and inline comment", func(t *testing.T) {
 		line := "$ podctl serve --port 8080 # start preview server"
-		colored := ColorizeExampleLine(line, th)
+		colored := colorizeExampleLine(line, th)
 		if stripANSI(colored) != line {
 			t.Errorf("stripANSI(%q) = %q, want %q", colored, stripANSI(colored), line)
 		}
@@ -168,7 +168,7 @@ func TestColorizeExampleLine(t *testing.T) {
 
 	t.Run("pipeline command", func(t *testing.T) {
 		line := "podctl status --json | jq .health"
-		colored := ColorizeExampleLine(line, th)
+		colored := colorizeExampleLine(line, th)
 		if stripANSI(colored) != line {
 			t.Errorf("stripANSI(%q) = %q, want %q", colored, stripANSI(colored), line)
 		}
@@ -179,7 +179,7 @@ func TestColorizeExampleLine(t *testing.T) {
 		defer func() { color.NoColor = false }()
 
 		line := "podctl build episode01.wav --bitrate 320"
-		colored := ColorizeExampleLine(line, th)
+		colored := colorizeExampleLine(line, th)
 		if strings.Contains(colored, "\x1b[") {
 			t.Errorf("expected no ANSI codes when NoColor is true, got %q", colored)
 		}
@@ -335,12 +335,12 @@ func TestValidateExample(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateExample(app, tt.ex, tt.cmd)
+			err := validateExample(app, tt.ex, tt.cmd)
 			if (err != nil) != tt.wantErr {
-				t.Fatalf("ValidateExample() error = %v, wantErr %v", err, tt.wantErr)
+				t.Fatalf("validateExample() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			if tt.wantErr && tt.errSub != "" && !strings.Contains(err.Error(), tt.errSub) {
-				t.Errorf("ValidateExample() error = %q, want substring %q", err.Error(), tt.errSub)
+				t.Errorf("validateExample() error = %q, want substring %q", err.Error(), tt.errSub)
 			}
 		})
 	}
@@ -349,7 +349,7 @@ func TestValidateExample(t *testing.T) {
 func TestAppValidateExamples(t *testing.T) {
 	t.Run("valid app passes all example validations", func(t *testing.T) {
 		app := testExampleApp()
-		errs := app.ValidateExamples()
+		errs := app.validateExamples()
 		if len(errs) != 0 {
 			t.Fatalf("expected 0 validation errors, got %d: %v", len(errs), errs)
 		}
@@ -361,7 +361,7 @@ func TestAppValidateExamples(t *testing.T) {
 	t.Run("invalid example in app-level examples caught", func(t *testing.T) {
 		app := testExampleApp()
 		app.Examples = append(app.Examples, Example{Line: "podctl invalidcmd"})
-		errs := app.ValidateExamples()
+		errs := app.validateExamples()
 		if len(errs) != 1 {
 			t.Fatalf("expected 1 error, got %d: %v", len(errs), errs)
 		}
@@ -400,7 +400,7 @@ func TestAuditWithExampleValidation(t *testing.T) {
 	}
 
 	// SkipExampleValidation should allow bad app to pass
-	err = AuditWithOptions(badApp, AuditOptions{SkipExampleValidation: true})
+	err = Audit(badApp, AuditOptions{SkipExampleValidation: true})
 	if err != nil {
 		t.Fatalf("expected SkipExampleValidation to pass audit, got: %v", err)
 	}
@@ -585,7 +585,7 @@ func TestColorizerCommentsStartAtTokenBoundaries(t *testing.T) {
 		{"comment after a url", "myapp fetch http://host/p # note", "# note", "http://host/p"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			out := ColorizeExampleLine(tt.line, th)
+			out := colorizeExampleLine(tt.line, th)
 			if tt.comment != "" && !strings.Contains(out, sprintColor(th.ExampleComment, tt.comment)) {
 				t.Errorf("%q was not colored as a comment in:\n%q", tt.comment, out)
 			}
@@ -615,9 +615,9 @@ func TestExampleTokenizerHandlesOperatorsAndRedirections(t *testing.T) {
 		{"plain line", "app run --flag value", []string{"app", "run", "--flag", "value"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := SplitExampleCommandLine(tt.line)
+			got, err := splitExampleCommandLine(tt.line)
 			if err != nil {
-				t.Fatalf("SplitExampleCommandLine(%q): %v", tt.line, err)
+				t.Fatalf("splitExampleCommandLine(%q): %v", tt.line, err)
 			}
 			if strings.Join(got, "|") != strings.Join(tt.want, "|") {
 				t.Errorf("tokens = %v, want %v", got, tt.want)
@@ -638,7 +638,7 @@ func TestMultiByteArgumentsSurviveTheColorizer(t *testing.T) {
 		"myapp run --tag naïve --tag café",
 		"myapp echo 日本語",
 	} {
-		out := ColorizeExampleLine(line, defaultTheme())
+		out := colorizeExampleLine(line, defaultTheme())
 		// A color run that starts or ends inside a rune leaves an escape between
 		// that rune's bytes, which is no longer valid UTF-8.
 		if !utf8.ValidString(out) {

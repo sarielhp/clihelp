@@ -1,6 +1,6 @@
 # Shell Autocompletion
 
-`clihelp` provides built-in shell autocompletion for **Bash**, **Zsh**, and **Fish** through its native `__complete` protocol, ready-to-mount [`CompletionCommand`](#zero-boilerplate-completioncommand), and XDG-compliant [`InstallCompletion`](#automatic-self-installation-installcompletion).
+`clihelp` provides built-in shell autocompletion for **Bash**, **Zsh**, and **Fish** through its native `__complete` protocol and a ready-to-mount [`CompletionCommand`](#zero-boilerplate-completioncommand). Installing is something the *user* does, by running one command; it is not an API a program calls on their behalf.
 
 ---
 
@@ -8,7 +8,6 @@
 
 - [Overview & Architecture](#overview--architecture)
 - [Zero-Boilerplate `CompletionCommand`](#zero-boilerplate-completioncommand)
-- [Automatic Self-Installation (`InstallCompletion`)](#automatic-self-installation-installcompletion)
 - [Manual Shell Script Generation](#manual-shell-script-generation)
 - [Dynamic Completion Callbacks](#dynamic-completion-callbacks)
 - [Testing Shell Completions](#testing-shell-completions)
@@ -108,7 +107,7 @@ The block is marked with `# >>> <app> shell integration (clihelp) >>>`, so `unin
 
 ## Lower-Level Entry Points
 
-`InstallCompletion(app, shell)` still installs just the completion script into the shell's standard directory, and `CompletionPath` reports where that is. They are unchanged, for callers that want the shell-discovered layout rather than the one-command setup above.
+Installing a completion script into the shell's own directory is still supported, and still happens when an older install is found there — but only through the setup command. It is no longer something a program can do to a user's home directory from inside an ordinary run, because nothing supervises that: the rule that the unattended path may only refresh what already exists lives in one place, and a second entry point would go around it.
 
 ---
 
@@ -139,7 +138,7 @@ This is deliberately **not** part of the completion script: every shell loads th
 - **Every keymap is bound**, not just the one that happens to be current when the snippet is sourced: `emacs-standard`, `vi-insert` and `vi-command` in bash, `emacs`, `viins` and `vicmd` in zsh, `default` and `insert` in fish. Otherwise `set -o vi` would silently leave the key dead.
 - **`CLIHELP_NO_KEY_BINDINGS` declines the key.** Set it before your shell sources the integration file and nothing is bound — zsh's `run-help` and fish's man-page binding stay exactly as they were — while tab completion is unaffected. There is no portable way to ask readline what `\eh` is already bound to, so this is an opt-out rather than a check.
 - The shell passes its own `$LINES` and `$COLUMNS` through `CLIHELP_TERM_LINES` / `CLIHELP_TERM_COLUMNS`, because the binding captures the program's stdout and a pipe has no size to measure.
-- The underlying protocol call is `<app> __explain "<command line>"`, whose first output line is always the expanded command line. `App.Explain` is exported if you want to drive it yourself.
+- The underlying protocol call is `<app> __explain "<command line>"`, whose first output line is always the expanded command line. Its first output line is always the expanded command line, so a shell widget can use it without parsing the rest.
 
 ---
 

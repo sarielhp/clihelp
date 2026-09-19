@@ -158,7 +158,7 @@ func TestInstallManPage(t *testing.T) {
 	home := sandboxHome(t)
 	t.Setenv("MANPATH", filepath.Join(home, ".local", "share", "man"))
 
-	path, err := InstallManPage(manApp(), false)
+	path, err := installManPage(manApp(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,11 +172,11 @@ func TestInstallManPage(t *testing.T) {
 
 	// Installing again is a refresh, not a refusal: our own page is not a
 	// collision with itself.
-	if _, err := InstallManPage(manApp(), false); err != nil {
+	if _, err := installManPage(manApp(), false); err != nil {
 		t.Errorf("reinstalling refused: %v", err)
 	}
 
-	removed, err := UninstallManPage(manApp())
+	removed, err := uninstallManPage(manApp())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,13 +201,13 @@ func TestInstallManPageRefusesToShadowAnother(t *testing.T) {
 	}
 	t.Setenv("MANPATH", filepath.Join(home, "other")+":"+filepath.Join(home, ".local", "share", "man"))
 
-	if _, err := InstallManPage(manApp(), false); err == nil {
+	if _, err := installManPage(manApp(), false); err == nil {
 		t.Errorf("installed over an existing manual page without being forced")
 	} else if !strings.Contains(err.Error(), "--force") {
 		t.Errorf("the refusal should say how to override it: %v", err)
 	}
 
-	if _, err := InstallManPage(manApp(), true); err != nil {
+	if _, err := installManPage(manApp(), true); err != nil {
 		t.Errorf("--force was refused: %v", err)
 	}
 }
@@ -222,7 +222,7 @@ func TestUninstallLeavesAForeignPageAlone(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	removed, err := UninstallManPage(manApp())
+	removed, err := uninstallManPage(manApp())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,12 +249,12 @@ func TestManPageRefreshedButNeverCreated(t *testing.T) {
 	app.AutoRefreshIntegration = true
 	path := filepath.Join(home, ".local", "share", "man", "man1", "manapp.1")
 
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("a manual page was installed unasked")
 	}
 
-	if _, err := InstallManPage(app, false); err != nil {
+	if _, err := installManPage(app, false); err != nil {
 		t.Fatal(err)
 	}
 	current, _ := os.ReadFile(path)
@@ -263,7 +263,7 @@ func TestManPageRefreshedButNeverCreated(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 	if !manPageIsCurrent(path) {
 		t.Errorf("a stale generated page was not refreshed")
 	}

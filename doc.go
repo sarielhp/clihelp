@@ -1,6 +1,13 @@
 // Package clihelp provides a declarative, lightweight CLI application framework
 // and width-aware, colorized help text formatter for Go applications.
 //
+// # Where to start
+//
+// docs/how-clihelp-decides.md is the mechanism: the decisions this library makes
+// on the author's behalf, what each one reads from App, Command and Option, and
+// what it assumes when a field is left undeclared. The rules in the other
+// documents follow from it.
+//
 // # Core Concepts
 //
 // clihelp combines declarative command and flag definitions with robust execution
@@ -110,7 +117,7 @@
 //   - [GenBashCompletion]
 //   - [GenZshCompletion]
 //   - [GenFishCompletion]
-//   - [InstallCompletion]
+//   - [installCompletion]
 //   - [CompletionCommand]
 //
 // Dynamic completion is supported by setting the Option.Complete callback.
@@ -118,9 +125,9 @@
 // # Help Topics & Paged Manual
 //
 // In addition to subcommand help (<command> -h), clihelp automatically routes specialized help topics:
-//   - [App.RenderFlags] (app help flags): Displays categorized global options.
-//   - [App.RenderMan] (app help man): Displays an exhaustive reference manual, paged through $PAGER when App.Pager or Options.Pager is set.
-//   - [App.RenderHelpTopics] (app help topics): Lists available help topics.
+//   - the renderFlagsPage page (app help flags): Displays categorized global options.
+//   - the renderManPage page (app help man): Displays an exhaustive reference manual, paged through $PAGER when App.Pager or Options.Pager is set.
+//   - the renderTopicsPage page (app help topics): Lists available help topics.
 //
 // Set [App.OmitGlobalFlagsInCommands] to true to omit verbose global flag tables from individual subcommand screens.
 //
@@ -132,7 +139,7 @@
 //
 // # AI & LLM Context
 //
-// A token-optimized specification file (llms.txt) is provided at the repository root
+// An index for LLM tooling (llms.txt) is provided at the repository root
 // for AI coding agents and LLMs to ingest complete API signatures, lifecycle rules,
 // and canonical examples in a single context window.
 package clihelp

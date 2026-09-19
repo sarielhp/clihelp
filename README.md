@@ -35,7 +35,7 @@ It provides clean, structured usage messages with support for ANSI colors and cl
 - **Comprehensive Paged Manual (`help man`)** — Built-in `help man` renders an exhaustive Unix man page with all commands, subcommands, arguments, flags, and notes paged through `$PAGER`.
 - **Automatic Paging** — When enabled, help output is automatically paged through `$PAGER` when it exceeds terminal height.
 - **Command Tree View** — Render the full command hierarchy as a tree with box-drawing characters (`help tree`).
-- **AI & LLM-Optimized** — Token-efficient single-file [`llms.txt`](llms.txt) specification and declarative syntax eliminating common LLM hallucinations.
+- **Written to be read by agents** — the [decision model](docs/how-clihelp-decides.md) states what the library decides and what it reads to decide it, so the rules follow rather than having to be memorised; a test fails the build when the prose names something the code does not have.
 
 ---
 
@@ -149,7 +149,7 @@ func main() {
 
 	// Execute parses os.Args[1:], routes commands, runs hooks, and handles errors
 	if err := app.Execute(os.Args[1:]); err != nil {
-		clihelp.PrintError(err)
+		app.PrintError(err)
 		os.Exit(1)
 	}
 }
@@ -234,8 +234,8 @@ Detailed technical guides and reference documentation are available in the [`doc
 | 💻 [**Shell Integration**](docs/completion.md) | One-command setup and exactly which files it writes, the Alt-H key binding, manual pages, wrapper scripts, the reserved `__clihelp` verbs, dynamic callbacks, and live testing. |
 | 📄 [**Markdown Doc Generation**](docs/markdown-generation.md) | Generating navigable GitHub Markdown docs with `RenderMarkdown` and SHA-256 change-detection caching. |
 | 🍳 [**Recipes & Patterns**](docs/recipes-and-patterns.md) | Practical patterns for signal cancellation (`ExecuteContext`), unit testing commands, dynamic completion callbacks, command tree view (`RenderTree`), custom themes (`Theme`), and prefix abbreviations (`AbbrevCommands`). |
-| 🤖 [**AI Coding Agent Guidelines**](docs/ai-guidelines.md) | Best practices and prompt rules for LLM coding agents and pair programmers building CLIs with `clihelp`. |
-| 🧠 [**AI Context Specification (`llms.txt`)**](llms.txt) | Compact single-file specification formatted for direct ingestion by LLMs and AI developer tools. |
+| 🧭 [**How clihelp Decides**](docs/how-clihelp-decides.md) | The mechanism: every decision the library makes on your behalf, what it reads to make it, and what it assumes when you declare nothing. Start here — for people and for coding agents alike. |
+| 🧠 [**`llms.txt`**](llms.txt) | The index an LLM tool reads first: links to the documents above rather than a second copy of the API. |
 | ⚖️ [**Comparison with Cobra**](docs/comparison-with-cobra.md) | In-depth comparison with `spf13/cobra`, architectural differences, code patterns, and tradeoffs. |
 | 🧪 [**Example Test Suite**](example/main_test.go) | Real-world test suite demonstrating command coverage, leaf usage lines, and help smoke-testing. |
 

@@ -1,84 +1,10 @@
 package clihelp
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"sort"
 	"strings"
-	"testing"
 )
-
-// TestResult holds the outcome of a TestExecute execution.
-type TestResult struct {
-	Stdout string
-	Stderr string
-	Error  error
-}
-
-// AssertNoError asserts that the command executed successfully without error.
-func (tr *TestResult) AssertNoError(t *testing.T) {
-	t.Helper()
-	if tr.Error != nil {
-		t.Fatalf("expected no error, got: %v", tr.Error)
-	}
-}
-
-// AssertErrorContains asserts that an error occurred and contains the substring.
-func (tr *TestResult) AssertErrorContains(t *testing.T, substring string) {
-	t.Helper()
-	if tr.Error == nil {
-		t.Fatalf("expected an error, got nil")
-	}
-	if !strings.Contains(tr.Error.Error(), substring) {
-		t.Fatalf("expected error containing %q, got: %v", substring, tr.Error)
-	}
-}
-
-// AssertStdoutContains asserts that stdout contains the substring.
-func (tr *TestResult) AssertStdoutContains(t *testing.T, substring string) {
-	t.Helper()
-	if !strings.Contains(tr.Stdout, substring) {
-		t.Fatalf("expected stdout containing %q, got:\n%s", substring, tr.Stdout)
-	}
-}
-
-// AssertStderrContains asserts that stderr contains the substring.
-func (tr *TestResult) AssertStderrContains(t *testing.T, substring string) {
-	t.Helper()
-	if !strings.Contains(tr.Stderr, substring) {
-		t.Fatalf("expected stderr containing %q, got:\n%s", substring, tr.Stderr)
-	}
-}
-
-// TestExecute runs the app with mock buffers and redirected stdout/stderr.
-func TestExecute(app *App, args []string) *TestResult {
-	return TestExecuteWithStdin(app, args, nil)
-}
-
-// TestExecuteWithStdin runs the app redirecting stdout, stderr, and stdin.
-func TestExecuteWithStdin(app *App, args []string, stdin io.Reader) *TestResult {
-	var stdout, stderr bytes.Buffer
-	origStdin := app.Stdin
-	origStdout := app.Stdout
-	origStderr := app.Stderr
-
-	app.Stdin = stdin
-	app.Stdout = &stdout
-	app.Stderr = &stderr
-	defer func() {
-		app.Stdin = origStdin
-		app.Stdout = origStdout
-		app.Stderr = origStderr
-	}()
-
-	err := app.Execute(args)
-	return &TestResult{
-		Stdout: stdout.String(),
-		Stderr: stderr.String(),
-		Error:  err,
-	}
-}
 
 // AuditOptions configures the static analysis audit helper.
 type AuditOptions struct {
@@ -86,9 +12,19 @@ type AuditOptions struct {
 	SkipExampleValidation bool
 }
 
-// Audit traverses the app's command tree to statically verify documentation and consistency.
-func Audit(app *App) error {
-	return AuditWithOptions(app, AuditOptions{})
+// Audit traverses the app's command tree to statically verify documentation and
+// consistency. It is what the README recommends running in CI.
+//
+// The options are variadic so that the common call is Audit(app) and the
+// customised one is Audit(app, AuditOptions{...}); only the first is read. This
+// was two functions, Audit and AuditWithOptions, which is two entry points for
+// one job and a default that had to be documented rather than shown.
+func Audit(app *App, opts ...AuditOptions) error {
+	var o AuditOptions
+	if len(opts) > 0 {
+		o = opts[0]
+	}
+	return audit(app, o)
 }
 
 type commandPathInfo struct {
@@ -220,8 +156,7 @@ func auditCommandTree(cmds []Command, currentPath []string, allPaths *[]commandP
 	return nil
 }
 
-// AuditWithOptions traverses the app's command tree using customized options.
-func AuditWithOptions(app *App, opts AuditOptions) error {
+func audit(app *App, opts AuditOptions) error {
 	if !opts.SkipExampleValidation {
 		if err := app.ValidateAllExamples(); err != nil {
 			return err

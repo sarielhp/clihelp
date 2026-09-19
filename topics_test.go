@@ -30,7 +30,7 @@ func TestRenderFlags(t *testing.T) {
 	}
 
 	o, buf := captureOptions(80)
-	app.RenderFlags(o)
+	app.renderFlagsPage(o)
 	out := strip(buf.String())
 
 	for _, want := range []string{
@@ -82,7 +82,7 @@ func TestRenderMan(t *testing.T) {
 	}
 
 	o, buf := captureOptions(80)
-	app.RenderMan(o)
+	app.renderManPage(o)
 	out := strip(buf.String())
 
 	for _, want := range []string{
@@ -117,7 +117,7 @@ func TestRenderMan(t *testing.T) {
 func TestRenderHelpTopics(t *testing.T) {
 	app := testApp()
 	o, buf := captureOptions(80)
-	app.RenderHelpTopics(o)
+	app.renderTopicsPage(o)
 	out := strip(buf.String())
 
 	for _, want := range []string{
@@ -236,7 +236,7 @@ func TestRenderManLongDescriptionAndRawNotes(t *testing.T) {
 	}
 
 	o, buf := captureOptions(80)
-	app.RenderMan(o)
+	app.renderManPage(o)
 	out := strip(buf.String())
 
 	if !strings.Contains(out, "Exhaustive long build description for man page.") {

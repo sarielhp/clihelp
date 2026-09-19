@@ -51,7 +51,7 @@ func TestUngroupedEntriesDoNotJoinThePreviousGroup(t *testing.T) {
 	}
 }
 
-// RenderMan calls renderOptionsGrouped with the raw list, unlike RenderFlags,
+// RenderMan calls renderOptionsGrouped with the raw list, unlike renderFlagsPage,
 // which normalises first — so the man page had the same defect for flags.
 func TestUngroupedFlagsDoNotJoinThePreviousGroup(t *testing.T) {
 	app := &App{Name: "probe",
@@ -63,7 +63,7 @@ func TestUngroupedFlagsDoNotJoinThePreviousGroup(t *testing.T) {
 		Commands: []Command{{Name: "run", Description: "R.", Run: func(*Context) error { return nil }}},
 	}
 	var buf bytes.Buffer
-	app.RenderMan(Options{Writer: &buf, Width: 70})
+	app.renderManPage(Options{Writer: &buf, Width: 70})
 	out := StripANSI(buf.String())
 	if got := headingOf(out, "--b"); got == "Networking:" {
 		t.Errorf("an ungrouped flag is listed under %q:\n%s", got, out)

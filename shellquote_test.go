@@ -42,7 +42,7 @@ func TestSourcingTheInstalledBlockExecutesNothing(t *testing.T) {
 	marker := filepath.Join(home, "EXECUTED")
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, "cfg $(touch "+marker+")"))
 
-	if _, err := InstallShellIntegration(installApp(), "bash", true); err != nil {
+	if _, err := installShellIntegration(installApp(), "bash", true); err != nil {
 		t.Fatal(err)
 	}
 	rc, err := os.ReadFile(filepath.Join(home, ".bashrc"))

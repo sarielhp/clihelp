@@ -16,7 +16,7 @@ import (
 // GenManPage writes a roff manual page for app: one page for the program, with
 // a subsection for every command.
 //
-// This is a file for man(1), distinct from App.RenderMan, which renders the same
+// This is a file for man(1), distinct from App.renderManPage, which renders the same
 // material to a terminal with colors and hyperlinks in it. A generated page
 // installed under $XDG_DATA_HOME/man is what makes zsh's run-help and fish's
 // __fish_man_page — both bound to Alt-H by default — answer for a program that
@@ -374,13 +374,13 @@ func ManPagePath(app *App) (string, error) {
 	return filepath.Join(dataHome, "man", "man1", name+".1"), nil
 }
 
-// InstallManPage writes the generated page under the user's data directory and
+// installManPage writes the generated page under the user's data directory and
 // returns its path.
 //
 // It refuses when a manual page for this program already exists somewhere else,
 // because which of two pages man(1) shows is not something a program can
 // predict, and the one that loses is invisible. force installs anyway.
-func InstallManPage(app *App, force bool) (string, error) {
+func installManPage(app *App, force bool) (string, error) {
 	target, err := ManPagePath(app)
 	if err != nil {
 		return "", err
@@ -404,8 +404,8 @@ func InstallManPage(app *App, force bool) (string, error) {
 	return target, nil
 }
 
-// UninstallManPage removes a page clihelp generated, and leaves any other alone.
-func UninstallManPage(app *App) (string, error) {
+// uninstallManPage removes a page clihelp generated, and leaves any other alone.
+func uninstallManPage(app *App) (string, error) {
 	target, err := ManPagePath(app)
 	if err != nil {
 		return "", err
@@ -479,7 +479,7 @@ func (a *App) refreshManPage() {
 	if err != nil || !isGeneratedManPage(path) || manPageIsCurrent(path) {
 		return
 	}
-	_, _ = InstallManPage(a, true)
+	_, _ = installManPage(a, true)
 }
 
 // manPageAction is the behaviour behind both "__clihelp manpage" and the
@@ -496,7 +496,7 @@ func (a *App) manPageAction(out, notes io.Writer, install, uninstall, force bool
 	}
 	switch {
 	case uninstall:
-		path, err := UninstallManPage(a)
+		path, err := uninstallManPage(a)
 		if err != nil {
 			return err
 		}
@@ -509,7 +509,7 @@ func (a *App) manPageAction(out, notes io.Writer, install, uninstall, force bool
 		fmt.Fprintf(notes, "removed %s\n", path)
 		return nil
 	case install:
-		path, err := InstallManPage(a, force)
+		path, err := installManPage(a, force)
 		if err != nil {
 			return err
 		}

@@ -101,9 +101,9 @@ func TestEveryTierFitsItsWidth(t *testing.T) {
 		t.Run(fmt.Sprint(width), func(t *testing.T) {
 			for name, render := range map[string]func(Options){
 				"RenderGlobal":     app.RenderGlobal,
-				"RenderFlags":      app.RenderFlags,
-				"RenderMan":        app.RenderMan,
-				"RenderHelpTopics": app.RenderHelpTopics,
+				"RenderFlags":      app.renderFlagsPage,
+				"RenderMan":        app.renderManPage,
+				"RenderHelpTopics": app.renderTopicsPage,
 			} {
 				var buf bytes.Buffer
 				render(Options{Writer: &buf, Width: width})
@@ -214,16 +214,16 @@ func TestCommandArgs(t *testing.T) {
 
 func TestDisplayNameWithArgs(t *testing.T) {
 	cmd := Command{Name: "set", Aliases: []string{"s"}, Parameters: []Param{{Name: "<key>"}}}
-	if got, want := DisplayNameWithArgs(cmd), "set (s) <key>"; got != want {
-		t.Errorf("DisplayNameWithArgs = %q, want %q", got, want)
+	if got, want := displayNameWithArgs(cmd), "set (s) <key>"; got != want {
+		t.Errorf("displayNameWithArgs = %q, want %q", got, want)
 	}
 }
 
 func TestRenderGlobalFlagsIsRenderFlags(t *testing.T) {
 	app := propertyApp()
 	var a, b bytes.Buffer
-	app.RenderFlags(Options{Writer: &a, Width: 80})
-	app.RenderGlobalFlags(Options{Writer: &b, Width: 80})
+	app.renderFlagsPage(Options{Writer: &a, Width: 80})
+	app.renderFlagsPage(Options{Writer: &b, Width: 80})
 	if a.String() != b.String() {
 		t.Errorf("RenderGlobalFlags diverged from RenderFlags")
 	}

@@ -18,7 +18,7 @@ func TestAutoPathNeverEditsAStartupFile(t *testing.T) {
 
 	app := installApp()
 	app.AutoRefreshIntegration = true
-	if _, err := InstallShellIntegration(app, "bash", true); err != nil {
+	if _, err := installShellIntegration(app, "bash", true); err != nil {
 		t.Fatal(err)
 	}
 
@@ -29,7 +29,7 @@ func TestAutoPathNeverEditsAStartupFile(t *testing.T) {
 	}
 	makeIntegrationStale(t, filepath.Join(home, ".config", "myapp", "shell", "bash"))
 
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 
 	if got, _ := os.ReadFile(rc); string(got) != userOnly {
 		t.Errorf("an ordinary program run edited the startup file:\n%s", got)
@@ -46,7 +46,7 @@ func TestAutoPathDoesNotCreateAStartupFile(t *testing.T) {
 
 	app := installApp()
 	app.AutoRefreshIntegration = true
-	if _, err := InstallShellIntegration(app, "zsh", true); err != nil {
+	if _, err := installShellIntegration(app, "zsh", true); err != nil {
 		t.Fatal(err)
 	}
 	// The user adopts ZDOTDIR after installing, so the startup file the auto path
@@ -55,7 +55,7 @@ func TestAutoPathDoesNotCreateAStartupFile(t *testing.T) {
 	t.Setenv("ZDOTDIR", zdot)
 	makeIntegrationStale(t, filepath.Join(home, ".config", "myapp", "shell", "zsh"))
 
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 
 	if _, err := os.Stat(filepath.Join(zdot, ".zshrc")); !os.IsNotExist(err) {
 		t.Errorf("an ordinary program run created a startup file")
@@ -70,15 +70,15 @@ func TestUninstallSurvivesAnOrdinaryRun(t *testing.T) {
 
 	app := installApp()
 	app.AutoRefreshIntegration = true
-	if _, err := InstallShellIntegration(app, "bash", true); err != nil {
+	if _, err := installShellIntegration(app, "bash", true); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := UninstallShellIntegration(app, "bash"); err != nil {
+	if _, err := uninstallShellIntegration(app, "bash"); err != nil {
 		t.Fatal(err)
 	}
 	after := homeTree(t, home)
 
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 
 	if got := homeTree(t, home); strings.Join(got, ",") != strings.Join(after, ",") {
 		t.Errorf("an ordinary run resurrected artifacts after uninstall:\nafter uninstall: %v\nafter one run:   %v", after, got)

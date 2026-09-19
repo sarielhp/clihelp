@@ -41,7 +41,7 @@ func TestInstallShellIntegrationWritesOneFileAndOneLine(t *testing.T) {
 	} {
 		t.Run(tt.shell, func(t *testing.T) {
 			home := sandboxHome(t)
-			res, err := InstallShellIntegration(installApp(), tt.shell, true)
+			res, err := installShellIntegration(installApp(), tt.shell, true)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -96,7 +96,7 @@ func TestInstallLeavesTheRestOfTheStartupFileAlone(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	first, err := InstallShellIntegration(installApp(), "bash", true)
+	first, err := installShellIntegration(installApp(), "bash", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestInstallLeavesTheRestOfTheStartupFileAlone(t *testing.T) {
 	}
 
 	// Installing again must not add a second block.
-	second, err := InstallShellIntegration(installApp(), "bash", true)
+	second, err := installShellIntegration(installApp(), "bash", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestInstallLeavesTheRestOfTheStartupFileAlone(t *testing.T) {
 	}
 
 	// And uninstalling must leave exactly what was there before.
-	if _, err := UninstallShellIntegration(installApp(), "bash"); err != nil {
+	if _, err := uninstallShellIntegration(installApp(), "bash"); err != nil {
 		t.Fatal(err)
 	}
 	restored, _ := os.ReadFile(rc)
@@ -141,7 +141,7 @@ func TestInstallSupersedesTheOldScriptLocation(t *testing.T) {
 	home := sandboxHome(t)
 
 	// A script installed the old way, into the shell's own directory.
-	legacy, err := InstallCompletion(installApp(), "bash")
+	legacy, err := installCompletion(installApp(), "bash")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func TestInstallSupersedesTheOldScriptLocation(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	res, err := InstallShellIntegration(installApp(), "bash", true)
+	res, err := installShellIntegration(installApp(), "bash", true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +169,7 @@ func TestInstallSupersedesTheOldScriptLocation(t *testing.T) {
 
 func TestInstallWithoutKeys(t *testing.T) {
 	home := sandboxHome(t)
-	if _, err := InstallShellIntegration(installApp(), "bash", false); err != nil {
+	if _, err := installShellIntegration(installApp(), "bash", false); err != nil {
 		t.Fatal(err)
 	}
 	body, err := os.ReadFile(filepath.Join(home, ".config", "myapp", "shell", "bash"))
@@ -197,7 +197,7 @@ func TestAutoInstallRefreshesButNeverCreates(t *testing.T) {
 	app := installApp()
 	app.AutoRefreshIntegration = true
 
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 	if _, err := os.Stat(filepath.Join(home, ".config", "myapp", "shell", "bash")); !os.IsNotExist(err) {
 		t.Errorf("auto-install created a shell integration nobody asked for")
 	}
@@ -206,7 +206,7 @@ func TestAutoInstallRefreshesButNeverCreates(t *testing.T) {
 	}
 
 	// Now install for real, and staleness must be repaired on the next run.
-	if _, err := InstallShellIntegration(app, "bash", true); err != nil {
+	if _, err := installShellIntegration(app, "bash", true); err != nil {
 		t.Fatal(err)
 	}
 	// Age the installed file the way a clihelp upgrade would: same content, an
@@ -220,7 +220,7 @@ func TestAutoInstallRefreshesButNeverCreates(t *testing.T) {
 	if err := os.WriteFile(path, []byte(stale), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 	body, _ := os.ReadFile(path)
 	if !strings.Contains(string(body), integrationVersion()) {
 		t.Errorf("a stale integration was not refreshed:\n%s", body)
@@ -251,7 +251,7 @@ func TestAutoInstallNeverCreatesACompletionScript(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 	if _, err := os.Stat(script); !os.IsNotExist(err) {
 		t.Errorf("an ordinary run created %s", script)
 	}
@@ -274,7 +274,7 @@ func TestAutoInstallNeverCreatesACompletionScript(t *testing.T) {
 		"clihelp-completion-version: 0", 1)
 	writeFixture(t, script, stale)
 
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 	got, err := os.ReadFile(script)
 	if err != nil {
 		t.Fatal(err)
@@ -303,7 +303,7 @@ func TestConcurrentInstallsKeepEveryBlock(t *testing.T) {
 				Name:     fmt.Sprintf("app%d", i),
 				Commands: []Command{{Name: "build", Description: "Build it", Run: func(*Context) error { return nil }}},
 			}
-			_, errs[i] = InstallShellIntegration(app, "bash", true)
+			_, errs[i] = installShellIntegration(app, "bash", true)
 		}(i)
 	}
 	wg.Wait()

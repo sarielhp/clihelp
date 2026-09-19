@@ -315,11 +315,16 @@ func TestExecuteVersionAndHelpInterception(t *testing.T) {
 	}
 }
 
+// An application that really does take positional arguments of its own says so,
+// and then gets them. It used to be enough to define Run, which also meant every
+// misspelled command was accepted as an argument and the program exited 0; the
+// two are separable now, and this is the half that asks for arguments.
 func TestExecuteRootRunReceivesPositionalArgs(t *testing.T) {
 	var received []string
 	in := make(chan []string, 1)
 	app := &App{
 		Name: "rootcli",
+		Args: MinimumNArgs(0),
 		Run: func(ctx *Context) error {
 			received = append(received, ctx.Args...)
 			in <- ctx.Args
@@ -336,6 +341,67 @@ func TestExecuteRootRunReceivesPositionalArgs(t *testing.T) {
 	<-in
 	if len(received) != 2 || received[0] != "some" || received[1] != "positional" {
 		t.Errorf("root Run received %v, want [some positional]", received)
+	}
+}
+
+// …and the half that does not. An application with commands and no Args of its
+// own is taken to have no positional arguments, so a word that is not one of its
+// commands is a typo — which is what it almost always is. Handling a bare
+// invocation no longer costs the unknown-command check.
+func TestRootRunDoesNotSwallowAMisspelledCommand(t *testing.T) {
+	ran := false
+	app := &App{
+		Name: "rootcli",
+		Run:  func(ctx *Context) error { ran = true; return nil },
+		Commands: []Command{
+			{Name: "deploy", Run: func(*Context) error { return nil }},
+			{Name: "destroy", Run: func(*Context) error { return nil }},
+		},
+	}
+	silentApp(app)
+
+	err := app.Execute([]string{"deploi"})
+	if err == nil {
+		t.Fatal("a misspelled command was accepted and the program reported success")
+	}
+	if !strings.Contains(err.Error(), "deploy") {
+		t.Errorf("no suggestion was offered: %v", err)
+	}
+	if ran {
+		t.Error("the root handler ran on a misspelled command")
+	}
+
+	// The bare invocation, which is what App.Run is for, still reaches it.
+	ran = false
+	if err := app.Execute(nil); err != nil {
+		t.Fatalf("the bare invocation failed: %v", err)
+	}
+	if !ran {
+		t.Error("the root handler did not run on a bare invocation")
+	}
+}
+
+// A command that declares it takes no positional arguments gets the same
+// treatment: its Run no longer hides the declaration.
+func TestACommandDeclaringNoArgsStillNamesTheUnknownCommand(t *testing.T) {
+	app := &App{
+		Name: "rootcli",
+		Commands: []Command{{
+			Name: "remote", Args: NoArgs,
+			Run: func(*Context) error { return nil },
+			Subcommands: []Command{
+				{Name: "add", Run: func(*Context) error { return nil }},
+				{Name: "remove", Run: func(*Context) error { return nil }},
+			},
+		}},
+	}
+	silentApp(app)
+	err := app.Execute([]string{"remote", "addd"})
+	if err == nil {
+		t.Fatal("a misspelled subcommand was accepted")
+	}
+	if !strings.Contains(err.Error(), "unknown command") || !strings.Contains(err.Error(), "add") {
+		t.Errorf("got %v, want an unknown-command error suggesting \"add\"", err)
 	}
 }
 

@@ -4,6 +4,12 @@ Welcome to the `clihelp` documentation hub.
 
 ---
 
+## Start here
+
+- [**How clihelp Decides**](how-clihelp-decides.md) — The mechanism rather than the API: the eleven decisions the library makes on your behalf, what each one reads, what it assumes when you declare nothing, and what you lose by not declaring it. Read this before writing code that produces help, usage, suggestions or argument errors — it is usually already done for you.
+
+---
+
 ## Topic Guides & Technical References
 
 - [Execution Lifecycle, Routing & Context](lifecycle-and-routing.md) — Pipeline order, lifecycle hooks, abort semantics, `clihelp.Context`, subcommands, and argument validation.
@@ -11,8 +17,7 @@ Welcome to the `clihelp` documentation hub.
 - [Shell Integration](completion.md) — One-command setup and exactly which files it writes, the Alt-H key binding, manual pages, wrapper scripts, the reserved `__clihelp` verbs, Bash/Zsh/Fish generators, dynamic completion callbacks, and live testing.
 - [GitHub Markdown Documentation Generator](markdown-generation.md) — Automatic Markdown help tree generation with SHA-256 caching.
 - [Recipes & Common Patterns](recipes-and-patterns.md) — Signal cancellation, unit testing commands, dynamic completion, command tree rendering, custom theming, and command abbreviations.
-- [AI Coding Agent Guidelines](ai-guidelines.md) — Best practices for LLM assistants constructing CLIs with `clihelp`.
-- [AI Context Specification (`llms.txt`)](../llms.txt) — Token-efficient single-file specification for LLM context ingestion.
+- [`llms.txt`](../llms.txt) — The index an LLM tool reads first, in the llms.txt convention: links, not a second copy of the API.
 - [Comparison with `spf13/cobra`](comparison-with-cobra.md) — Differences, design philosophy, code comparisons, and architectural tradeoffs.
 
 ---

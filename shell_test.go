@@ -58,8 +58,8 @@ func TestEveryEntryPointResolvesTheShellAlike(t *testing.T) {
 			_, err := IntegrationPath(app, s)
 			return err
 		},
-		"InstallCompletion": func(s string) error {
-			_, err := InstallCompletion(app, s)
+		"installCompletion": func(s string) error {
+			_, err := installCompletion(app, s)
 			return err
 		},
 		"GenKeyBindings": func(s string) error {
@@ -68,12 +68,12 @@ func TestEveryEntryPointResolvesTheShellAlike(t *testing.T) {
 		"GenShellIntegration": func(s string) error {
 			return GenShellIntegration(app, s, true, io.Discard)
 		},
-		"InstallShellIntegration": func(s string) error {
-			_, err := InstallShellIntegration(app, s, true)
+		"installShellIntegration": func(s string) error {
+			_, err := installShellIntegration(app, s, true)
 			return err
 		},
-		"UninstallShellIntegration": func(s string) error {
-			_, err := UninstallShellIntegration(app, s)
+		"uninstallShellIntegration": func(s string) error {
+			_, err := uninstallShellIntegration(app, s)
 			return err
 		},
 	}

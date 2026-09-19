@@ -36,7 +36,7 @@ func TestExamplesMayUseTheHelpFlagsTheAppAccepts(t *testing.T) {
 					Examples: []Example{{Line: tt.line, Description: "An example."}},
 				}},
 			}
-			if errs := app.ValidateExamples(); len(errs) > 0 {
+			if errs := app.validateExamples(); len(errs) > 0 {
 				t.Errorf("`%s` is accepted at run time but rejected by the validator: %v", tt.line, errs)
 			}
 		})
@@ -53,7 +53,7 @@ func TestExamplesCannotUseAHelpFlagTheAppDoesNotBind(t *testing.T) {
 			Examples: []Example{{Line: "myapp build -H", Description: "An example."}},
 		}},
 	}
-	errs := app.ValidateExamples()
+	errs := app.validateExamples()
 	if len(errs) == 0 {
 		t.Fatal("`-H` was accepted although ExtendedHelpFlag is not set")
 	}

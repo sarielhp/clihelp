@@ -27,7 +27,7 @@ func TestWriteThroughASymlinkedDotfile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := InstallShellIntegration(installApp(), "zsh", true); err != nil {
+	if _, err := installShellIntegration(installApp(), "zsh", true); err != nil {
 		t.Fatal(err)
 	}
 

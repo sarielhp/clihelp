@@ -78,7 +78,7 @@ func GenShellIntegration(app *App, shell string, keys bool, w io.Writer) error {
 	case "fish":
 		err = GenFishCompletion(app, &body)
 	default:
-		return fmt.Errorf("unsupported shell %q (supported: %s)", shell, strings.Join(SupportedShells, ", "))
+		return fmt.Errorf("unsupported shell %q (supported: %s)", shell, strings.Join(supportedShells, ", "))
 	}
 	if err != nil {
 		return err
@@ -128,7 +128,7 @@ func integrationIsCurrent(path string) bool {
 
 // writeIntegrationFile writes the generated file and nothing else.
 //
-// It is separate from InstallShellIntegration because the two have different
+// It is separate from installShellIntegration because the two have different
 // callers with different rights: an explicit install may edit a startup file,
 // and the refresh that happens inside an ordinary program run may not. Folding
 // them together is what let an upgrade re-add a block the user had deleted by
@@ -164,9 +164,9 @@ func uninstalledMarker(target string) string {
 	return filepath.Join(filepath.Dir(target), ".uninstalled")
 }
 
-// InstallResult reports everything an install or uninstall touched, so the
+// installResult reports everything an install or uninstall touched, so the
 // command can tell the user exactly what changed in their home directory.
-type InstallResult struct {
+type installResult struct {
 	Shell       string   // the shell that was set up
 	Integration string   // the generated file, "" when it was removed
 	Startup     string   // the startup file that sources it
@@ -201,12 +201,12 @@ func setupHint(app *App) string {
 // though: a page already installed system-wide is a collision clihelp refuses to
 // overwrite, and that must be reported rather than fail a shell setup that
 // otherwise succeeded.
-func installProgram(app *App, shell string, keys, man bool) (InstallResult, error) {
-	res, err := InstallShellIntegration(app, shell, keys)
+func installProgram(app *App, shell string, keys, man bool) (installResult, error) {
+	res, err := installShellIntegration(app, shell, keys)
 	if err != nil || !man {
 		return res, err
 	}
-	page, manErr := InstallManPage(app, false)
+	page, manErr := installManPage(app, false)
 	if manErr != nil {
 		res.Warnings = append(res.Warnings, "manual page not installed: "+manErr.Error())
 		return res, nil
@@ -218,12 +218,12 @@ func installProgram(app *App, shell string, keys, man bool) (InstallResult, erro
 // uninstallProgram undoes exactly what installProgram did. The report promises
 // to remove everything, so a manual page left behind would be one the user is
 // never told about again.
-func uninstallProgram(app *App, shell string) (InstallResult, error) {
-	res, err := UninstallShellIntegration(app, shell)
+func uninstallProgram(app *App, shell string) (installResult, error) {
+	res, err := uninstallShellIntegration(app, shell)
 	if err != nil {
 		return res, err
 	}
-	page, manErr := UninstallManPage(app)
+	page, manErr := uninstallManPage(app)
 	switch {
 	case manErr != nil:
 		res.Warnings = append(res.Warnings, "manual page not removed: "+manErr.Error())
@@ -264,8 +264,8 @@ func startupFile(app *App, shell string) (path string, owned bool, err error) {
 		return filepath.Join(configHome, "fish", "conf.d", appName(app)+".fish"), true, nil
 	}
 	// Unreachable while every caller resolves the shell first; kept so that
-	// adding a shell to SupportedShells fails here rather than silently.
-	return "", false, fmt.Errorf("unsupported shell %q (supported: %s)", shell, strings.Join(SupportedShells, ", "))
+	// adding a shell to supportedShells fails here rather than silently.
+	return "", false, fmt.Errorf("unsupported shell %q (supported: %s)", shell, strings.Join(supportedShells, ", "))
 }
 
 // bootstrapBlock is the text placed in the startup file. It names a fixed path
@@ -367,22 +367,22 @@ func removeBlock(contents, begin, end string) (string, bool, error) {
 	}
 }
 
-// InstallShellIntegration writes the integration file for shell and makes the
+// installShellIntegration writes the integration file for shell and makes the
 // shell source it, and reports everything it touched. With keys false it writes
 // only the completion half and still sets up the sourcing.
 //
 // It is idempotent: re-running it rewrites the generated file and leaves the
 // startup file alone unless the block is missing or out of date.
-func InstallShellIntegration(app *App, shell string, keys bool) (InstallResult, error) {
+func installShellIntegration(app *App, shell string, keys bool) (installResult, error) {
 	target, err := IntegrationPath(app, shell)
 	if err != nil {
-		return InstallResult{}, err
+		return installResult{}, err
 	}
 	shell, err = resolveShell(shell)
 	if err != nil {
-		return InstallResult{}, err
+		return installResult{}, err
 	}
-	res := InstallResult{Shell: shell, Integration: target}
+	res := installResult{Shell: shell, Integration: target}
 
 	if err := writeIntegrationFile(app, shell, keys, target); err != nil {
 		return res, err
@@ -448,19 +448,19 @@ func installBootstrap(app *App, shell, target string) (string, bool, error) {
 	return path, true, nil
 }
 
-// UninstallShellIntegration removes what InstallShellIntegration wrote: the
+// uninstallShellIntegration removes what installShellIntegration wrote: the
 // generated file, and the block in the startup file. Nothing else in that file
 // is touched.
-func UninstallShellIntegration(app *App, shell string) (InstallResult, error) {
+func uninstallShellIntegration(app *App, shell string) (installResult, error) {
 	target, err := IntegrationPath(app, shell)
 	if err != nil {
-		return InstallResult{}, err
+		return installResult{}, err
 	}
 	shell, err = resolveShell(shell)
 	if err != nil {
-		return InstallResult{}, err
+		return installResult{}, err
 	}
-	res := InstallResult{Shell: shell}
+	res := installResult{Shell: shell}
 
 	if err := os.Remove(target); err == nil {
 		res.Removed = append(res.Removed, target)

@@ -131,12 +131,12 @@ func explainBudget(lines int) int {
 	return budget
 }
 
-// Explain writes the expanded form of a typed command line followed by the help
+// explainLine writes the expanded form of a typed command line followed by the help
 // for the command it names, trimmed to fit budget lines in total.
 //
 // The first line of the output is always the expanded command line, so a shell
 // key binding can put it back on the prompt and print the remainder.
-func (a *App) Explain(w io.Writer, line string, columns, budget int) {
+func (a *App) explainLine(w io.Writer, line string, columns, budget int) {
 	expanded, path := a.expandCommandLine(line)
 	fmt.Fprintln(w, expanded)
 
@@ -186,7 +186,7 @@ func (a *App) handleExplain(args []string) error {
 		line = args[0]
 	}
 	columns, lines := explainGeometry()
-	a.Explain(a.stdout(), line, columns, explainBudget(lines))
+	a.explainLine(a.stdout(), line, columns, explainBudget(lines))
 	return nil
 }
 
@@ -408,7 +408,7 @@ func GenKeyBindings(app *App, shell string, w io.Writer) error {
 	case "fish":
 		tmpl = fishKeysTemplate
 	default:
-		return fmt.Errorf("unsupported shell %q (supported: %s)", shell, strings.Join(SupportedShells, ", "))
+		return fmt.Errorf("unsupported shell %q (supported: %s)", shell, strings.Join(supportedShells, ", "))
 	}
 
 	script := strings.NewReplacer(

@@ -48,7 +48,7 @@ func TestZshHonoursZDOTDIR(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Setenv("ZDOTDIR", zdot)
-		if _, err := InstallShellIntegration(app, "zsh", true); err != nil {
+		if _, err := installShellIntegration(app, "zsh", true); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := os.Stat(filepath.Join(zdot, ".zshrc")); err != nil {
@@ -69,7 +69,7 @@ func TestIntegrationHasKeysReadsTheFile(t *testing.T) {
 	app := installApp()
 
 	for _, keys := range []bool{true, false} {
-		if _, err := InstallShellIntegration(app, "bash", keys); err != nil {
+		if _, err := installShellIntegration(app, "bash", keys); err != nil {
 			t.Fatal(err)
 		}
 		path := filepath.Join(home, ".config", "myapp", "shell", "bash")
@@ -90,11 +90,11 @@ func TestUninstalledMarkerIsHonoured(t *testing.T) {
 	home := sandboxHome(t)
 	app := installApp()
 
-	if _, err := InstallShellIntegration(app, "bash", true); err != nil {
+	if _, err := installShellIntegration(app, "bash", true); err != nil {
 		t.Fatal(err)
 	}
 	target := filepath.Join(home, ".config", "myapp", "shell", "bash")
-	if _, err := UninstallShellIntegration(app, "bash"); err != nil {
+	if _, err := uninstallShellIntegration(app, "bash"); err != nil {
 		t.Fatal(err)
 	}
 	marker := uninstalledMarker(target)
@@ -112,7 +112,7 @@ func TestUninstalledMarkerIsHonoured(t *testing.T) {
 	}
 	t.Setenv("TERM", "xterm")
 	app.AutoRefreshIntegration = true
-	TestExecute(app, []string{"build"}).AssertNoError(t)
+	testExecute(app, []string{"build"}).AssertNoError(t)
 	if _, err := os.Stat(target); err == nil {
 		t.Error("the automatic path restored an integration the user had removed")
 	}
@@ -159,7 +159,7 @@ func TestManPageIsCurrentReadsTheVersion(t *testing.T) {
 	home := sandboxHome(t)
 	app := installApp()
 
-	path, err := InstallManPage(app, true)
+	path, err := installManPage(app, true)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -23,7 +23,7 @@ func renderOptionsGrouped(w io.Writer, th Theme, o Options, termWidth int, opts 
 	if len(params) == 0 {
 		return
 	}
-	// See normalizeGroups: RenderMan reaches here with the raw list, so an
+	// See normalizeGroups: renderManPage reaches here with the raw list, so an
 	// ungrouped flag used to be printed under the previous group's heading.
 	groups = normalizeGroups(groups, "Other Flags")
 	indent := colIndentFor(params, termWidth, minTextColumns)
@@ -150,9 +150,9 @@ func (a *App) collectRenderFlags() []Option {
 	return append(allFlags, stdFlags...)
 }
 
-// RenderFlags writes the dedicated global flags overview: usage template,
+// renderFlagsPage writes the dedicated global flags overview: usage template,
 // grouped persistent flags, standard help flags, and guidance.
-func (a *App) RenderFlags(o Options) {
+func (a *App) renderFlagsPage(o Options) {
 	o = o.withApp(a)
 	a.pageOutput(o, func(w io.Writer) {
 		th := o.theme(a)
@@ -175,15 +175,10 @@ func (a *App) RenderFlags(o Options) {
 	})
 }
 
-// RenderGlobalFlags is an alias for RenderFlags.
-func (a *App) RenderGlobalFlags(o Options) {
-	a.RenderFlags(o)
-}
-
-// RenderMan writes an exhaustive, Unix manual-style reference containing the
+// renderManPage writes an exhaustive, Unix manual-style reference containing the
 // full application overview, grouped global options, all command hierarchies,
 // parameters, local flags, examples, notes, and help topics.
-func (a *App) RenderMan(o Options) {
+func (a *App) renderManPage(o Options) {
 	o = o.withApp(a)
 	a.pageOutput(o, func(w io.Writer) {
 		th := o.theme(a)
@@ -353,8 +348,8 @@ func (a *App) renderManNotes(w io.Writer, th Theme, o Options, termWidth int, no
 	}
 }
 
-// RenderHelpTopics writes the index of available help topics.
-func (a *App) RenderHelpTopics(o Options) {
+// renderTopicsPage writes the index of available help topics.
+func (a *App) renderTopicsPage(o Options) {
 	o = o.withApp(a)
 	a.pageOutput(o, func(w io.Writer) {
 		th := o.theme(a)

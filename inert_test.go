@@ -52,7 +52,7 @@ func TestEveryTestCanFail(t *testing.T) {
 	for _, m := range matches {
 		if info, statErr := os.Stat(m); statErr == nil && info.IsDir() {
 			switch filepath.Base(m) {
-			case "doc", "tree", "example":
+			case "doc", "tree", "example", "clihelptest":
 				dirs = append(dirs, m)
 			}
 		}

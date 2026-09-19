@@ -36,6 +36,11 @@ func leadingTestApp(st *leadingState) *App {
 	}
 	return &App{
 		Name: "mail",
+		// This application takes positional arguments of its own — the "--"
+		// cases below pass them — so it declares that. Defining Run used to
+		// imply it, which also meant a misspelled command was accepted as an
+		// argument.
+		Args: MinimumNArgs(0),
 		PersistentOptions: []Option{
 			String(&st.account, "-A, --account <name>", "", "Account to use"),
 			Bool(&st.readOnly, "--read-only", false, "Make no changes"),
@@ -195,7 +200,7 @@ func TestLeadingGlobalFlagsResolveCommand(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var st leadingState
-			res := TestExecute(leadingTestApp(&st), tt.args)
+			res := testExecute(leadingTestApp(&st), tt.args)
 			res.AssertNoError(t)
 			if st.ran != tt.wantRan {
 				t.Fatalf("ran %q, want %q (stdout: %q)", st.ran, tt.wantRan, res.Stdout)
@@ -225,7 +230,7 @@ func TestLeadingUnknownFlagsStillFail(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var st leadingState
-			res := TestExecute(leadingTestApp(&st), tt.args)
+			res := testExecute(leadingTestApp(&st), tt.args)
 			res.AssertErrorContains(t, tt.errSub)
 			if st.ran != "" {
 				t.Errorf("ran %q, want nothing to run", st.ran)
@@ -248,7 +253,7 @@ func TestLeadingFlagsBeforeHelp(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var st leadingState
-			res := TestExecute(leadingTestApp(&st), tt.args)
+			res := testExecute(leadingTestApp(&st), tt.args)
 			res.AssertNoError(t)
 			if st.ran != "" {
 				t.Errorf("ran %q, want help instead", st.ran)
@@ -267,7 +272,7 @@ func TestLeadingFlagsInCompletion(t *testing.T) {
 	t.Run("subcommands complete after a global flag", func(t *testing.T) {
 		var st leadingState
 		app := leadingTestApp(&st)
-		res := TestExecute(app, []string{"__complete", "--read-only", "db", ""})
+		res := testExecute(app, []string{"__complete", "--read-only", "db", ""})
 		res.AssertNoError(t)
 		res.AssertStdoutContains(t, "migrate")
 		if strings.Contains(res.Stdout, "search") {
@@ -278,7 +283,7 @@ func TestLeadingFlagsInCompletion(t *testing.T) {
 	t.Run("command flags complete after a global flag with a value", func(t *testing.T) {
 		var st leadingState
 		app := leadingTestApp(&st)
-		res := TestExecute(app, []string{"__complete", "-A", "work", "search", "-"})
+		res := testExecute(app, []string{"__complete", "-A", "work", "search", "-"})
 		res.AssertNoError(t)
 		res.AssertStdoutContains(t, "--number")
 	})
@@ -314,7 +319,7 @@ func TestLeadingFlagsInExampleValidation(t *testing.T) {
 		{Line: "mail -A work search invoice -n 2"},
 		{Line: "mail --read-only db --db-url pg://x migrate"},
 	}
-	if errs := app.ValidateExamples(); len(errs) != 0 {
+	if errs := app.validateExamples(); len(errs) != 0 {
 		t.Fatalf("expected no validation errors, got %v", errs)
 	}
 }
@@ -407,7 +412,7 @@ func TestLeadingFlagsUnknownCommandAfterGlobal(t *testing.T) {
 	app := leadingTestApp(&st)
 	app.Run = nil // without a root Run, an unknown first word is an error
 
-	res := TestExecute(app, []string{"--read-only", "bogus"})
+	res := testExecute(app, []string{"--read-only", "bogus"})
 	res.AssertErrorContains(t, `unknown command "bogus"`)
 
 	// The same invocation still resolves when the word names a command.
@@ -471,7 +476,7 @@ func TestResolutionDoesNotBindOptions(t *testing.T) {
 		var st leadingState
 		app := newApp(&st)
 		live(&st)
-		TestExecute(app, []string{"__complete", "search", ""}).AssertNoError(t)
+		testExecute(app, []string{"__complete", "search", ""}).AssertNoError(t)
 		assertLive(t, &st, "__complete")
 	})
 }
@@ -490,12 +495,12 @@ func TestResolutionMutatesNothing(t *testing.T) {
 		run  func(*App)
 	}{
 		{"resolveCommand", func(a *App) { _, _ = a.resolveCommand([]string{"-v", "-A", "work", "search"}) }},
-		{"ValidateExamples", func(a *App) { _ = a.ValidateExamples() }},
+		{"ValidateExamples", func(a *App) { _ = a.validateExamples() }},
 		{"RenderGlobal", func(a *App) { a.RenderGlobal(Options{Writer: io.Discard, Width: 80}) }},
 		{"RenderCommand", func(a *App) { a.RenderCommand(Options{Writer: io.Discard, Width: 80}, "search") }},
-		{"RenderMan", func(a *App) { a.RenderMan(Options{Writer: io.Discard, Width: 80}) }},
-		{"__complete", func(a *App) { TestExecute(a, []string{"__complete", "search", ""}) }},
-		{"__explain", func(a *App) { TestExecute(a, []string{"__explain", "mail search inv"}) }},
+		{"RenderMan", func(a *App) { a.renderManPage(Options{Writer: io.Discard, Width: 80}) }},
+		{"__complete", func(a *App) { testExecute(a, []string{"__complete", "search", ""}) }},
+		{"__explain", func(a *App) { testExecute(a, []string{"__explain", "mail search inv"}) }},
 	} {
 		t.Run(entry.name, func(t *testing.T) {
 			var st leadingState

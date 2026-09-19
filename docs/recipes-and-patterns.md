@@ -61,7 +61,7 @@ func main() {
 	}
 
 	if err := app.ExecuteContext(ctx, os.Args[1:]); err != nil {
-		clihelp.PrintError(err)
+		app.PrintError(err)
 		os.Exit(1)
 	}
 }
@@ -75,9 +75,11 @@ Inside any `Run`, `PreRun`, or `PostRun` handler, access `c.Context` to listen f
 
 `clihelp` provides built-in testing utilities to run commands against captured I/O streams and statically audit the command tree configuration.
 
-### Testing Commands (`clihelp.TestExecute`)
+### Testing Commands (`clihelptest.Execute`)
 
-Instead of manually redirecting I/O streams or spawning sub-processes, use `clihelp.TestExecute` to simulate execution. It captures outputs and exposes clean assertion helpers:
+Instead of manually redirecting I/O streams or spawning sub-processes, use `clihelptest.Execute` to simulate execution. It captures outputs and exposes clean assertion helpers.
+
+The harness lives in `github.com/sarielhp/clihelp/clihelptest`, a separate package, so that `clihelp` itself never imports `testing` — otherwise every binary built on this library would link the test framework. Import it only from your own tests:
 
 ```go
 package main_test
@@ -87,6 +89,7 @@ import (
 	"testing"
 
 	"github.com/sarielhp/clihelp"
+	"github.com/sarielhp/clihelp/clihelptest"
 )
 
 func TestBuildCommand(t *testing.T) {
@@ -109,13 +112,13 @@ func TestBuildCommand(t *testing.T) {
 	}
 
 	// Simulate execution and assert outcomes
-	res := clihelp.TestExecute(app, []string{"build", "-o", "bin/out"})
+	res := clihelptest.Execute(app, []string{"build", "-o", "bin/out"})
 	res.AssertNoError(t)
 	res.AssertStdoutContains(t, "Built to bin/out")
 }
 ```
 
-If testing interactive fallback prompts, use `clihelp.TestExecuteWithStdin(app, args, stdinReader)` to supply mock responses.
+If testing interactive fallback prompts, use `clihelptest.ExecuteWithStdin(app, args, stdinReader)` to supply mock responses.
 
 ### Sanity Tree Auditing (`clihelp.Audit`)
 
@@ -136,7 +139,7 @@ func TestAppSanity(t *testing.T) {
 The audit helper enforces consistent command structures by checking for word-set path duplicates (e.g. flagging a bad design where `mytool scan spam` and `mytool spam scan` are different paths). To allow valid structural overlaps, provide whitelisted path groupings:
 
 ```go
-err := clihelp.AuditWithOptions(app, clihelp.AuditOptions{
+err := clihelp.Audit(app, clihelp.AuditOptions{
 	AllowPathPermutations: [][]string{
 		{"job", "run"}, // allows both "run job" and "job run" paths
 	},

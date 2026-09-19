@@ -357,7 +357,7 @@ func TestOptionDeprecation(t *testing.T) {
 	}
 
 	// 2. Verify warning prints to stderr during run
-	res := TestExecute(app, []string{"build", "-f", "test.txt"})
+	res := testExecute(app, []string{"build", "-f", "test.txt"})
 	res.AssertNoError(t)
 	res.AssertStderrContains(t, "Warning: flag --file is deprecated: Use --input instead")
 }
@@ -394,14 +394,14 @@ func TestRequiredFlagConstraints(t *testing.T) {
 	}
 
 	// 2. Verify missing required flags fail validation without TTY fallback
-	resNoTTY := TestExecute(app, []string{"export"})
+	resNoTTY := testExecute(app, []string{"export"})
 	resNoTTY.AssertErrorContains(t, "required flag(s)")
 
 	// 3. Verify interactive fallback prompts on stderr and constructs tip
 	app.InteractiveFallback = true
 	// Input 1 for format (text input: "json"), Input 2 for force (select choice 1: "true")
 	stdinBuf := bytes.NewBufferString("json\n1\n")
-	resTTY := TestExecuteWithStdin(app, []string{"export"}, stdinBuf)
+	resTTY := testExecuteWithStdin(app, []string{"export"}, stdinBuf)
 	resTTY.AssertNoError(t)
 	resTTY.AssertStderrContains(t, "Enter value for required flag --format")
 	resTTY.AssertStderrContains(t, "select a value for required flag --force")
@@ -452,27 +452,27 @@ func TestOptionsRelationValidators(t *testing.T) {
 	app := &App{Name: "testapp", Commands: commands}
 
 	// 1. Test mutually exclusive flags fail
-	res := TestExecute(app, []string{"output", "--json", "j.json", "--yaml", "y.yaml"})
+	res := testExecute(app, []string{"output", "--json", "j.json", "--yaml", "y.yaml"})
 	res.AssertErrorContains(t, "mutually exclusive")
 
 	// 2. Test required together fails when one is missing
-	res = TestExecute(app, []string{"output", "--cert", "c.pem"})
+	res = testExecute(app, []string{"output", "--cert", "c.pem"})
 	res.AssertErrorContains(t, "must be used together")
 
 	// 3. Test required together succeeds when both are present
-	res = TestExecute(app, []string{"output", "--cert", "c.pem", "--key", "k.pem"})
+	res = testExecute(app, []string{"output", "--cert", "c.pem", "--key", "k.pem"})
 	res.AssertNoError(t)
 
 	// 4. Test RequiredWith fails when dependent flag is missing
-	res = TestExecute(app, []string{"storage", "--upload", "file.txt"})
+	res = testExecute(app, []string{"storage", "--upload", "file.txt"})
 	res.AssertErrorContains(t, "flag --bucket is required when using --upload")
 
 	// 5. Test RequiredIf fails when condition matches but flag is missing
-	res = TestExecute(app, []string{"storage", "--auth-method", "token"})
+	res = testExecute(app, []string{"storage", "--auth-method", "token"})
 	res.AssertErrorContains(t, "flag --token is required when auth-method is set to \"token\"")
 
 	// 6. Test RequiredIf succeeds when condition matches and flag is present
-	res = TestExecute(app, []string{"storage", "--auth-method", "token", "--token", "secret"})
+	res = testExecute(app, []string{"storage", "--auth-method", "token", "--token", "secret"})
 	res.AssertNoError(t)
 }
 
@@ -539,7 +539,7 @@ func TestAuditHelper(t *testing.T) {
 	}
 
 	// 5. Whitelisted path permutation should succeed audit
-	err := AuditWithOptions(badApp4, AuditOptions{
+	err := Audit(badApp4, AuditOptions{
 		AllowPathPermutations: [][]string{
 			{"scan", "spam"},
 		},

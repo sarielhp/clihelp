@@ -20,7 +20,12 @@ type Option struct {
 	Deprecated  string                           // Deprecation notice
 	Required    bool                             // Required flag constraint
 	Complete    func(toComplete string) []string // Dynamic shell tab-completion callback
-	Binder      func(fs *pflag.FlagSet) error    // Registers the flag on fs; returns an error on duplicate/help-flag conflicts
+	// Binder registers the flag and returns an error on a duplicate or a
+	// help-flag conflict. The constructors below fill it in; setting it by hand is
+	// the escape hatch for a pflag feature clihelp has no constructor for — an
+	// option whose value is optional, for instance, which needs NoOptDefVal. It is
+	// the one place pflag is named in this API on purpose.
+	Binder func(fs *pflag.FlagSet) error
 
 	// arity records whether this option consumes the argument that follows it.
 	// The typed constructors set it; an Option assembled by hand leaves it
@@ -94,10 +99,9 @@ type Note struct {
 }
 
 // ArgsValidator validates positional arguments after flag parsing.
-type ArgsValidator func(args []string) error
 
 // OptionsValidator validates command-line flags after parsing.
-type OptionsValidator func(fs *pflag.FlagSet) error
+type OptionsValidator func(opts Flags) error
 
 // Command represents an executable command or category node.
 type Command struct {
@@ -138,6 +142,23 @@ type App struct {
 	BeforeRun         func(ctx *Context) error
 	AfterRun          func(ctx *Context) error
 	Run               func(ctx *Context) error
+	// Args validates the application's own positional arguments, the ones Run
+	// receives, exactly as Command.Args does for a command.
+	//
+	// It also says whether an unrecognised first word is a typo or an argument.
+	// Defining Run used to answer that on its own — a handler was taken to own
+	// every word after it — so an application that wanted to handle a bare
+	// invocation was forced to accept every misspelled command as a positional
+	// argument, exit 0, and find its own way to say "did you mean". Declaring
+	// Args: NoArgs here says the application takes no positional arguments, and
+	// the unknown-command check runs as it does for an application with no Run
+	// at all.
+	//
+	// Left nil, an application that has commands is assumed to take no
+	// positional arguments of its own, because a word that is not one of its
+	// commands is far more likely to be a typo than an argument. An application
+	// with no commands is unaffected either way.
+	Args ArgsValidator
 
 	// AbbrevCommands enables prefix-based command matching. When true, a unique
 	// prefix of a command name (or alias) is accepted as a match. When the prefix
@@ -178,17 +199,6 @@ type App struct {
 	// prompt to re-run setup and no symptom to notice; the refresh is what makes
 	// a one-time setup stay correct across upgrades.
 	AutoRefreshIntegration bool
-	// AutoInstallCompletion is the former name of AutoRefreshIntegration, and
-	// either field enables the same behaviour.
-	//
-	// Deprecated: the name says "install completion" for something that can do
-	// neither. It has not created a file since the unattended path was narrowed
-	// to refreshing what the user already installed, and it refreshes the man
-	// page as well as the completion script. An author reading the old name
-	// would reasonably expect setting it to install completions for their users,
-	// which is the misreading that produced the overreach. Use
-	// AutoRefreshIntegration.
-	AutoInstallCompletion bool
 
 	// Presentation overrides
 	Theme       *Theme

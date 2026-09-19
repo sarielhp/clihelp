@@ -59,7 +59,7 @@ func TestMalformedFlagSpecsAreErrorsNotPanics(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			app := specApp(tt.option())
-			res := TestExecute(app, []string{"run"})
+			res := testExecute(app, []string{"run"})
 			res.AssertErrorContains(t, tt.wantErr)
 			if err := Audit(app); err == nil || !strings.Contains(err.Error(), tt.wantErr) {
 				t.Errorf("Audit error = %v, want one containing %q", err, tt.wantErr)
@@ -83,7 +83,7 @@ func TestBoolToggleBindsAliasLongNames(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			color := !tt.want
 			app := specApp(BoolToggle(&color, "--[no-]color, --colour, -c, -C", !tt.want, "colorize"))
-			res := TestExecute(app, tt.args)
+			res := testExecute(app, tt.args)
 			res.AssertNoError(t)
 			if color != tt.want {
 				t.Errorf("color = %v, want %v", color, tt.want)

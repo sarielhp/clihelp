@@ -88,10 +88,13 @@ func TestGroupingCommandReportsALeftoverSubcommand(t *testing.T) {
 	}
 }
 
-// An app with its own Run still receives its positional arguments.
+// An app that declares it takes positional arguments still receives them,
+// including after a "--". Defining Run used to be the declaration, which coupled
+// it to accepting every misspelled command as an argument.
 func TestRootRunStillReceivesPositionals(t *testing.T) {
 	var got []string
-	app := &App{Name: "app", Run: func(ctx *Context) error { got = ctx.Args; return nil },
+	app := &App{Name: "app", Args: MinimumNArgs(0),
+		Run:      func(ctx *Context) error { got = ctx.Args; return nil },
 		Commands: []Command{{Name: "sub", Run: nopRun}}}
 	silentApp(app)
 	if err := app.Execute([]string{"--", "anything"}); err != nil {

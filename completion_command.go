@@ -168,7 +168,7 @@ func completionUninstallSubcommand() Command {
 }
 
 // reportInstall names every file the installation touched.
-func reportInstall(w io.Writer, app *App, res InstallResult) {
+func reportInstall(w io.Writer, app *App, res installResult) {
 	fmt.Fprintf(w, "\u2713 %s shell integration installed\n", res.Shell)
 	fmt.Fprintf(w, "    generated:  %s\n", res.Integration)
 	if res.Startup != "" {
@@ -191,7 +191,7 @@ func reportInstall(w io.Writer, app *App, res InstallResult) {
 	fmt.Fprintf(w, "Run '%s uninstall' to undo all of this.\n", setupHint(app))
 }
 
-func reportUninstall(w io.Writer, res InstallResult) {
+func reportUninstall(w io.Writer, res installResult) {
 	if len(res.Removed) == 0 && !res.StartupEdit {
 		fmt.Fprintf(w, "nothing to remove for %s\n", res.Shell)
 		return

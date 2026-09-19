@@ -1,187 +1,31 @@
-# clihelp — Declarative Go CLI Framework & Help Text Formatter
+# clihelp
 
-> `clihelp` is a Go library for parsing command-line arguments and generating clean, detailed usage and help messages (similar in functionality to Cobra). It features pflag-backed option parsing, hierarchical routing, lifecycle hooks, prefix command matching, command tree rendering, pager integration, terminal theming with ANSI/OSC 8 link support, and GitHub Markdown documentation generation.
+> A declarative Go library for command-line applications: hierarchical command
+> routing, pflag-backed option binding, and width-aware coloured help, manual
+> pages and Markdown generated from one struct literal.
 
-## Package Architecture
+Import path: `github.com/sarielhp/clihelp`
 
-- Import path: `github.com/sarielhp/clihelp`
-- Main entry point: `app.Execute(os.Args[1:])` or `app.ExecuteContext(ctx, os.Args[1:])`
-- Error rendering: `clihelp.PrintError(err)`
-- Tree rendering: `app.RenderTree(clihelp.Options{Writer: w})`
+This file follows the llms.txt convention: it is an index, not a specification.
+It used to be a copy of the API, and a copy drifts — it named three functions
+that no longer existed and told readers to call a method as a package function,
+which produced code that did not compile. The authoritative API is `go doc
+github.com/sarielhp/clihelp`, which cannot drift because it is generated from
+the source.
 
-## Core Types
+## Start here
 
-```go
-type App struct {
-    Name                      string
-    Description               string
-    Version                   string
-    GlobalNote                string
-    AbbrevCommands            bool       // Enable prefix command abbreviation matching (e.g. "b" -> "build")
-    Pager                     bool       // Enable automatic paging via $PAGER when output exceeds terminal height
-    OmitGlobalFlagsInCommands bool       // Suppress global flags table in subcommands, showing 1-line reference
-    ExtendedHelpFlag          bool       // Enable -H as opt-in single-letter shortcut for extended help (--help)
-    InteractiveFallback       bool       // Prompt interactively for missing required options in a TTY
-    AutoInstallCompletion     bool       // Keep an installed integration current; never creates a file
-    Theme                     Theme      // ANSI styling configuration
-    PersistentOptions         []Option
-    Commands                  []Command
-    BeforeRun                 func(ctx *Context) error
-    AfterRun                  func(ctx *Context) error
-    Run                       func(ctx *Context) error
-    Stdout                    io.Writer
-    Stderr                    io.Writer
-}
+- [How clihelp decides](docs/how-clihelp-decides.md): the mechanism. The eleven decisions the library makes on the author's behalf, what each reads from `App`, `Command` and `Option`, what it assumes when a field is undeclared, and what is lost by leaving it so. Then the invariants a caller can rely on, the things the library already does so that nobody builds them twice, the escape hatches and their cost, and a complete annotated application.
 
-type Command struct {
-    Name              string
-    Aliases           []string
-    Description       string
-    LongDescription   string     // In-depth documentation displayed in extended help (--help/-H/help)
-    UsageLine         string
-    Group             string     // Group heading in command lists
-    Hidden            bool       // Hide from help listings
-    PersistentOptions []Option
-    Options           []Option
-    Subcommands       []Command
-    Examples          []Example
-    Notes             []Note
-    Args              ArgsValidator
-    OptionsValidator  OptionsValidator
-    PreRun            func(ctx *Context) error
-    Run               func(ctx *Context) error
-    PostRun           func(ctx *Context) error
-}
+## Reference
 
-type Note struct {
-    Heading string
-    Text    string
-    Raw     bool       // Preserve preformatted text and verbatim spacing without reflow
-}
+- [Execution lifecycle and routing](docs/lifecycle-and-routing.md): pipeline order, lifecycle hooks, abort semantics, `Context`, subcommands.
+- [Flag and option specification](docs/flags-and-options.md): the spec-string syntax (`"--tag <v>, -t, -T"`), the constructors, toggle pairs, custom value types, and the reserved help flags.
+- [Shell integration](docs/completion.md): one-command setup and the files it writes, the Alt-H binding, manual pages, the reserved `__clihelp` verbs, and the generators a packager uses.
+- [Markdown generation](docs/markdown-generation.md): generating a help tree, and the hash that keeps it current.
+- [Recipes and patterns](docs/recipes-and-patterns.md): cancellation, testing commands with `clihelptest`, dynamic completion, theming.
 
-type Context struct {
-    Context context.Context
-    App     *App
-    Command *Command
-    Args    []string   // Validated positional arguments (flags stripped)
-    RawArgs []string   // Original arguments slice
-    Stdout  io.Writer
-    Stderr  io.Writer
-}
-```
+## Optional
 
-## Execution Pipeline & Lifecycle Hooks
-
-Hook Execution Order:
-1. `App.BeforeRun(ctx)`
-2. `Command.PreRun(ctx)`
-3. `Command.Run(ctx)` (or `App.Run(ctx)` if root command without subcommand)
-4. `Command.PostRun(ctx)`
-5. `App.AfterRun(ctx)`
-
-Abort Semantics:
-- If flag parsing fails, argument validation fails, or any hook returns a non-nil `error`, execution aborts immediately and downstream hooks are skipped.
-
-## Option Constructors
-
-| Constructor | Spec Syntax Example | Target Type | Behavior |
-|---|---|---|---|
-| `clihelp.String(target, spec, default, usage)` | `"-o, --output PATH"` | `*string` | Binds string flag. Sets `*target = default`. |
-| `clihelp.Int(target, spec, default, usage)` | `"-p, --port N"` | `*int` | Binds int flag. Sets `*target = default`. |
-| `clihelp.Bool(target, spec, default, usage)` | `"-v, --verbose"` | `*bool` | Binds boolean flag (`true` when passed). |
-| `clihelp.BoolToggle(target, spec, default, usage)` | `"--[no-]cache"` | `*bool` | Binds `--cache` (`true`) and `--no-cache` (`false`). |
-| `clihelp.Duration(target, spec, default, usage)` | `"-t, --timeout SEC"` | `*time.Duration` | Binds duration string (e.g. `"30s"`, `"1m"`). |
-| `clihelp.StringSlice(target, spec, default, usage)` | `"-i, --include ITEM"` | `*[]string` | Repeatable / comma-separated string list. |
-| `clihelp.Enum(target, spec, allowed, default, usage)` | `"-s, --stage STAGE"` | `*string` | Restricts values to `allowed` slice; auto-completes. |
-| `clihelp.Var(targetValue, spec, usage)` | `"--custom VAL"` | `pflag.Value` | Binds custom `pflag.Value` type. |
-
-## Positional Argument Validators
-
-- `clihelp.NoArgs`: Enforces 0 positional arguments.
-- `clihelp.ExactArgs(n)`: Enforces exactly `n` positional arguments.
-- `clihelp.MinimumNArgs(n)`: Enforces at least `n` positional arguments.
-- `clihelp.MaximumNArgs(n)`: Enforces at most `n` positional arguments.
-- `clihelp.RangeArgs(min, max)`: Enforces between `min` and `max` positional arguments.
-
-## Shell Autocompletion & Installation
-
-- Pre-Built Command: `clihelp.CompletionCommand()` (returns a standard Command providing `bash`, `zsh`, `fish`, `keys`, `install`, and `uninstall`).
-- One-Command Setup: `<app> completion install` writes `~/.config/<app>/shell/<shell>` and **a marked block in the user's shell startup file** (`~/.bashrc`, `~/.zshrc`; fish gets a `conf.d` drop-in and no shared file is touched). `completion uninstall` removes both. Nothing runs at shell startup.
-- Reserved Arguments: `__complete`, `__explain` and `__clihelp` answer in *every* clihelp program, whether or not the author mounted `CompletionCommand()`. `<app> __clihelp` lists the verbs; `-H` prints the exact paths it would write.
-- Alt-H: `clihelp.GenKeyBindings(app, shell, w)` emits a snippet that expands the command line and prints its help. `clihelp.App.Explain` is the Go entry point.
-- Manual Pages: `clihelp.GenManPage(app, w)` writes roff; `clihelp.InstallManPage(app, force)` installs it under `$XDG_DATA_HOME/man`.
-- Shell Integration API: `clihelp.InstallShellIntegration(app, shell, keys)` / `UninstallShellIntegration` / `IntegrationPath`.
-- App.Name must be letters, digits, `-`, `_`, `.` or `+` for any of the above: it becomes a file name and a shell symbol.
-- XDG Auto-Install: `clihelp.InstallCompletion(app, shell)` (installs for `"bash"`, `"zsh"`, `"fish"`, or detects active shell if empty).
-- Generators: `clihelp.GenBashCompletion(app, w)`, `clihelp.GenZshCompletion(app, w)`, `clihelp.GenFishCompletion(app, w)`.
-- Dynamic Option Completion: attach `Complete: func(toComplete string) []string` to any `Option`.
-
-## Tiered Progressive Help & Documentation
-
-- **Concise Help (`-h`)**: Displays concise summary (`Command.Description`), parameters, and flags; suppresses `Notes` and displays a footer hint pointing to extended help (keeps output <= 24 lines).
-- **Extended Help (`--help`, `help <cmd>`, `-H`)**: Displays full `Command.LongDescription`, parameters, flags, examples, and all `Notes` (piped through `$PAGER` when enabled).
-- **Opt-in `-H` Flag (`App.ExtendedHelpFlag`)**: Set `ExtendedHelpFlag: true` on `App` to enable `-H` as a single-letter shortcut for extended help on all commands.
-- **Preformatted Notes (`Note.Raw`)**: Set `Note.Raw: true` or wrap text in markdown code fences (```) to preserve ASCII tables, spacing, or code blocks verbatim without line reflow.
-- **List Hanging Indents**: Bullet (`- `, `* `, `• `) and numbered (`1. `, `2. `, etc.) lists automatically wrap continuation lines with hanging indents.
-
-## Critical AI Agent Rules & Pitfalls
-
-1. **NEVER manually declare `-h` or `--help` in Options**: `clihelp` automatically binds and manages help flags for all commands. Explicitly declaring a help flag will return a validation error.
-2. **Always bind pointers to persistent structs**: Pass `&opts.Field` or `&cfg.Field` to option constructors.
-3. **Always read positional parameters from `ctx.Args`**: In `Run` handlers, positional parameters are already validated and accessible via `ctx.Args[i]`. Do NOT inspect `os.Args`.
-4. **Use `Command.Subcommands` for nested routing**: Never manually parse subcommand words inside a root `Run` function.
-5. **Use `clihelp.PrintError(err)`**: Standardizes red-bold error prefix to `os.Stderr`.
-
-## Canonical Minimal Application
-
-```go
-package main
-
-import (
-    "fmt"
-    "os"
-
-    "github.com/sarielhp/clihelp"
-)
-
-type Config struct {
-    Verbose bool
-    Output  string
-}
-
-func main() {
-    var cfg Config
-
-    app := &clihelp.App{
-        Name:        "mycli",
-        Description: "Sample CLI tool",
-        Version:     "1.0.0",
-        Pager:       true,
-        PersistentOptions: []clihelp.Option{
-            clihelp.Bool(&cfg.Verbose, "-v, --verbose", false, "Enable verbose output"),
-        },
-        Commands: []clihelp.Command{
-            {
-                Name:        "build",
-                Description: "Build output artifact",
-                UsageLine:   "mycli build [options] <target>",
-                Args:        clihelp.ExactArgs(1),
-                Options: []clihelp.Option{
-                    clihelp.String(&cfg.Output, "-o, --output PATH", "dist/app", "Output path"),
-                },
-                Run: func(ctx *clihelp.Context) error {
-                    target := ctx.Args[0]
-                    fmt.Fprintf(ctx.Stdout, "Building %s -> %s (verbose=%v)
-", target, cfg.Output, cfg.Verbose)
-                    return nil
-                },
-            },
-        },
-    }
-
-    if err := app.Execute(os.Args[1:]); err != nil {
-        clihelp.PrintError(err)
-        os.Exit(1)
-    }
-}
-```
+- [Comparison with spf13/cobra](docs/comparison-with-cobra.md): differences and the reasoning behind them.
+- [Changelog](CHANGES.md): every behaviour change, with the defect that motivated it.

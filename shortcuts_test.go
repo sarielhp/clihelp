@@ -40,7 +40,7 @@ func TestShortcutCommandsRun(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			ran := ""
-			res := TestExecute(shortcutApp(&ran), tt.args)
+			res := testExecute(shortcutApp(&ran), tt.args)
 			res.AssertNoError(t)
 			if ran != tt.want {
 				t.Errorf("ran = %q, want %q", ran, tt.want)
@@ -54,7 +54,7 @@ func TestShortcutCommandHelp(t *testing.T) {
 	app := shortcutApp(&ran)
 	for _, args := range [][]string{{"help", "quick"}, {"quick", "--help"}} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
-			res := TestExecute(shortcutApp(&ran), args)
+			res := testExecute(shortcutApp(&ran), args)
 			res.AssertNoError(t)
 			res.AssertStdoutContains(t, "Quick action")
 		})
@@ -72,7 +72,7 @@ func TestSuggestionsSkipHiddenCommands(t *testing.T) {
 			{Name: "status", Description: "Status", Run: func(*Context) error { return nil }},
 		},
 	}
-	res := TestExecute(app, []string{"secref"})
+	res := testExecute(app, []string{"secref"})
 	if res.Error == nil {
 		t.Fatalf("expected an unknown-command error")
 	}
@@ -94,7 +94,7 @@ func TestEmptyArgumentIsNotACommandOrHelp(t *testing.T) {
 				{Name: "build", Description: "Build", Run: func(*Context) error { ran = true; return nil }},
 			},
 		}
-		res := TestExecute(app, []string{""})
+		res := testExecute(app, []string{""})
 		if ran {
 			t.Errorf(`app "" ran the only command`)
 		}
@@ -110,7 +110,7 @@ func TestEmptyArgumentIsNotACommandOrHelp(t *testing.T) {
 			AbbrevCommands: true,
 			Run:            func(ctx *Context) error { got = ctx.Args; return nil },
 		}
-		res := TestExecute(app, []string{""})
+		res := testExecute(app, []string{""})
 		res.AssertNoError(t)
 		if len(got) != 1 || got[0] != "" {
 			t.Errorf("Run received %q, want one empty argument", got)
@@ -137,7 +137,7 @@ func TestCategoryCommandCompletesTheLifecycle(t *testing.T) {
 			},
 		}},
 	}
-	res := TestExecute(app, []string{"db"})
+	res := testExecute(app, []string{"db"})
 	res.AssertNoError(t)
 	if strings.Join(events, ",") != "before,pre,post,after" {
 		t.Errorf("lifecycle events = %v, want before,pre,post,after", events)
@@ -153,7 +153,7 @@ func TestUnknownHelpTopicNamesTheWholePath(t *testing.T) {
 			Subcommands: []Command{{Name: "migrate", Description: "Migrate", Run: func(*Context) error { return nil }}},
 		}},
 	}
-	res := TestExecute(app, []string{"help", "db", "nonesuch"})
+	res := testExecute(app, []string{"help", "db", "nonesuch"})
 	if res.Error == nil {
 		t.Fatalf("expected an unknown-help-topic error")
 	}

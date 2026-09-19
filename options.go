@@ -638,16 +638,25 @@ func enumOption(target *string, flags string, allowed []string, defaultVal strin
 	}
 }
 
-// Var binds a custom user-defined pflag.Value interface. Only the caller's value
-// can parse the flag, so example validation binds a permissive stand-in rather
-// than writing through it.
-func Var(target pflag.Value, flags string, usage string) Option {
+// Value is the interface a custom option's target implements: exactly
+// pflag.Value's method set, named here so that a consumer writing one never has
+// to import pflag. Any pflag.Value satisfies it and vice versa.
+type Value interface {
+	String() string
+	Set(string) error
+	Type() string
+}
+
+// Var binds a custom option whose target implements Value. Only the caller's
+// value can parse the flag, so example validation binds a permissive stand-in
+// rather than writing through it.
+func Var(target Value, flags string, usage string) Option {
 	opt := varOption(target, flags, usage)
 	opt.scratch = varOption(&scratchValue{}, flags, usage).Binder
 	return opt
 }
 
-func varOption(target pflag.Value, flags string, usage string) Option {
+func varOption(target Value, flags string, usage string) Option {
 	spec := parseFlagSpec(flags)
 	return Option{
 		arity:       arityValue,

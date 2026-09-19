@@ -500,8 +500,8 @@ func DisplayName(c Command) string {
 	return c.Name + " (" + strings.Join(c.Aliases, ", ") + ")"
 }
 
-// DisplayNameWithArgs renders a command name with aliases and positional argument signature.
-func DisplayNameWithArgs(c Command) string {
+// displayNameWithArgs renders a command name with aliases and positional argument signature.
+func displayNameWithArgs(c Command) string {
 	name := DisplayName(c)
 	args := commandArgs(c)
 	if args != "" {
