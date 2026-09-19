@@ -225,3 +225,85 @@ func TestAShellOperatorEndsTheValidatedCommand(t *testing.T) {
 		}
 	}
 }
+
+// An example declared on a command may be written relative to that command or
+// to any of its ancestors, not only from the root.
+//
+// CompletionCommand() ships the example "completion install --no-keys zsh",
+// written for a completion command mounted at the root. An application that
+// mounts it under "config" gets the path "config completion install", and Audit
+// — which the README tells people to run in CI — rejected the library's own
+// example as an unknown flag.
+func TestAnExampleMayBeRelativeToAnAncestor(t *testing.T) {
+	var deep string
+	app := &App{
+		Name: "demo",
+		Commands: []Command{{
+			Name: "config", Description: "Configure it.",
+			Run: func(*Context) error { return nil },
+			Subcommands: []Command{{
+				Name: "remote", Description: "Remotes.",
+				Run: func(*Context) error { return nil },
+				Subcommands: []Command{{
+					Name: "add", Description: "Add one.",
+					Args:    ExactArgs(1),
+					Options: []Option{String(&deep, "--url <u>", "", "URL.")},
+					Run:     func(*Context) error { return nil },
+					Examples: []Example{
+						{Line: "demo config remote add origin --url u", Description: "From the root."},
+						{Line: "remote add origin --url u", Description: "Relative to config."},
+						{Line: "add origin --url u", Description: "Relative to remote."},
+						{Line: "origin --url u", Description: "Relative to the command itself."},
+					},
+				}},
+			}},
+		}},
+	}
+	if err := Audit(app); err != nil {
+		t.Errorf("an example written relative to an ancestor was rejected: %v", err)
+	}
+
+	// The tolerance must not swallow a genuine mistake.
+	bad := &App{
+		Name: "demo",
+		Commands: []Command{{
+			Name: "config", Description: "Configure it.",
+			Run: func(*Context) error { return nil },
+			Subcommands: []Command{{
+				Name: "set", Description: "Set it.", Args: ExactArgs(1),
+				Run:      func(*Context) error { return nil },
+				Examples: []Example{{Line: "set key --nosuchflag", Description: "Wrong."}},
+			}},
+		}},
+	}
+	if err := Audit(bad); err == nil {
+		t.Error("an example naming a flag that does not exist was accepted")
+	}
+}
+
+// The library's own CompletionCommand, mounted anywhere, audits clean.
+func TestCompletionCommandExamplesAuditWhereverMounted(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		app  *App
+	}{
+		{"at the root", &App{Name: "demo", Commands: []Command{CompletionCommand()}}},
+		{"nested one deep", &App{Name: "demo", Commands: []Command{{
+			Name: "config", Description: "Configure it.", Run: func(*Context) error { return nil },
+			Subcommands: []Command{CompletionCommand()},
+		}}}},
+		{"nested two deep", &App{Name: "demo", Commands: []Command{{
+			Name: "config", Description: "Configure it.", Run: func(*Context) error { return nil },
+			Subcommands: []Command{{
+				Name: "shell", Description: "Shell things.", Run: func(*Context) error { return nil },
+				Subcommands: []Command{CompletionCommand()},
+			}},
+		}}}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := Audit(tt.app); err != nil {
+				t.Errorf("Audit rejected the library's own examples: %v", err)
+			}
+		})
+	}
+}

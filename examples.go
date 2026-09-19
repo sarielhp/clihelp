@@ -463,16 +463,56 @@ func splitExampleCommandLine(line string) ([]string, error) {
 	return tokenizeCommandLine(trimmed, line)
 }
 
-func resolveExampleCommand(app *App, cmd *Command, tokens []string, rawLine string) (*Command, []*Command, []string, bool, error) {
+// resolveExampleCommand finds the command an example line exercises.
+//
+// An example declared on a command may be written from the root, or relative to
+// that command, or relative to any of its ancestors — so each prefix of the
+// declaring command's own path is tried, longest first, until one resolves.
+//
+// Prepending only the command's own name was not enough. CompletionCommand()
+// ships the example "completion install --no-keys zsh", which is written for a
+// completion command mounted at the root; an application that mounts it under
+// "config" gets the path "config completion install", and Audit — which the
+// README tells people to run in CI — rejected the library's own example as an
+// unknown flag. Trying the prefix "config" resolves it.
+func resolveExampleCommand(app *App, cmd *Command, cmdPath []string, tokens []string, rawLine string) (*Command, []*Command, []string, bool, error) {
 	res, resolveErr := app.resolveCommand(tokens)
-	if resolveErr != nil {
-		if cmd != nil && (len(tokens) == 0 || tokens[0] != cmd.Name) {
-			tokensWithCmd := append([]string{cmd.Name}, tokens...)
-			retry, err2 := app.resolveCommand(tokensWithCmd)
-			if err2 == nil {
+	// Retry only when the line names something that was not found. A help
+	// invocation resolves to no command on purpose, and a line that opens with a
+	// flag is the application's own, not a command path — retrying either would
+	// prepend a command name to a line that never wanted one.
+	unresolved := resolveErr != nil ||
+		(res.cmd == nil && !res.isHelp && len(tokens) > 0 && !strings.HasPrefix(tokens[0], "-"))
+	if !unresolved {
+		return res.cmd, res.ancestors, res.remaining, res.isHelp, nil
+	}
+	if cmd != nil {
+		// Prefer the prefix that lands on the command which declared the example,
+		// since that is what the line is about. Trying longest-first and taking
+		// the first success does not work: the full path resolves greedily and
+		// leaves the rest of the line as positional arguments, so
+		// "completion install --no-keys zsh" under "config completion install"
+		// became three arguments to a command that accepts one.
+		var fallback *resolution
+		for n := 1; n <= len(cmdPath); n++ {
+			candidate := append(append([]string{}, cmdPath[:n]...), tokens...)
+			retry, err := app.resolveCommand(candidate)
+			if err != nil || retry.cmd == nil {
+				continue
+			}
+			if retry.cmd == cmd {
 				return retry.cmd, retry.ancestors, retry.remaining, retry.isHelp, nil
 			}
+			if fallback == nil {
+				r := retry
+				fallback = &r
+			}
 		}
+		if fallback != nil {
+			return fallback.cmd, fallback.ancestors, fallback.remaining, fallback.isHelp, nil
+		}
+	}
+	if resolveErr != nil {
 		return nil, nil, nil, false, fmt.Errorf("invalid command in example %q: %w", rawLine, resolveErr)
 	}
 	return res.cmd, res.ancestors, res.remaining, res.isHelp, nil
@@ -544,7 +584,7 @@ func validateExampleTokens(app *App, targetCmd *Command, ancestors []*Command, r
 // validateExample statically validates that an Example can be parsed and accepted
 // by the application. It verifies that commands exist, flags are recognized with valid
 // syntax/values, mutually exclusive rules pass, and positional arguments satisfy constraints.
-func validateExample(app *App, ex Example, cmd *Command) error {
+func validateExample(app *App, ex Example, cmd *Command, cmdPath ...string) error {
 	if app == nil {
 		return errors.New("app is nil")
 	}
@@ -572,7 +612,7 @@ func validateExample(app *App, ex Example, cmd *Command) error {
 			continue
 		}
 
-		targetCmd, ancestors, remaining, handled, err := resolveExampleCommand(app, cmd, tokens, rawLine)
+		targetCmd, ancestors, remaining, handled, err := resolveExampleCommand(app, cmd, cmdPath, tokens, rawLine)
 		if err != nil {
 			return err
 		}
@@ -607,7 +647,7 @@ func (a *App) validateExamples() []error {
 	_ = a.Walk(func(path []string, cmd *Command) error {
 		pathStr := strings.Join(path, " ")
 		for _, ex := range cmd.Examples {
-			if err := validateExample(a, ex, cmd); err != nil {
+			if err := validateExample(a, ex, cmd, path...); err != nil {
 				errs = append(errs, fmt.Errorf("command %q: %w", pathStr, err))
 			}
 		}
