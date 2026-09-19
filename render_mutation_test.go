@@ -396,3 +396,41 @@ func TestAnOverWideNameDoesNotWidenTheColumn(t *testing.T) {
 			only, defaultMaxColIndent)
 	}
 }
+
+// App.GlobalNote is the application's own note, and it belongs on the page an
+// author expects it on. It used to appear only in "help docs", "help more" and
+// the manual page — so both applications that set one, including this library's
+// own example, had put a link in their help that nobody was ever shown.
+func TestGlobalNoteAppearsOnTheExtendedHelp(t *testing.T) {
+	app := &App{
+		Name:        "noted",
+		Description: "Does a thing.",
+		GlobalNote:  "Documentation: [the manual](https://example.com/m).",
+		Commands: []Command{{
+			Name: "build", Description: "Build it.", Run: func(*Context) error { return nil },
+		}},
+	}
+
+	var extended, concise bytes.Buffer
+	app.RenderGlobal(Options{Writer: &extended, Width: 80})
+	app.RenderGlobal(Options{Writer: &concise, Width: 80, Concise: true})
+
+	if !strings.Contains(StripANSI(extended.String()), "the manual") {
+		t.Errorf("the note is missing from the extended help:\n%s", extended.String())
+	}
+	if strings.Contains(StripANSI(concise.String()), "the manual") {
+		t.Errorf("the note appeared on the concise page, which is a prompt:\n%s", concise.String())
+	}
+	// The label is shown, never the URL: that is what OSC 8 is for.
+	if strings.Contains(StripANSI(extended.String()), "https://") {
+		t.Errorf("the note's URL was spelled out:\n%s", StripANSI(extended.String()))
+	}
+
+	// A note that merely repeats the description is not printed twice.
+	app.GlobalNote = app.Description
+	var repeated bytes.Buffer
+	app.RenderGlobal(Options{Writer: &repeated, Width: 80})
+	if n := strings.Count(StripANSI(repeated.String()), "Does a thing."); n != 1 {
+		t.Errorf("a note identical to the description appeared %d times", n)
+	}
+}
