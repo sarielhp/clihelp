@@ -36,6 +36,11 @@ func leadingTestApp(st *leadingState) *App {
 	}
 	return &App{
 		Name: "mail",
+		// This application takes positional arguments of its own — the "--"
+		// cases below pass them — so it declares that. Defining Run used to
+		// imply it, which also meant a misspelled command was accepted as an
+		// argument.
+		Args: MinimumNArgs(0),
 		PersistentOptions: []Option{
 			String(&st.account, "-A, --account <name>", "", "Account to use"),
 			Bool(&st.readOnly, "--read-only", false, "Make no changes"),

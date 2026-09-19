@@ -142,6 +142,23 @@ type App struct {
 	BeforeRun         func(ctx *Context) error
 	AfterRun          func(ctx *Context) error
 	Run               func(ctx *Context) error
+	// Args validates the application's own positional arguments, the ones Run
+	// receives, exactly as Command.Args does for a command.
+	//
+	// It also says whether an unrecognised first word is a typo or an argument.
+	// Defining Run used to answer that on its own — a handler was taken to own
+	// every word after it — so an application that wanted to handle a bare
+	// invocation was forced to accept every misspelled command as a positional
+	// argument, exit 0, and find its own way to say "did you mean". Declaring
+	// Args: NoArgs here says the application takes no positional arguments, and
+	// the unknown-command check runs as it does for an application with no Run
+	// at all.
+	//
+	// Left nil, an application that has commands is assumed to take no
+	// positional arguments of its own, because a word that is not one of its
+	// commands is far more likely to be a typo than an argument. An application
+	// with no commands is unaffected either way.
+	Args ArgsValidator
 
 	// AbbrevCommands enables prefix-based command matching. When true, a unique
 	// prefix of a command name (or alias) is accepted as a match. When the prefix

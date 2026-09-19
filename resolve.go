@@ -254,7 +254,51 @@ func formatSubcommandSuggestions(arg, parentName string, suggestions []string) e
 	return errors.New(strings.TrimRight(buf.String(), "\n"))
 }
 
-func (a *App) checkUnknownCommand(currentCmd *Command, currentCommands []Command, arg string) error {
+// takesPositionals reports whether the enclosing command can accept arg as one
+// of its own positional arguments, in which case calling it an unknown command
+// would be wrong: "demo scan inbox" is scan's argument, not a misspelled
+// subcommand.
+//
+// The question used to be answered by "does it have a handler", which is a
+// weaker thing to ask. A command declares what it takes — Args: NoArgs is the
+// commonest validator in the applications built on this library — and that
+// declaration was read nowhere. So a command with a handler and Args: NoArgs
+// reported "unknown arguments: [bogus]" where it had everything it needed to
+// say "unknown command "bogus". Did you mean …". At the root it was worse:
+// App had no Args field at all, so handling a bare invocation and rejecting
+// typos could not be asked for separately.
+func takesPositionals(a *App, currentCmd *Command) bool {
+	if currentCmd != nil {
+		if currentCmd.Run == nil {
+			return false // a grouping command: the word can only be a subcommand
+		}
+		return acceptsPositionals(currentCmd.Args)
+	}
+	if a.Run == nil {
+		return false // nothing would receive them
+	}
+	if a.Args != nil {
+		return acceptsPositionals(a.Args)
+	}
+	// Undeclared at the root: an application with commands is taken to have no
+	// positional arguments of its own. Reaching here at all means the word
+	// matched no command, and a word that is not one of an application's
+	// commands is far likelier to be a typo than an argument.
+	return false
+}
+
+// acceptsPositionals reports whether a validator admits any positional argument
+// at all. An undeclared or unknowable arity is assumed to, which is what the
+// library did before it could ask.
+func acceptsPositionals(v ArgsValidator) bool {
+	if v == nil {
+		return true
+	}
+	_, max := v.Arity()
+	return max != 0
+}
+
+func (a *App) checkUnknownCommand(currentCmd *Command, path []string, currentCommands []Command, arg string) error {
 	// Shortcuts are top-level commands too. Leaving them out meant an
 	// application whose verbs all live in Shortcuts had no commands at this
 	// level by this test's reckoning, so the check never ran at all: any typo
@@ -263,7 +307,7 @@ func (a *App) checkUnknownCommand(currentCmd *Command, currentCommands []Command
 	if currentCmd == nil && len(a.Shortcuts) > 0 {
 		currentCommands = append(append([]Command{}, currentCommands...), a.Shortcuts...)
 	}
-	if len(currentCommands) > 0 && ((currentCmd == nil && a.Run == nil) || (currentCmd != nil && currentCmd.Run == nil)) {
+	if len(currentCommands) > 0 && !takesPositionals(a, currentCmd) {
 		parentName := appName(a)
 		if currentCmd != nil {
 			parentName = currentCmd.Name
@@ -274,7 +318,11 @@ func (a *App) checkUnknownCommand(currentCmd *Command, currentCommands []Command
 		if suggestion := suggestCommand(arg, currentCommands); suggestion != "" {
 			return fmt.Errorf("unknown command %q for %q. Did you mean %q?", arg, parentName, suggestion)
 		}
-		return fmt.Errorf("unknown command %q for %q", arg, parentName)
+		// With nothing close enough to suggest, the user is left holding a
+		// rejection and no way forward. A real application built on this library
+		// added that sentence itself; it belongs here.
+		return fmt.Errorf("unknown command %q for %q. Run %q for a list of commands",
+			arg, parentName, strings.Join(append([]string{appName(a)}, path...), " ")+" -h")
 	}
 	return nil
 }
@@ -502,7 +550,7 @@ func (a *App) resolveCommandPath(args []string, currentCommands []Command) (reso
 			return res, err
 		}
 		if matched == nil {
-			if err := a.checkUnknownCommand(res.cmd, currentCommands, arg); err != nil {
+			if err := a.checkUnknownCommand(res.cmd, res.path, currentCommands, arg); err != nil {
 				return res, err
 			}
 			break

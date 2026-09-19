@@ -121,15 +121,20 @@ func (a *App) setupFlagSet(targetCmd *Command, ancestors []*Command) (*pflag.Fla
 // scan before the next word was examined, or a grouping command's own option
 // consuming the name after it. This runs after pflag, so what is left really is
 // a positional.
-func (a *App) checkLeftoverArgument(targetCmd *Command, rest []string) error {
+func (a *App) checkLeftoverArgument(targetCmd *Command, path []string, rest []string) error {
 	if len(rest) == 0 {
 		return nil
 	}
+	// The same question takesPositionals answers for resolution: a leftover word
+	// is only an unknown command when the enclosing command cannot take it as an
+	// argument of its own. Asking "does it have a handler" let a declared
+	// Args: NoArgs go unread, and gave an application no way to keep the check
+	// while handling a bare invocation.
 	if targetCmd == nil {
-		if a.Run != nil || (len(a.Commands) == 0 && len(a.Shortcuts) == 0) {
+		if takesPositionals(a, nil) || (len(a.Commands) == 0 && len(a.Shortcuts) == 0) {
 			return nil
 		}
-	} else if targetCmd.Run != nil || len(targetCmd.Subcommands) == 0 {
+	} else if takesPositionals(a, targetCmd) || len(targetCmd.Subcommands) == 0 {
 		return nil
 	}
 
@@ -148,7 +153,7 @@ func (a *App) checkLeftoverArgument(targetCmd *Command, rest []string) error {
 		}
 		return fmt.Errorf("%q is a subcommand of %q, but a flag written before it was taken as an argument; write the flag after the subcommand name", rest[0], parent)
 	}
-	return a.checkUnknownCommand(targetCmd, cmds, rest[0])
+	return a.checkUnknownCommand(targetCmd, path, cmds, rest[0])
 }
 
 func (a *App) collectAllActiveOptions(targetCmd *Command, ancestors []*Command) []Option {
@@ -325,7 +330,7 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 		return nil
 	}
 
-	if err := a.checkLeftoverArgument(targetCmd, fs.Args()); err != nil {
+	if err := a.checkLeftoverArgument(targetCmd, path, fs.Args()); err != nil {
 		return err
 	}
 
