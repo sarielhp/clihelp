@@ -431,6 +431,7 @@ func (a *App) leadingFlagArity(resolved []*Command) map[string]bool {
 	}
 	addFlagArity(arity, a.PersistentOptions)
 	addFlagArity(arity, a.GlobalFlags)
+	addFlagArity(arity, a.Options)
 	for _, cmd := range resolved {
 		addFlagArity(arity, cmd.PersistentOptions)
 	}

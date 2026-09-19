@@ -177,6 +177,13 @@ func audit(app *App, opts AuditOptions) error {
 	if err := checkOptionScope(owners, "the app's global flags", app.GlobalFlags); err != nil {
 		return err
 	}
+	// The application's own options share the root's scope with the two above —
+	// a name cannot be declared twice there — but they are not inherited, so the
+	// command tree below is audited without them.
+	rootOwners := owners.clone()
+	if err := checkOptionScope(rootOwners, "the app's own options", app.Options); err != nil {
+		return err
+	}
 
 	var allPaths []commandPathInfo
 	return auditCommandTree(app.Commands, nil, &allPaths, owners, opts)

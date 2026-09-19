@@ -173,14 +173,26 @@ type App struct {
 	// the extended help page, and appears in the manual page and the generated
 	// Markdown. It is left off the concise page (-h), which is a prompt rather
 	// than documentation, and is skipped when it merely repeats Description.
-	GlobalNote        string
-	UsageLine         string
+	GlobalNote string
+	UsageLine  string
+	// PersistentOptions are bound for the application and every command beneath
+	// it, as Command.PersistentOptions are for a command and its subcommands.
 	PersistentOptions []Option
-	Commands          []Command
-	Examples          []Example
-	BeforeRun         func(ctx *Context) error
-	AfterRun          func(ctx *Context) error
-	Run               func(ctx *Context) error
+	// Options are the application's own, bound only when no command is named —
+	// the counterpart to Command.Options, which Command has had and App did not.
+	//
+	// The distinction matters for an application whose root does real work and
+	// whose subcommands reuse its flag names. talk_cut takes a recording
+	// directory at the root with twenty-one flags, and its youtube subcommands
+	// declare --channel nine times over, plus --output, --dry-run, --url and
+	// --upload; as PersistentOptions those would collide and Audit would refuse
+	// the application, while as Options each scope keeps its own.
+	Options   []Option
+	Commands  []Command
+	Examples  []Example
+	BeforeRun func(ctx *Context) error
+	AfterRun  func(ctx *Context) error
+	Run       func(ctx *Context) error
 	// Args validates the application's own positional arguments, the ones Run
 	// receives, exactly as Command.Args does for a command.
 	//
