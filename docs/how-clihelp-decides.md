@@ -96,8 +96,9 @@ working against the library.** Check this document before writing it.
 - `Command.LongDescription` — paragraphs. Extended help only.
 - `Command.Notes` — sections with headings. Extended help only. `Note.Raw` keeps
   the body verbatim, for tables and diagrams that must not be re-wrapped.
-- `Command.Examples` — both tiers, and the manual page, and `Audit` checks every
-  one of them actually parses against the command tree.
+- `Command.Examples` — both tiers, the manual page, and `help examples`, which
+  collects every example in the tree into one page; `Audit` checks that each one
+  actually parses against the command tree.
 - `Command.Group` — a heading in the parent's command list. Commands with no
   group render ungrouped; if *any* sibling has one, the rest fall under a default
   heading rather than floating.

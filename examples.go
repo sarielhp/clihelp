@@ -44,18 +44,26 @@ func startsComment(s string, i, tokenStart int) bool {
 // colorizeExampleLine applies ANSI syntax colors to a command-line example string.
 // It recognizes comments, shell prompts, subcommands, flags, values, and operators.
 func colorizeExampleLine(line string, th Theme) string {
-	return colorizeExampleLineWithApp(nil, nil, line, th)
+	return ColorizeExampleLineWithApp(nil, nil, line, th)
 }
 
-// colorizeExampleLineWithApp applies ANSI syntax colors to an example string using the application
-// command tree to accurately identify subcommands, flags, and arguments.
+// ColorizeExampleLineWithApp applies ANSI syntax colours to an example line,
+// using the command tree to tell subcommands from flags from arguments.
+//
+// It is exported for an application that renders examples itself. One does: a
+// second program built on this library prints an examples-only view under its
+// own "--examples" flag, with a theme of its own, and this is the only piece of
+// the renderer it needs. Unexporting it on 2026-09-18 broke that program, and
+// the reasoning was the flaw — "nothing in this repository uses it" is not the
+// same question as "nothing uses it", and only the second one matters for a
+// name that has already shipped.
 //
 // The line comes back as it was written, only colored. It used to be returned
 // through the inline-markdown renderer, which rewrote the command itself: it
 // swallowed the backslashes of "--path C:\temp\x", turned the asterisks of
 // "'*.go'" into emphasis, and ate the escape in "echo a\ b". A description is
 // prose and gets its own inline() pass; a command line is not.
-func colorizeExampleLineWithApp(app *App, cmd *Command, line string, th Theme) string {
+func ColorizeExampleLineWithApp(app *App, cmd *Command, line string, th Theme) string {
 	if line == "" {
 		return ""
 	}
@@ -278,7 +286,7 @@ func renderExamples(w io.Writer, app *App, cmd *Command, th Theme, o Options, te
 		}
 		lines := splitLines(ex.Line)
 		for _, l := range lines {
-			writeExampleLine(w, th, lineIndent, colorizeExampleLineWithApp(app, cmd, l, th))
+			writeExampleLine(w, th, lineIndent, ColorizeExampleLineWithApp(app, cmd, l, th))
 		}
 		if ex.Description != "" {
 			reflow(w, descColor, wrapWidth(termWidth, descIndent, o.maxContent()), descIndent, "", inline(ex.Description))

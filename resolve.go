@@ -104,6 +104,9 @@ func (a *App) handleRootHelpTopic(topic string) (bool, error) {
 	case topic == "man" || topic == "all" || topic == "full" || topic == "manual" || (a.AbbrevCommands && (strings.HasPrefix("man", topic) || strings.HasPrefix("manual", topic))):
 		a.renderManPage(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
 		return true, nil
+	case topic == "examples" || topic == "example" || topic == "eg" || (a.AbbrevCommands && strings.HasPrefix("examples", topic)):
+		a.renderExamplesPage(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+		return true, nil
 	case topic == "topics" || topic == "help" || (a.AbbrevCommands && strings.HasPrefix("topics", topic)):
 		a.renderTopicsPage(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
 		return true, nil

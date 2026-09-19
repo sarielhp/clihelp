@@ -252,3 +252,73 @@ func TestRenderManLongDescriptionAndRawNotes(t *testing.T) {
 		t.Errorf("expected raw note with 8 base indent + 2 text indent, got:\n%s", out)
 	}
 }
+
+// "help <command>" shows one command's examples among its usage, parameters and
+// flags. "help examples" is all of them and nothing else — the view for "how do
+// I use this?" rather than "what does this flag do?". A second application built
+// on this library had written about a hundred and fifty lines to get it.
+func TestHelpExamplesCollectsTheWholeTree(t *testing.T) {
+	app := &App{
+		Name:     "demo",
+		Examples: []Example{{Line: "demo build x", Description: "The common case."}},
+		Commands: []Command{
+			{
+				Name: "build", Description: "Build it.",
+				Examples: []Example{{Line: "demo build --fast x", Description: "Quickly."}},
+				Run:      func(*Context) error { return nil },
+				Subcommands: []Command{{
+					Name: "all", Description: "Build everything.",
+					Examples: []Example{{Line: "demo build all", Description: "The lot."}},
+					Run:      func(*Context) error { return nil },
+				}},
+			},
+			{Name: "quiet", Description: "No examples here.", Run: func(*Context) error { return nil }},
+			{
+				Name: "secret", Description: "Hidden.", Hidden: true,
+				Examples: []Example{{Line: "demo secret", Description: "Should not appear."}},
+				Run:      func(*Context) error { return nil },
+			},
+		},
+	}
+	out := silentApp(app)
+	if err := app.Execute([]string{"help", "examples"}); err != nil {
+		t.Fatalf("`demo help examples` failed: %v", err)
+	}
+	body := StripANSI(out.String())
+
+	for _, want := range []string{
+		"demo build x", "demo build --fast x", "demo build all",
+		"The common case.", "Quickly.", "The lot.",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the page is missing %q:\n%s", want, body)
+		}
+	}
+	// A hidden command's examples are not advertised, and a command with none
+	// gets no empty heading.
+	if strings.Contains(body, "demo secret") {
+		t.Errorf("a hidden command's examples were shown:\n%s", body)
+	}
+	if strings.Contains(body, "quiet") {
+		t.Errorf("a command with no examples was given a heading:\n%s", body)
+	}
+	// Grouped under the command that declares them, deepest included.
+	if !strings.Contains(body, "demo build all") || !strings.Contains(body, "demo build\n") {
+		t.Errorf("the groups are not headed by their command:\n%s", body)
+	}
+}
+
+// An application with no examples at all says so rather than printing a bare
+// heading over nothing.
+func TestHelpExamplesWithNoneDeclared(t *testing.T) {
+	app := &App{Name: "bare", Commands: []Command{
+		{Name: "go", Description: "Go.", Run: func(*Context) error { return nil }},
+	}}
+	out := silentApp(app)
+	if err := app.Execute([]string{"help", "examples"}); err != nil {
+		t.Fatal(err)
+	}
+	if body := StripANSI(out.String()); !strings.Contains(body, "No examples are declared") {
+		t.Errorf("expected a plain statement, got:\n%s", body)
+	}
+}

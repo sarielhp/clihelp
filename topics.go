@@ -359,11 +359,76 @@ func (a *App) renderTopicsPage(o Options) {
 		topics := []Param{
 			{Name: "help <command>", Description: fmt.Sprintf("Show help for a specific command (or '%s <command> -h')", appName(a))},
 			{Name: "help flags", Description: "Show all global flags and persistent options"},
+			{Name: "help examples", Description: "Show every example in one place, grouped by command"},
 			{Name: "help man", Description: "Display the complete reference manual (paged)"},
 		}
 		indent := colIndentFor(topics, termWidth, minTextColumns)
 		for _, t := range topics {
 			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, t.Name, o.inline(t.Description), th.Subcommand)
+		}
+	})
+}
+
+// renderExamplesPage writes every example in the command tree, grouped under the
+// command that declares it.
+//
+// "help <command>" already shows one command's examples among its usage, its
+// parameters and its flags. What was missing is all of them at once and nothing
+// else — the view someone wants when the question is "how do I use this?"
+// rather than "what does this flag do?". A second application built on this
+// library had written its own: about a hundred and fifty lines for the flag
+// spelling, a command resolver, example collection, a theme and the rendering.
+//
+// Hidden commands are skipped, as they are everywhere else, and a command
+// without examples of its own is passed over rather than given an empty
+// heading.
+func (a *App) renderExamplesPage(o Options) {
+	o = o.withApp(a)
+	a.pageOutput(o, func(w io.Writer) {
+		th := o.theme(a)
+		termWidth := o.width()
+
+		type group struct {
+			path     []string
+			cmd      *Command
+			examples []Example
+		}
+		var groups []group
+		if len(a.Examples) > 0 {
+			groups = append(groups, group{examples: a.Examples})
+		}
+		var walk func(cmds []Command, prefix []string)
+		walk = func(cmds []Command, prefix []string) {
+			for i := range cmds {
+				c := &cmds[i]
+				if c.Hidden {
+					continue
+				}
+				path := append(append([]string{}, prefix...), c.Name)
+				if len(c.Examples) > 0 {
+					groups = append(groups, group{path: path, cmd: c, examples: c.Examples})
+				}
+				walk(c.Subcommands, path)
+			}
+		}
+		walk(a.Commands, nil)
+
+		if len(groups) == 0 {
+			fmt.Fprintf(w, "No examples are declared for %s.\n", appName(a))
+			return
+		}
+
+		th.Hdr.Fprintln(w, "Examples:")
+		for i, g := range groups {
+			if i > 0 {
+				fmt.Fprintln(w)
+			}
+			heading := appName(a)
+			if len(g.path) > 0 {
+				heading += " " + strings.Join(g.path, " ")
+			}
+			th.Subcommand.Fprintf(w, "  %s\n", heading)
+			renderExamples(w, a, g.cmd, th, o, termWidth, g.examples, 4, 6)
 		}
 	})
 }
