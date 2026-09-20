@@ -178,6 +178,48 @@ var env string
 clihelp.Enum(&env, "-e, --env ENV", []string{"dev", "staging", "prod"}, "dev", "Target deployment environment")
 ```
 
+### Positional Argument Completion
+
+Attach a `Complete` callback to entries in `Command.Parameters`. Slot 0 completes the first positional argument, slot 1 the second, and setting `Variadic: true` on the terminal parameter continues completing all trailing arguments:
+
+```go
+clihelp.Command{
+	Name:        "get",
+	Description: "Inspect a configuration attribute",
+	Parameters: []clihelp.Param{
+		{
+			Name:        "<attribute>",
+			Description: "Attribute name to retrieve",
+			Complete: func(toComplete string) []string {
+				attrs := []string{
+					"space\tMax disk cache limit",
+					"endpoint\tAPI endpoint URL",
+					"token\tPublishing auth token",
+				}
+				var matches []string
+				for _, a := range attrs {
+					if strings.HasPrefix(a, toComplete) {
+						matches = append(matches, a)
+					}
+				}
+				return matches
+			},
+		},
+		{
+			Name:        "<format...>",
+			Description: "Optional export formats",
+			Variadic:    true,
+			Complete: func(toComplete string) []string {
+				return []string{"json\tJSON output", "yaml\tYAML output"}
+			},
+		},
+	},
+	Run: runGet,
+}
+```
+
+Suggestions may optionally embed a `\t` separator (`candidate\tdescription`) to render contextual descriptions alongside candidates in Zsh and Fish.
+
 ---
 
 ## Persistent Flags & Subcommand Inheritance

@@ -2,6 +2,12 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.43] - 2026-09-19
+
+### Added
+- **Dynamic Autocompletion Documentation & Recipe**: Highlighted dynamic flag and positional completion callbacks (`Option.Complete`, `Param.Complete`, `Param.Variadic`) in `README.md` features and added a concrete usage recipe to `docs/recipes-and-patterns.md`.
+- **Benchmark Performance Suite (`benchmarks_test.go`)**: Added focused microbenchmarks covering command resolution (1.8 µs), subcommand completion (3.2 µs), positional dynamic completion (3.5 µs), Levenshtein typo suggestion (291 ns, 4 allocs), and terminal help rendering.
+
 ## [0.3.42] - 2026-09-19
 
 ### Added
