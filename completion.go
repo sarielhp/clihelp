@@ -281,7 +281,10 @@ func completePositional(w io.Writer, cmd *Command, n int, toComplete string) {
 	}
 }
 
-func (a *App) handleComplete(_ context.Context, args []string) error {
+func (a *App) handleComplete(ctx context.Context, args []string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	w := a.stdout()
 	if len(args) == 0 {
 		a.completeRootCommands(w)

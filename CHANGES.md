@@ -2,6 +2,13 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.42] - 2026-09-19
+
+### Added
+- **Positional Completion Hardening & Context Cancellation**: Added exhaustive table-driven test coverage in `completion_param_test.go` verifying edge cases for `Param.Complete` and `Param.Variadic` (empty/nil parameters, multi-byte Unicode strings, flag separators, and variadic unbounded tails). `handleComplete` now respects `ctx.Err()` during tab completion.
+- **Decision Matrix Alignment**: Synchronized `docs/how-clihelp-decides.md` with `$COLUMNS` / `$LINES` layout precedence and dynamic positional parameter completion.
+- **Cognitive Complexity & Sizing Compliance**: Decomposed AST scanning and documentation assertion functions in `docs_drift_test.go` into cohesive helpers with depth $\le 3$, bringing all 122 files to zero function-limit violations under `go-audit`.
+
 ## [0.3.41] - 2026-09-19
 
 ### Added

@@ -74,7 +74,8 @@ working against the library.** Check this document before writing it.
 
 - **Reads:** `Command.Parameters` — a `Param` per positional argument.
 - **Used by:** the help page's Parameters section, the generated usage line when
-  `UsageLine` is absent, and the manual page.
+  `UsageLine` is absent, the manual page, and shell autocompletion when
+  `Param.Complete` is provided.
 - **Cost:** the user is told the command takes an argument but never what it is.
   `Parameters` and `Args` describe the same thing from two sides; keep them
   agreeing, and let `Audit` check it.
@@ -109,11 +110,12 @@ working against the library.** Check this document before writing it.
 
 ### 7. How wide, how tall, and whether to page
 
-- **Reads:** `Options.Width`, else the terminal, else **70 columns**;
+- **Reads:** `Options.Width`, else the terminal file descriptor (via `term.GetSize`),
+  else the `COLUMNS` environment variable, else **70 columns**;
   `Options.MaxContentWidth`, else 80; `App.Pager` / `Options.Pager` with the
-  terminal height.
+  terminal height (or the `LINES` environment variable for non-terminals).
 - **Note:** 70 is what every redirected `--help` in every program built on this
-  library is laid out at.
+  library is laid out at unless `$COLUMNS` is set in the environment.
 
 ### 8. Whether to emit colour
 
@@ -151,10 +153,12 @@ working against the library.** Check this document before writing it.
 
 ### 9. What the shell offers at `<Tab>`
 
-- **Reads:** the command tree, the bound flags, and `Option.Complete` for dynamic
-  values. Hidden commands and options are excluded.
-- **Cost:** no `Option.Complete` means the shell can complete the flag's *name*
-  but never its value.
+- **Reads:** the command tree, the bound flags, `Option.Complete` for dynamic
+  flag values, and `Param.Complete` (with `Param.Variadic` on the terminal parameter)
+  for positional arguments. Hidden commands and options are excluded.
+- **Cost:** no `Option.Complete` / `Param.Complete` means the shell completes
+  the flag or command name, but falls back to default filename completion for values
+  and positional slots.
 
 ### 10. Whether a required option may be prompted for
 

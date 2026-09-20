@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 	"testing"
 )
@@ -31,6 +30,40 @@ var docDriftExceptions = map[string]string{
 // documentedTypes are the types whose members the prose refers to by name.
 var documentedTypes = []string{
 	"App", "Command", "Option", "Options", "Theme", "Note", "Param", "Context", "Example",
+}
+
+func checkPkgRefs(t *testing.T, file string, lineNo int, line string, pkgRef *regexp.Regexp, pkgLevel, methods map[string]bool) int {
+	checked := 0
+	for _, m := range pkgRef.FindAllStringSubmatch(line, -1) {
+		checked++
+		if _, ok := docDriftExceptions["clihelp."+m[1]]; ok || pkgLevel[m[1]] {
+			continue
+		}
+		why := "no such exported name"
+		if methods[m[1]] {
+			why = "a method, not a package-level function — write it on the value"
+		}
+		t.Errorf("%s:%d names clihelp.%s: %s", file, lineNo, m[1], why)
+	}
+	return checked
+}
+
+func checkTypeRefs(t *testing.T, file string, lineNo int, line string, typeRefs map[string]*regexp.Regexp, methods map[string]bool, fields map[string]map[string]bool) int {
+	checked := 0
+	for typeName, re := range typeRefs {
+		for _, m := range re.FindAllStringSubmatch(line, -1) {
+			checked++
+			ref := typeName + "." + m[1]
+			if _, ok := docDriftExceptions[ref]; ok {
+				continue
+			}
+			if fields[typeName][m[1]] || methods[m[1]] {
+				continue
+			}
+			t.Errorf("%s:%d names %s, which is no field or method of %s", file, lineNo, ref, typeName)
+		}
+	}
+	return checked
 }
 
 func TestDocumentationNamesThingsThatExist(t *testing.T) {
@@ -58,33 +91,8 @@ func TestDocumentationNamesThingsThatExist(t *testing.T) {
 			continue // a document that is not there is not a drift
 		}
 		for i, line := range strings.Split(string(body), "\n") {
-			for _, m := range pkgRef.FindAllStringSubmatch(line, -1) {
-				checked++
-				if _, ok := docDriftExceptions["clihelp."+m[1]]; ok {
-					continue
-				}
-				if pkgLevel[m[1]] {
-					continue
-				}
-				why := "no such exported name"
-				if methods[m[1]] {
-					why = "a method, not a package-level function — write it on the value"
-				}
-				t.Errorf("%s:%d names clihelp.%s: %s", file, i+1, m[1], why)
-			}
-			for typeName, re := range typeRefs {
-				for _, m := range re.FindAllStringSubmatch(line, -1) {
-					checked++
-					ref := typeName + "." + m[1]
-					if _, ok := docDriftExceptions[ref]; ok {
-						continue
-					}
-					if fields[typeName][m[1]] || methods[m[1]] {
-						continue
-					}
-					t.Errorf("%s:%d names %s, which is no field or method of %s", file, i+1, ref, typeName)
-				}
-			}
+			checked += checkPkgRefs(t, file, i+1, line, pkgRef, pkgLevel, methods)
+			checked += checkTypeRefs(t, file, i+1, line, typeRefs, methods, fields)
 		}
 	}
 	if checked == 0 {
@@ -94,6 +102,51 @@ func TestDocumentationNamesThingsThatExist(t *testing.T) {
 	for ref := range docDriftExceptions {
 		if !strings.Contains(ref, ".") {
 			t.Errorf("docDriftExceptions key %q is not a qualified reference", ref)
+		}
+	}
+}
+
+func recordFuncDecl(d *ast.FuncDecl, pkgLevel, methods map[string]bool) {
+	if !d.Name.IsExported() {
+		return
+	}
+	if d.Recv != nil {
+		methods[d.Name.Name] = true
+	} else {
+		pkgLevel[d.Name.Name] = true
+	}
+}
+
+func recordTypeSpec(s *ast.TypeSpec, pkgLevel map[string]bool, fields map[string]map[string]bool) {
+	if !s.Name.IsExported() {
+		return
+	}
+	pkgLevel[s.Name.Name] = true
+	st, ok := s.Type.(*ast.StructType)
+	if !ok {
+		return
+	}
+	fields[s.Name.Name] = map[string]bool{}
+	for _, f := range st.Fields.List {
+		for _, n := range f.Names {
+			if n.IsExported() {
+				fields[s.Name.Name][n.Name] = true
+			}
+		}
+	}
+}
+
+func recordGenDecl(d *ast.GenDecl, pkgLevel map[string]bool, fields map[string]map[string]bool) {
+	for _, spec := range d.Specs {
+		switch s := spec.(type) {
+		case *ast.TypeSpec:
+			recordTypeSpec(s, pkgLevel, fields)
+		case *ast.ValueSpec:
+			for _, n := range s.Names {
+				if n.IsExported() {
+					pkgLevel[n.Name] = true
+				}
+			}
 		}
 	}
 }
@@ -121,49 +174,11 @@ func exportedSurface(t *testing.T) (pkgLevel, methods map[string]bool, fields ma
 		for _, decl := range file.Decls {
 			switch d := decl.(type) {
 			case *ast.FuncDecl:
-				if !d.Name.IsExported() {
-					continue
-				}
-				if d.Recv != nil {
-					methods[d.Name.Name] = true
-				} else {
-					pkgLevel[d.Name.Name] = true
-				}
+				recordFuncDecl(d, pkgLevel, methods)
 			case *ast.GenDecl:
-				for _, spec := range d.Specs {
-					switch s := spec.(type) {
-					case *ast.TypeSpec:
-						if !s.Name.IsExported() {
-							continue
-						}
-						pkgLevel[s.Name.Name] = true
-						st, ok := s.Type.(*ast.StructType)
-						if !ok {
-							continue
-						}
-						fields[s.Name.Name] = map[string]bool{}
-						for _, f := range st.Fields.List {
-							for _, n := range f.Names {
-								if n.IsExported() {
-									fields[s.Name.Name][n.Name] = true
-								}
-							}
-						}
-					case *ast.ValueSpec:
-						for _, n := range s.Names {
-							if n.IsExported() {
-								pkgLevel[n.Name] = true
-							}
-						}
-					}
-				}
+				recordGenDecl(d, pkgLevel, fields)
 			}
 		}
 	}
-	names := make([]string, 0, len(pkgLevel))
-	for n := range pkgLevel {
-		names = append(names, n)
-	}
-	sort.Strings(names)
 	return pkgLevel, methods, fields
 }
