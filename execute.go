@@ -289,7 +289,9 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 		case protoExplain:
 			return a.handleExplain(args[1:])
 		case protoClihelp:
-			return a.handleClihelpCommand(args[1:])
+			if !a.DisableSetup {
+				return a.handleClihelpCommand(args[1:])
+			}
 		}
 	}
 

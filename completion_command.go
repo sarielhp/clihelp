@@ -30,6 +30,7 @@ func CompletionCommand() Command {
 			completionKeysSubcommand(),
 			completionInstallSubcommand(),
 			completionUninstallSubcommand(),
+			completionWrapSubcommand(),
 		),
 	}
 }
@@ -163,6 +164,31 @@ func completionUninstallSubcommand() Command {
 			}
 			reportUninstall(ctx.Stderr, res)
 			return nil
+		},
+	}
+}
+
+// completionWrapSubcommand generates a wrapper script for this application.
+func completionWrapSubcommand() Command {
+	var fromPath string
+	return Command{
+		Name:        "wrap",
+		Description: "Generate a wrapper script with preset arguments",
+		UsageLine:   "completion wrap [--from <path>] <name> [<args>...]",
+		Examples: []Example{
+			{Line: "completion wrap pd deploy", Description: "Generate wrapper 'pd' for '<app> deploy'"},
+			{Line: "completion wrap --from ~/bin/mt", Description: "Inspect existing script and generate wrapper"},
+		},
+		Parameters: []Param{
+			{Name: "<name>", Description: "Name of the wrapper script"},
+			{Name: "[<args>...]", Description: "Preset arguments prepended to wrapped command"},
+		},
+		Options: []Option{
+			String(&fromPath, "--from <path>", "", "Inspect an existing wrapper script to extract preset arguments"),
+		},
+		Args: MinimumNArgs(0),
+		Run: func(ctx *Context) error {
+			return executeWrapperGen(ctx.App, fromPath, ctx.Args, ctx.Stdout, ctx.Stderr)
 		},
 	}
 }

@@ -2,7 +2,16 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [0.3.44] - 2026-09-23
+
+### Added
+- **`App.DisableSetup` (Author Sovereignty & Compliance)**: Boolean field on `clihelp.App` that suppresses the built-in `__clihelp` setup verbs (`version`, `install`, `uninstall`, `keys`, `wrapper`, `manpage`) for restricted, kiosk, or containerized applications while keeping completion (`__complete`) and Alt-H (`__explain`) active.
+- **Wrapper Inspection (`__clihelp wrapper --from <path>`)**: Safe, read-only script parser that extracts preset arguments before `"$@"` from existing wrapper scripts and emits the self-answering `clihelp` wrapper script to `stdout` with fail-fast protections against unexpanded variables and control flow.
+- **`completion wrap` Subcommand**: Mounted `wrap` on `CompletionCommand()` to expose wrapper script generation and script inspection to applications that mount the visible completion command tree.
+- **Refreshed & Themed `__clihelp` Interface**: Overhauled `__clihelp` with ANSI theme integration, clean `Usage:`, de-cluttered `Verbs:` table with dynamic column alignment and word wrapping, active shell detection (`Detected: <shell> (active)`), and colorized examples.
+
 ## [0.3.43] - 2026-09-19
+
 
 ### Added
 - **Dynamic Autocompletion Documentation & Recipe**: Highlighted dynamic flag and positional completion callbacks (`Option.Complete`, `Param.Complete`, `Param.Variadic`) in `README.md` features and added a concrete usage recipe to `docs/recipes-and-patterns.md`.

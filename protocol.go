@@ -3,6 +3,7 @@ package clihelp
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 )
 
@@ -41,7 +42,7 @@ func clihelpVerbs() []clihelpVerb {
 		{"install", "[--no-keys] [--no-man] [<shell>]", "set this program up: completion, the Alt-H binding and the manual page"},
 		{"uninstall", "[<shell>]", "remove what install wrote"},
 		{"keys", "[<shell>]", "print the key bindings, for inspection or manual setup"},
-		{"wrapper", "<name> [<args>...]", "print a wrapper script for this program, with arguments"},
+		{"wrapper", "[--from <path>] <name> [<args>...]", "print a wrapper script for this program, with arguments"},
 		{"manpage", "[--install|--uninstall] [--force]", "print a roff manual page, or install it for man(1)"},
 	}
 }
@@ -116,11 +117,14 @@ func (a *App) handleClihelpCommand(args []string) error {
 
 // printVerbHelp prints one verb's usage line.
 func (a *App) printVerbHelp(w io.Writer, verb string) error {
+	o := Options{Theme: a.Theme}.withApp(a)
+	th := o.theme(a)
 	for _, v := range clihelpVerbs() {
 		if v.name != verb {
 			continue
 		}
-		fmt.Fprintf(w, "%s %s %s %s\n    %s\n", appName(a), protoClihelp, v.name, v.args, v.about)
+		usage := strings.TrimSpace(fmt.Sprintf("%s %s", th.Subcommand.Sprint(v.name), th.Flag.Sprint(v.args)))
+		fmt.Fprintf(w, "%s %s %s\n    %s\n", th.Accent.Sprint(appName(a)), th.Flag.Sprint(protoClihelp), usage, th.Body.Sprint(v.about))
 		return nil
 	}
 	return fmt.Errorf("unknown %s verb %q (try %s with no arguments)", protoClihelp, verb, protoClihelp)
@@ -162,52 +166,107 @@ func firstArg(args []string) string {
 }
 
 func (a *App) printClihelpVerbs(w io.Writer, extended bool) {
-	fmt.Fprintf(w, "%s %s — shell integration for this program, built with clihelp %s\n\n", appName(a), protoClihelp, Version)
-	width := 0
+	o := Options{Writer: w, Theme: a.Theme}.withApp(a)
+	th := o.theme(a)
+	name := appName(a)
+
+	fmt.Fprintf(w, "%s %s — %s (clihelp %s)\n\n",
+		th.Accent.Sprint(name),
+		th.Flag.Sprint(protoClihelp),
+		th.Body.Sprint("shell integration for this program, built with"),
+		th.ExampleComment.Sprint(Version),
+	)
+
+	fmt.Fprintf(w, "%s\n  %s %s %s %s\n\n",
+		th.Hdr.Sprint("Usage:"),
+		th.Accent.Sprint(name),
+		th.Flag.Sprint(protoClihelp),
+		th.Subcommand.Sprint("<verb>"),
+		th.Flag.Sprint("[options...]"),
+	)
+
+	fmt.Fprintf(w, "%s\n", th.Hdr.Sprint("Verbs:"))
+	var params []Param
 	for _, v := range clihelpVerbs() {
-		if n := len(v.name) + len(v.args) + 1; n > width {
-			width = n
+		disp := v.name
+		if v.args != "" {
+			disp += " " + v.args
 		}
+		params = append(params, Param{
+			Name:        disp,
+			Description: v.about,
+		})
 	}
+
+	termWidth := o.width()
+	indent := colIndentFor(params, termWidth, minTextColumns)
+
 	for _, v := range clihelpVerbs() {
-		fmt.Fprintf(w, "  %s %-*s  %s\n", protoClihelp, width, strings.TrimSpace(v.name+" "+v.args), v.about)
+		verbDisplay := th.Subcommand.Sprint(v.name)
+		if v.args != "" {
+			verbDisplay += " " + th.Flag.Sprint(v.args)
+		}
+		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, verbDisplay, v.about)
 	}
-	fmt.Fprintf(w, "\nSupported shells: %s\n", strings.Join(supportedShells, ", "))
+
+	fmt.Fprintf(w, "\n%s\n", th.Hdr.Sprint("Shells:"))
+	activeShell := detectShell()
+	if activeShell != "" {
+		fmt.Fprintf(w, "  Detected:  %s %s\n",
+			th.Subcommand.Sprint(activeShell),
+			th.ExampleComment.Sprint("(active)"),
+		)
+	}
+	fmt.Fprintf(w, "  Supported: %s\n", th.Body.Sprint(strings.Join(supportedShells, ", ")))
+
+	fmt.Fprintf(w, "\n%s\n", th.Hdr.Sprint("Examples:"))
+	examples := []struct{ cmd, comment string }{
+		{name + " " + protoClihelp + " install", "# set up completion, Alt-H, and man page"},
+		{name + " " + protoClihelp + " wrapper pd deploy > ~/bin/pd", "# generate wrapper script with preset args"},
+		{name + " " + protoClihelp + " wrapper --from ~/bin/mt", "# inspect existing script and generate wrapper"},
+		{name + " " + protoClihelp + " manpage --install", "# install manual page for man(1)"},
+	}
+	for _, ex := range examples {
+		fmt.Fprintf(w, "  %-46s %s\n",
+			th.Subcommand.Sprint(ex.cmd),
+			th.ExampleComment.Sprint(ex.comment),
+		)
+	}
+
 	if !extended {
-		fmt.Fprintf(w, "Run '%s %s -H' for what install writes and which names are reserved.\n", appName(a), protoClihelp)
+		fmt.Fprintf(w, "\nRun '%s %s -H' for what install writes and which names are reserved.\n", name, protoClihelp)
 		return
 	}
-	a.printClihelpDetail(w)
+	a.printClihelpDetail(w, th)
 }
 
 // printClihelpDetail answers the two questions a hidden command cannot answer
 // through the ordinary help system: what it would write on this machine, and
 // what it has reserved.
-func (a *App) printClihelpDetail(w io.Writer) {
-	fmt.Fprintf(w, "\nReserved argument names — an application must not declare commands with them:\n")
-	fmt.Fprintf(w, "  %-12s the completion protocol, called by the generated shell scripts\n", protoComplete)
-	fmt.Fprintf(w, "  %-12s the Alt-H protocol, called by the generated key bindings\n", protoExplain)
-	fmt.Fprintf(w, "  %-12s these verbs\n", protoClihelp)
+func (a *App) printClihelpDetail(w io.Writer, th Theme) {
+	fmt.Fprintf(w, "\n%s\n", th.Hdr.Sprint("Reserved argument names — an application must not declare commands with them:"))
+	fmt.Fprintf(w, "  %-12s %s\n", th.Flag.Sprint(protoComplete), th.Body.Sprint("the completion protocol, called by the generated shell scripts"))
+	fmt.Fprintf(w, "  %-12s %s\n", th.Flag.Sprint(protoExplain), th.Body.Sprint("the Alt-H protocol, called by the generated key bindings"))
+	fmt.Fprintf(w, "  %-12s %s\n", th.Flag.Sprint(protoClihelp), th.Body.Sprint("these verbs"))
 
 	shell, shellErr := resolveShell("")
-	fmt.Fprintf(w, "\nWhat 'install' would write here")
+	fmt.Fprintf(w, "\n%s", th.Hdr.Sprint("What 'install' would write here"))
 	if shellErr != nil {
 		fmt.Fprintf(w, " (no shell detected; name one on the command line):\n")
 		return
 	}
-	fmt.Fprintf(w, ", for %s:\n", shell)
+	fmt.Fprintf(w, ", for %s:\n", th.Subcommand.Sprint(shell))
 	if path, err := IntegrationPath(a, shell); err == nil {
-		fmt.Fprintf(w, "  generated:  %s\n", path)
+		fmt.Fprintf(w, "  %s  %s\n", th.Flag.Sprint("generated:"), th.Body.Sprint(path))
 	}
 	if path, owned, err := startupFile(a, shell); err == nil {
 		what := "a marked block in"
 		if owned {
 			what = "a drop-in file:"
 		}
-		fmt.Fprintf(w, "  sourced by: %s %s\n", what, path)
+		fmt.Fprintf(w, "  %s %s %s\n", th.Flag.Sprint("sourced by:"), what, th.Body.Sprint(path))
 	}
-	fmt.Fprintf(w, "Nothing runs at shell startup: the line is a file test and a source, and an\n")
-	fmt.Fprintf(w, "upgrade rewrites the generated file rather than your configuration.\n")
+	fmt.Fprintf(w, "%s\n", th.ExampleComment.Sprint("Nothing runs at shell startup: the line is a file test and a source, and an\nupgrade rewrites the generated file rather than your configuration."))
 }
 
 // clihelpInstall writes the generated file's path to stdout, alone, so that a
@@ -231,14 +290,70 @@ func (a *App) clihelpInstall(args []string) error {
 // redirected straight into a file; the line that registers it with the shell
 // goes to stderr.
 func (a *App) clihelpWrapper(args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("usage: %s wrapper <name> [<args>...]", protoClihelp)
+	var fromPath string
+	var positional []string
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		switch {
+		case arg == "--from":
+			if i+1 >= len(args) {
+				return fmt.Errorf("%s wrapper: --from requires a path or command argument", protoClihelp)
+			}
+			i++
+			fromPath = args[i]
+		case strings.HasPrefix(arg, "--from="):
+			fromPath = strings.TrimPrefix(arg, "--from=")
+		case strings.HasPrefix(arg, "-"):
+			return fmt.Errorf("unknown option %q for %s wrapper", arg, protoClihelp)
+		default:
+			positional = append(positional, arg)
+		}
 	}
-	name, wrapped := args[0], args[1:]
-	if err := GenWrapperScript(a, name, wrapped, a.stdout()); err != nil {
+
+	return executeWrapperGen(a, fromPath, positional, a.stdout(), a.stderr())
+}
+
+func executeWrapperGen(app *App, fromPath string, positional []string, stdout, stderr io.Writer) error {
+	var name string
+	var wrapped []string
+
+	if fromPath != "" {
+		targetPath, defaultName, err := resolveWrapperTarget(fromPath)
+		if err != nil {
+			return err
+		}
+		f, err := os.Open(targetPath)
+		if err != nil {
+			return fmt.Errorf("failed to open wrapper script %q: %w", targetPath, err)
+		}
+		defer f.Close()
+
+		extracted, err := extractWrapperArgs(f, appName(app))
+		if err != nil {
+			return err
+		}
+		wrapped = extracted
+
+		if len(positional) > 0 {
+			name = positional[0]
+			if len(positional) > 1 {
+				return fmt.Errorf("%s wrapper: cannot specify preset arguments when using --from", protoClihelp)
+			}
+		} else {
+			name = defaultName
+		}
+	} else {
+		if len(positional) == 0 {
+			return fmt.Errorf("usage: %s wrapper [--from <path>] <name> [<args>...]", protoClihelp)
+		}
+		name, wrapped = positional[0], positional[1:]
+	}
+
+	if err := GenWrapperScript(app, name, wrapped, stdout); err != nil {
 		return err
 	}
-	printWrapperRegistration(a.stderr(), a, name, wrapped)
+	printWrapperRegistration(stderr, app, name, wrapped)
 	return nil
 }
 

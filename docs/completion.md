@@ -155,15 +155,35 @@ This is deliberately **not** part of the completion script: every shell loads th
 They are hidden, not secret: absent from help and completion output because nobody needs them in the way, documented here, and none of them acts unless invoked.
 
 ```console
-$ myapp __clihelp                 # --help, -h and help do the same
-myapp __clihelp — shell integration for this program, built with clihelp <version>
+$ myapp __clihelp
+myapp __clihelp — shell integration for this program, built with (clihelp 0.3.43)
 
-  __clihelp version                                report the clihelp version this program was built with
-  __clihelp install [--no-keys] [<shell>]          set up the shell: tab completion and the Alt-H binding
-  __clihelp uninstall [<shell>]                    remove what install wrote
-  __clihelp keys [<shell>]                         print the key bindings, for inspection or manual setup
-  __clihelp wrapper <name> [<args>...]             print a wrapper script for this program, with arguments
-  __clihelp manpage [--install|--uninstall] [--force]  print a roff manual page, or install it for man(1)
+Usage:
+  myapp __clihelp <verb> [options...]
+
+Verbs:
+  version              report the clihelp version this program was built with
+  install [--no-keys] [--no-man] [<shell>]
+                       set this program up: completion, the Alt-H binding and
+                       the manual page
+  uninstall [<shell>]  remove what install wrote
+  keys [<shell>]       print the key bindings, for inspection or manual setup
+  wrapper [--from <path>] <name> [<args>...]
+                       print a wrapper script for this program, with arguments
+  manpage [--install|--uninstall] [--force]
+                       print a roff manual page, or install it for man(1)
+
+Shells:
+  Detected:  bash (active)
+  Supported: bash, zsh, fish
+
+Examples:
+  myapp __clihelp install                       # set up completion, Alt-H, and man page
+  myapp __clihelp wrapper pd deploy > ~/bin/pd  # generate wrapper script with preset args
+  myapp __clihelp wrapper --from ~/bin/mt       # inspect existing script and generate wrapper
+  myapp __clihelp manpage --install             # install manual page for man(1)
+
+Run 'myapp __clihelp -H' for what install writes and which names are reserved.
 ```
 
 A verb given `--help` or `-h` prints its own usage rather than treating the flag as an argument, and `-H` — clihelp's extended-help flag — adds the reserved argument names and the exact paths `install` would write on this machine:
@@ -177,6 +197,9 @@ What 'install' would write here, for bash:
 Nothing runs at shell startup: the line is a file test and a source, and an
 upgrade rewrites the generated file rather than your configuration.
 ```
+
+**Author control via `App.DisableSetup`.** In restricted or enterprise environments (e.g. appliances or kiosk CLIs) where programs should not write to user dotfiles, setting `App.DisableSetup: true` suppresses `__clihelp` verbs while keeping completion (`__complete`) and Alt-H (`__explain`) active.
+
 
 **Why this exists alongside the `completion` command.** `ExecuteContext` serves `__complete` before it ever looks at the command tree, so *every* clihelp program can complete — but only a program whose author added `clihelp.CompletionCommand()` could be *asked* to install that completion. `__clihelp` closes the gap, which matters most for the people who are not the author: a dotfiles script, or a packager, can set up any clihelp program uniformly:
 
@@ -214,7 +237,7 @@ The generator is `clihelp.GenManPage(app, w)` if you want to drive it yourself.
 
 A wrapper script — `pd` running `myapp deploy "$@"` — is opaque to every shell, so completion for it has to be arranged. Shell *aliases* mostly do not: fish turns `alias pd='myapp deploy'` into a `--wraps` function and zsh expands aliases before completing, so both already work. Bash is the exception.
 
-`__clihelp wrapper` writes a wrapper that answers clihelp's protocol on behalf of the program it wraps, so completion and Alt-H keep working through it:
+`__clihelp wrapper` (or `myapp completion wrap` when `CompletionCommand()` is mounted) writes a wrapper that answers clihelp's protocol on behalf of the program it wraps, so completion and Alt-H keep working through it:
 
 ```console
 $ myapp __clihelp wrapper pd deploy > ~/.local/bin/pd && chmod +x ~/.local/bin/pd
@@ -222,6 +245,12 @@ $ myapp __clihelp wrapper pd deploy > ~/.local/bin/pd && chmod +x ~/.local/bin/p
 # Put pd somewhere on your PATH, then register it with your shell,
 # after the completion script for myapp has been loaded:
 #   complete -F _myapp_complete pd
+```
+
+If you already have a simple handwritten script (e.g. `~/bin/mt` running `myapp -2 tui "$@"`), pass `--from` to inspect it and extract preset arguments without retyping them:
+
+```console
+$ myapp __clihelp wrapper --from ~/bin/mt > ~/.local/bin/mt && chmod +x ~/.local/bin/mt
 ```
 
 The script carries a `# clihelp-wraps: myapp deploy` marker in its second line — the convention pyenv and asdf use for their shims, so that a wrapper can be recognised and followed without being executed.

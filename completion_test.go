@@ -208,7 +208,7 @@ func TestCompletionCommand(t *testing.T) {
 	for i, sub := range cmd.Subcommands {
 		subNames[i] = sub.Name
 	}
-	expected := []string{"bash", "zsh", "fish", "keys", "install", "uninstall"}
+	expected := []string{"bash", "zsh", "fish", "keys", "install", "uninstall", "wrap"}
 	if len(subNames) != len(expected) {
 		t.Fatalf("expected subcommands %v, got %v", expected, subNames)
 	}
@@ -249,6 +249,19 @@ func TestCompletionCommand(t *testing.T) {
 	}
 	if !strings.Contains(outBuf.String(), "shell") {
 		t.Errorf("expected the generated path on stdout, got: %s", outBuf.String())
+	}
+
+	outBuf.Reset()
+	errBuf.Reset()
+	t.Setenv("SHELL", "/bin/bash")
+	if err := app.ExecuteContext(context.Background(), []string{"completion", "wrap", "mywrap", "deploy"}); err != nil {
+		t.Fatalf("completion wrap failed: %v", err)
+	}
+	if !strings.Contains(outBuf.String(), "# clihelp-wraps: myapp deploy") {
+		t.Errorf("expected wrapper script in stdout, got: %s", outBuf.String())
+	}
+	if !strings.Contains(errBuf.String(), "complete -F _myapp_complete mywrap") {
+		t.Errorf("expected registration on stderr, got: %s", errBuf.String())
 	}
 }
 

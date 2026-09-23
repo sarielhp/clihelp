@@ -264,6 +264,10 @@ type App struct {
 	// prompt to re-run setup and no symptom to notice; the refresh is what makes
 	// a one-time setup stay correct across upgrades.
 	AutoRefreshIntegration bool
+	// DisableSetup suppresses the built-in "__clihelp" setup protocol verbs
+	// (version, install, uninstall, keys, wrapper, manpage). The frozen completion
+	// protocol (__complete) and Alt-H (__explain) remain active.
+	DisableSetup bool
 
 	// Presentation overrides
 	Theme       *Theme

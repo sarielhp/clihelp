@@ -476,3 +476,71 @@ func TestStdoutCarriesOnlyMachineReadableOutput(t *testing.T) {
 		})
 	}
 }
+
+func TestAppDisableSetup(t *testing.T) {
+	app := bareApp()
+	app.DisableSetup = true
+
+	t.Run("suppresses __clihelp setup protocol", func(t *testing.T) {
+		res := runProto(t, app, "__clihelp")
+		if res.Error == nil {
+			t.Errorf("__clihelp was handled when DisableSetup is true")
+		}
+		if strings.Contains(res.Stdout, "shell integration for this program") {
+			t.Errorf("stdout printed setup verbs when DisableSetup is true: %s", res.Stdout)
+		}
+	})
+
+	t.Run("preserves __complete protocol", func(t *testing.T) {
+		res := runProto(t, app, "__complete", "b")
+		res.AssertNoError(t)
+		res.AssertStdoutContains(t, "build")
+	})
+
+	t.Run("preserves __explain protocol", func(t *testing.T) {
+		res := runProto(t, app, "__explain", "bare build")
+		res.AssertNoError(t)
+		res.AssertStdoutContains(t, "bare build")
+	})
+}
+
+func TestClihelpWrapperFromFlag(t *testing.T) {
+	t.Setenv("SHELL", "/bin/bash")
+	dir := t.TempDir()
+	shim := filepath.Join(dir, "my-shim")
+	scriptContent := "#!/bin/bash\nbare build -v \"$@\"\n"
+	if err := os.WriteFile(shim, []byte(scriptContent), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	app := bareApp()
+
+	t.Run("auto name and extracted arguments", func(t *testing.T) {
+		res := runProto(t, app, "__clihelp", "wrapper", "--from", shim)
+		res.AssertNoError(t)
+		res.AssertStdoutContains(t, "# clihelp-wraps: bare build -v")
+		res.AssertStdoutContains(t, `__clihelp_target='bare build -v'`)
+		res.AssertStderrContains(t, "complete -F _bare_complete my-shim")
+	})
+
+	t.Run("override wrapper name", func(t *testing.T) {
+		res := runProto(t, app, "__clihelp", "wrapper", "--from", shim, "custom-name")
+		res.AssertNoError(t)
+		res.AssertStdoutContains(t, `__clihelp_target='bare build -v'`)
+		res.AssertStderrContains(t, "complete -F _bare_complete custom-name")
+	})
+
+	t.Run("rejects contradictory positional arguments", func(t *testing.T) {
+		res := runProto(t, app, "__clihelp", "wrapper", "--from", shim, "custom-name", "extra-arg")
+		if res.Error == nil {
+			t.Errorf("expected error when extra arguments passed with --from")
+		}
+	})
+
+	t.Run("missing --from argument", func(t *testing.T) {
+		res := runProto(t, app, "__clihelp", "wrapper", "--from")
+		if res.Error == nil {
+			t.Errorf("expected error when --from is missing value")
+		}
+	})
+}
