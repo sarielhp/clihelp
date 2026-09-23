@@ -21,6 +21,7 @@ title: 'podctl — Navigation'
   - [keys](completion-keys.md) — Print shell key bindings (Alt-H expands the command line and explains it)
   - [install](completion-install.md) — Set this program up: tab completion, the Alt-H key binding and the manual page
   - [uninstall](completion-uninstall.md) — Remove the installed tab completion and key binding
+  - [wrap](completion-wrap.md) — Generate a wrapper script with preset arguments
 - [deep](deep.md) — **deep** — This is the [deep command](https://example.com/deep) at the root of the demonstration hierarchy with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines for testing purposes.
   - [alpha](deep-alpha.md) — This is the [alpha command](https://example.com/deep/alpha) at depth 2 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines.
     - [alpha\_one](deep-alpha-alpha-one.md) — This is the [alpha_one command](https://example.com/deep/alpha/alpha_one) at depth 3 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines.

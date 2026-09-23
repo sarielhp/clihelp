@@ -23,6 +23,7 @@ completion <subcommand>
 | [keys](completion-keys.md) | Print shell key bindings (Alt-H expands the command line and explains it) |
 | [install](completion-install.md) | Set this program up: tab completion, the Alt-H key binding and the manual page |
 | [uninstall](completion-uninstall.md) | Remove the installed tab completion and key binding |
+| [wrap](completion-wrap.md) | Generate a wrapper script with preset arguments |
 
 ## Flags
 
