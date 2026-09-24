@@ -165,6 +165,7 @@ type Command struct {
 	Subcommands       []Command
 	Examples          []Example
 	Args              ArgsValidator
+	PositionalFilter  func(arg string) bool
 	OptionsValidator  OptionsValidator
 	PreRun            func(ctx *Context) error
 	Run               func(ctx *Context) error
@@ -239,6 +240,14 @@ type App struct {
 	// ExtendedHelpFlag enables -H as an opt-in single-letter shortcut for
 	// extended help (--help) on commands and root.
 	ExtendedHelpFlag bool
+	// EnableExamplesFlag enables the built-in -E, --examples flag, rendering
+	// the examples help topic (optionally narrowed by command name).
+	EnableExamplesFlag bool
+	// PositionalFilter tests whether an argument is a valid positional value for the root command.
+	// When an application has both subcommands and root positionals, an argument at slot 0 that does
+	// not match any subcommand is evaluated by PositionalFilter. If it returns false,
+	// clihelp treats the argument as an unknown/misspelled command and suggests alternatives.
+	PositionalFilter func(arg string) bool
 	// NoColor disables every escape this library emits, for every render this
 	// application performs. It is the field a --no-color flag writes to:
 	// fatih/color's own switch is global and decided from stdout at package

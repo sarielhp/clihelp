@@ -434,6 +434,12 @@ func (a *App) renderGlobalFlagsSection(w io.Writer, th Theme, o Options, termWid
 			globalFlags = append(globalFlags, f)
 		}
 	}
+	if a.EnableExamplesFlag {
+		globalFlags = append(globalFlags, Option{
+			Flags:       "-E, --examples",
+			Description: "Show every example in one place; add a command to narrow it",
+		})
+	}
 	if len(globalFlags) == 0 {
 		return
 	}

@@ -46,10 +46,11 @@ func (a *App) checkTopLevelVersion(args []string) (bool, error) {
 type helpFlags struct {
 	concise  bool
 	extended bool
+	examples bool
 }
 
 func (h *helpFlags) requested() bool {
-	return h.concise || h.extended
+	return h.concise || h.extended || h.examples
 }
 
 // helpFlagNames lists the built-in help flags as they are written on the command
@@ -59,6 +60,9 @@ func (a *App) helpFlagNames() []string {
 	names := []string{"-h", "--help-concise", "--help"}
 	if a.ExtendedHelpFlag {
 		names = append(names, "-H")
+	}
+	if a.EnableExamplesFlag {
+		names = append(names, "-E", "--examples")
 	}
 	return names
 }
@@ -76,6 +80,11 @@ func (a *App) bindHelpFlags(fs *pflag.FlagSet, cmdName string) *helpFlags {
 		fs.BoolVar(&h.extended, "help", false, "Extended help for "+cmdName)
 	}
 	_ = fs.MarkHidden("help")
+
+	if a.EnableExamplesFlag {
+		fs.BoolVarP(&h.examples, "examples", "E", false, "Examples for "+cmdName)
+		_ = fs.MarkHidden("examples")
+	}
 	return &h
 }
 
@@ -137,11 +146,12 @@ func (a *App) checkLeftoverArgument(targetCmd *Command, path []string, rest []st
 	// argument of its own. Asking "does it have a handler" let a declared
 	// Args: NoArgs go unread, and gave an application no way to keep the check
 	// while handling a bare invocation.
+	first := rest[0]
 	if targetCmd == nil {
-		if takesPositionals(a, nil) || (len(a.Commands) == 0 && len(a.Shortcuts) == 0) {
+		if takesPositionals(a, nil, first) || (len(a.Commands) == 0 && len(a.Shortcuts) == 0) {
 			return nil
 		}
-	} else if takesPositionals(a, targetCmd) || len(targetCmd.Subcommands) == 0 {
+	} else if takesPositionals(a, targetCmd, first) || len(targetCmd.Subcommands) == 0 {
 		return nil
 	}
 
@@ -158,7 +168,7 @@ func (a *App) checkLeftoverArgument(targetCmd *Command, path []string, rest []st
 		if targetCmd != nil {
 			parent = targetCmd.Name
 		}
-		return fmt.Errorf("%q is a subcommand of %q, but a flag written before it was taken as an argument; write the flag after the subcommand name", rest[0], parent)
+		return fmt.Errorf("%w: %q is a subcommand of %q, but a flag written before it was taken as an argument; write the flag after the subcommand name", ErrUsage, rest[0], parent)
 	}
 	return a.checkUnknownCommand(targetCmd, path, cmds, rest[0])
 }
@@ -202,7 +212,7 @@ func (a *App) validateParsedFlags(fs *pflag.FlagSet, allOptions []Option, target
 			for _, m := range missing {
 				names = append(names, `"`+strings.TrimPrefix(m.Name, "flag-")+`"`)
 			}
-			return fmt.Errorf("required flag(s) %s not set", strings.Join(names, ", "))
+			return fmt.Errorf("%w: required flag(s) %s not set", ErrUsage, strings.Join(names, ", "))
 		}
 	}
 
@@ -322,10 +332,16 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 	}
 
 	if parseErr := fs.Parse(remaining); parseErr != nil {
-		return parseErr
+		return fmt.Errorf("%w: %v", ErrUsage, parseErr)
 	}
 
 	if helpFlags.requested() {
+		if helpFlags.examples {
+			examplePath := append([]string{}, path...)
+			examplePath = append(examplePath, fs.Args()...)
+			a.renderExamplesTopic(a.stdout(), examplePath)
+			return nil
+		}
 		a.renderRequestedHelp(helpFlags, path)
 		return nil
 	}

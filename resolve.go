@@ -253,7 +253,7 @@ func (a *App) findSubcommandPaths(target string) []string {
 
 func formatSubcommandSuggestions(arg, parentName string, suggestions []string) error {
 	if len(suggestions) == 1 {
-		return fmt.Errorf("unknown command %q for %q. Did you mean %q?", arg, parentName, suggestions[0])
+		return fmt.Errorf("%w: unknown command %q for %q. Did you mean %q?", ErrUsage, arg, parentName, suggestions[0])
 	}
 	const maxDisplay = 5
 	var buf strings.Builder
@@ -268,7 +268,7 @@ func formatSubcommandSuggestions(arg, parentName string, suggestions []string) e
 	if len(suggestions) > maxDisplay {
 		buf.WriteString(fmt.Sprintf("  (... and %d more)\n", len(suggestions)-maxDisplay))
 	}
-	return errors.New(strings.TrimRight(buf.String(), "\n"))
+	return fmt.Errorf("%w: %s", ErrUsage, strings.TrimRight(buf.String(), "\n"))
 }
 
 // takesPositionals reports whether the enclosing command can accept arg as one
@@ -284,15 +284,21 @@ func formatSubcommandSuggestions(arg, parentName string, suggestions []string) e
 // say "unknown command "bogus". Did you mean …". At the root it was worse:
 // App had no Args field at all, so handling a bare invocation and rejecting
 // typos could not be asked for separately.
-func takesPositionals(a *App, currentCmd *Command) bool {
+func takesPositionals(a *App, currentCmd *Command, arg string) bool {
 	if currentCmd != nil {
 		if currentCmd.Run == nil {
 			return false // a grouping command: the word can only be a subcommand
+		}
+		if currentCmd.PositionalFilter != nil && !currentCmd.PositionalFilter(arg) {
+			return false
 		}
 		return acceptsPositionals(currentCmd.Args)
 	}
 	if a.Run == nil {
 		return false // nothing would receive them
+	}
+	if a.PositionalFilter != nil && !a.PositionalFilter(arg) {
+		return false
 	}
 	if a.Args != nil {
 		return acceptsPositionals(a.Args)
@@ -324,7 +330,7 @@ func (a *App) checkUnknownCommand(currentCmd *Command, path []string, currentCom
 	if currentCmd == nil && len(a.Shortcuts) > 0 {
 		currentCommands = append(append([]Command{}, currentCommands...), a.Shortcuts...)
 	}
-	if len(currentCommands) > 0 && !takesPositionals(a, currentCmd) {
+	if len(currentCommands) > 0 && !takesPositionals(a, currentCmd, arg) {
 		parentName := appName(a)
 		if currentCmd != nil {
 			parentName = currentCmd.Name
@@ -333,13 +339,13 @@ func (a *App) checkUnknownCommand(currentCmd *Command, path []string, currentCom
 			return formatSubcommandSuggestions(arg, parentName, suggestions)
 		}
 		if suggestion := suggestCommand(arg, currentCommands); suggestion != "" {
-			return fmt.Errorf("unknown command %q for %q. Did you mean %q?", arg, parentName, suggestion)
+			return fmt.Errorf("%w: unknown command %q for %q. Did you mean %q?", ErrUsage, arg, parentName, suggestion)
 		}
 		// With nothing close enough to suggest, the user is left holding a
 		// rejection and no way forward. A real application built on this library
 		// added that sentence itself; it belongs here.
-		return fmt.Errorf("unknown command %q for %q. Run %q for a list of commands",
-			arg, parentName, strings.Join(append([]string{appName(a)}, path...), " ")+" -h")
+		return fmt.Errorf("%w: unknown command %q for %q. Run %q for a list of commands",
+			ErrUsage, arg, parentName, strings.Join(append([]string{appName(a)}, path...), " ")+" -h")
 	}
 	return nil
 }
@@ -723,4 +729,68 @@ func min3(a, b, c int) int {
 		return b
 	}
 	return c
+}
+
+// SuggestCommand finds the closest matching command name from candidates for the input word.
+func SuggestCommand(input string, candidates []Command) string {
+	return suggestCommand(input, candidates)
+}
+
+// FindNearestCommands searches the entire command hierarchy for closest matching command paths.
+func (a *App) FindNearestCommands(input string) []string {
+	if a == nil || input == "" {
+		return nil
+	}
+	type match struct {
+		path string
+		dist int
+	}
+	var matches []match
+	var hidden []string
+	bestDist := 3
+
+	checkCandidate := func(path string, cmd *Command) {
+		for _, name := range append([]string{cmd.Name}, cmd.Aliases...) {
+			d := levenshtein(input, name)
+			if d < 3 {
+				if d < bestDist {
+					bestDist = d
+				}
+				matches = append(matches, match{path: path, dist: d})
+				break
+			}
+		}
+	}
+
+	_ = a.Walk(func(path []string, cmd *Command) error {
+		joined := strings.Join(path, " ")
+		for _, prefix := range hidden {
+			if strings.HasPrefix(joined, prefix+" ") {
+				return nil
+			}
+		}
+		if cmd.Hidden {
+			hidden = append(hidden, joined)
+			return nil
+		}
+		checkCandidate(joined, cmd)
+		return nil
+	})
+
+	for i := range a.Shortcuts {
+		s := &a.Shortcuts[i]
+		if !s.Hidden {
+			checkCandidate(s.Name, s)
+		}
+	}
+
+	var result []string
+	seen := make(map[string]bool)
+	for _, m := range matches {
+		if m.dist <= bestDist && !seen[m.path] {
+			seen[m.path] = true
+			result = append(result, m.path)
+		}
+	}
+	return result
 }

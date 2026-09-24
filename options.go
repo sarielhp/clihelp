@@ -626,7 +626,7 @@ func (e *enumVal) Set(val string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("invalid value %q: must be one of [%s]", val, strings.Join(e.allowed, ", "))
+	return fmt.Errorf("%w: invalid value %q: must be one of [%s]", ErrUsage, val, strings.Join(e.allowed, ", "))
 }
 
 func (e *enumVal) Type() string {

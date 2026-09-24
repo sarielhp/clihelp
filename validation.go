@@ -122,7 +122,7 @@ func MutuallyExclusive(flags ...string) OptionsValidator {
 			return err
 		}
 		if len(setFlags) > 1 {
-			return fmt.Errorf("flags %s are mutually exclusive", strings.Join(setFlags, " and "))
+			return fmt.Errorf("%w: flags %s are mutually exclusive", ErrUsage, strings.Join(setFlags, " and "))
 		}
 		return nil
 	}
@@ -136,7 +136,7 @@ func RequiredTogether(flags ...string) OptionsValidator {
 			return err
 		}
 		if len(setFlags) > 0 && len(missingFlags) > 0 {
-			return fmt.Errorf("flags %s must be used together", strings.Join(flags, " and "))
+			return fmt.Errorf("%w: flags %s must be used together", ErrUsage, strings.Join(flags, " and "))
 		}
 		return nil
 	}
@@ -154,7 +154,7 @@ func RequiredWith(target string, required ...string) OptionsValidator {
 			return err
 		}
 		if len(missing) > 0 {
-			return fmt.Errorf("flag %s is required when using %s", missing[0], target)
+			return fmt.Errorf("%w: flag %s is required when using %s", ErrUsage, missing[0], target)
 		}
 		return nil
 	}
@@ -175,8 +175,8 @@ func RequiredIf(flag string, condition string) OptionsValidator {
 		}
 		cleanCond := cleanFlagName(condition)
 		if i := strings.Index(cleanCond, "="); i >= 0 {
-			return fmt.Errorf("flag %s is required when %s is set to %q", flag, cleanCond[:i], cleanCond[i+1:])
+			return fmt.Errorf("%w: flag %s is required when %s is set to %q", ErrUsage, flag, cleanCond[:i], cleanCond[i+1:])
 		}
-		return fmt.Errorf("flag %s is required when %s is set", flag, condition)
+		return fmt.Errorf("%w: flag %s is required when %s is set", ErrUsage, flag, condition)
 	}
 }

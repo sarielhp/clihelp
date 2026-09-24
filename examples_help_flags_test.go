@@ -94,30 +94,32 @@ func TestHelpFlagsInExamplesActuallyRun(t *testing.T) {
 // validator drifted from, so pin them to each other.
 func TestHelpFlagNamesMatchWhatIsBound(t *testing.T) {
 	for _, extended := range []bool{false, true} {
-		app := &App{Name: "app", ExtendedHelpFlag: extended,
-			Commands: []Command{{Name: "run", Run: nopRun}}}
+		for _, enableExamples := range []bool{false, true} {
+			app := &App{Name: "app", ExtendedHelpFlag: extended, EnableExamplesFlag: enableExamples,
+				Commands: []Command{{Name: "run", Run: nopRun}}}
 
-		fs := pflag.NewFlagSet("app", pflag.ContinueOnError)
-		app.bindHelpFlags(fs, "app")
+			fs := pflag.NewFlagSet("app", pflag.ContinueOnError)
+			app.bindHelpFlags(fs, "app")
 
-		bound := map[string]bool{}
-		fs.VisitAll(func(f *pflag.Flag) {
-			bound["--"+f.Name] = true
-			if f.Shorthand != "" {
-				bound["-"+f.Shorthand] = true
+			bound := map[string]bool{}
+			fs.VisitAll(func(f *pflag.Flag) {
+				bound["--"+f.Name] = true
+				if f.Shorthand != "" {
+					bound["-"+f.Shorthand] = true
+				}
+			})
+
+			named := map[string]bool{}
+			for _, n := range app.helpFlagNames() {
+				named[n] = true
+				if !bound[n] {
+					t.Errorf("ExtendedHelpFlag=%v, EnableExamplesFlag=%v: helpFlagNames lists %q, which bindHelpFlags does not bind", extended, enableExamples, n)
+				}
 			}
-		})
-
-		named := map[string]bool{}
-		for _, n := range app.helpFlagNames() {
-			named[n] = true
-			if !bound[n] {
-				t.Errorf("ExtendedHelpFlag=%v: helpFlagNames lists %q, which bindHelpFlags does not bind", extended, n)
-			}
-		}
-		for n := range bound {
-			if !named[n] {
-				t.Errorf("ExtendedHelpFlag=%v: bindHelpFlags binds %q, which helpFlagNames does not list", extended, n)
+			for n := range bound {
+				if !named[n] {
+					t.Errorf("ExtendedHelpFlag=%v, EnableExamplesFlag=%v: bindHelpFlags binds %q, which helpFlagNames does not list", extended, enableExamples, n)
+				}
 			}
 		}
 	}

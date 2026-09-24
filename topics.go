@@ -118,6 +118,13 @@ func (a *App) synthesizeStandardFlags(existing []Option) []Option {
 			Group:       helpGroup,
 		})
 	}
+	if a.EnableExamplesFlag {
+		stdFlags = append(stdFlags, Option{
+			Flags:       "-E, --examples",
+			Description: "Show every example in one place; add a command to narrow it",
+			Group:       helpGroup,
+		})
+	}
 	return stdFlags
 }
 
@@ -367,6 +374,11 @@ func (a *App) renderTopicsPage(o Options) {
 			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, t.Name, o.inline(t.Description), th.Subcommand)
 		}
 	})
+}
+
+// renderExamplesTopic writes examples for path (or all examples if path is empty) to w.
+func (a *App) renderExamplesTopic(w io.Writer, path []string) {
+	a.renderExamplesPage(Options{Writer: w, Theme: a.Theme, Pager: a.Pager}, path...)
 }
 
 // renderExamplesPage writes every example in the command tree, grouped under the

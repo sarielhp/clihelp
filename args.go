@@ -48,34 +48,34 @@ func (a argRange) Arity() (int, int) { return a.min, a.max }
 // others; "Args: clihelp.NoArgs" is unchanged at the call site.
 var NoArgs ArgsValidator = argRange{
 	min: 0, max: 0,
-	fail: func(args []string) error { return fmt.Errorf("unknown arguments: %v", args) },
+	fail: func(args []string) error { return fmt.Errorf("%w: unknown arguments: %v", ErrUsage, args) },
 }
 
 // ExactArgs requires exactly n positional arguments.
 func ExactArgs(n int) ArgsValidator {
 	return argRange{min: n, max: n, fail: func(args []string) error {
-		return fmt.Errorf("accepts %d arg(s), received %d", n, len(args))
+		return fmt.Errorf("%w: accepts %d arg(s), received %d", ErrUsage, n, len(args))
 	}}
 }
 
 // MinimumNArgs requires at least n positional arguments.
 func MinimumNArgs(n int) ArgsValidator {
 	return argRange{min: n, max: -1, fail: func(args []string) error {
-		return fmt.Errorf("requires at least %d arg(s), received %d", n, len(args))
+		return fmt.Errorf("%w: requires at least %d arg(s), received %d", ErrUsage, n, len(args))
 	}}
 }
 
 // MaximumNArgs allows at most n positional arguments.
 func MaximumNArgs(n int) ArgsValidator {
 	return argRange{min: 0, max: n, fail: func(args []string) error {
-		return fmt.Errorf("accepts at most %d arg(s), received %d", n, len(args))
+		return fmt.Errorf("%w: accepts at most %d arg(s), received %d", ErrUsage, n, len(args))
 	}}
 }
 
 // RangeArgs requires between minArgs and maxArgs positional arguments.
 func RangeArgs(minArgs, maxArgs int) ArgsValidator {
 	return argRange{min: minArgs, max: maxArgs, fail: func(args []string) error {
-		return fmt.Errorf("accepts between %d and %d arg(s), received %d", minArgs, maxArgs, len(args))
+		return fmt.Errorf("%w: accepts between %d and %d arg(s), received %d", ErrUsage, minArgs, maxArgs, len(args))
 	}}
 }
 
