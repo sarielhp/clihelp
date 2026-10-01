@@ -18,8 +18,8 @@ podctl deep beta [options] [arguments...] — This is a **very long usage line**
 
 | Command | Description |
 |---------|-------------|
-| [beta\_one](deep-beta-beta-one.md) | This is the [beta_one command](https://example.com/deep/beta/beta_one) at depth 3 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
-| [beta\_two](deep-beta-beta-two.md) | This is the [beta_two command](https://example.com/deep/beta/beta_two) at depth 3 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
+| [beta\_one](deep-beta-beta-one.md) | The [beta_one command](https://example.com/deep/beta/beta_one) at depth 3 |
+| [beta\_two](deep-beta-beta-two.md) | The [beta_two command](https://example.com/deep/beta/beta_two) at depth 3 |
 
 ## Flags
 
@@ -28,7 +28,7 @@ podctl deep beta [options] [arguments...] — This is a **very long usage line**
 | `--token TOKEN` | Bearer token for cluster authentication |
 | `--api-key KEY` | API key for cloud provider access |
 | `-c, --config PATH` | Path to configuration file (default: ~/.config/podctl.yaml) |
-| `--endpoint URL` | API service endpoint URL (default: https://api.podctl.example.com) |
+| `--endpoint URL` | API endpoint URL (default: https://api.podctl.example.com) |
 | `-v, --verbose` | Enable verbose output logs |
 | `-s, --silent` | Suppress non-error output |
 | `--no-color` | Disable ANSI color output |

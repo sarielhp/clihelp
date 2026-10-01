@@ -18,8 +18,8 @@ podctl deep alpha alpha_two [options] [arguments...] — This is a **very long u
 
 | Command | Description |
 |---------|-------------|
-| [alpha\_two\_a](deep-alpha-alpha-two-alpha-two-a.md) | This is the [alpha_two_a command](https://example.com/deep/alpha/alpha_two/alpha_two_a) at depth 4 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
-| [alpha\_two\_b](deep-alpha-alpha-two-alpha-two-b.md) | This is the [alpha_two_b command](https://example.com/deep/alpha/alpha_two/alpha_two_b) at depth 4 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
+| [alpha\_two\_a](deep-alpha-alpha-two-alpha-two-a.md) | The [alpha_two_a command](https://example.com/deep/alpha/alpha_two/alpha_two_a) at depth 4 |
+| [alpha\_two\_b](deep-alpha-alpha-two-alpha-two-b.md) | The [alpha_two_b command](https://example.com/deep/alpha/alpha_two/alpha_two_b) at depth 4 |
 
 ## Flags
 
@@ -28,7 +28,7 @@ podctl deep alpha alpha_two [options] [arguments...] — This is a **very long u
 | `--token TOKEN` | Bearer token for cluster authentication |
 | `--api-key KEY` | API key for cloud provider access |
 | `-c, --config PATH` | Path to configuration file (default: ~/.config/podctl.yaml) |
-| `--endpoint URL` | API service endpoint URL (default: https://api.podctl.example.com) |
+| `--endpoint URL` | API endpoint URL (default: https://api.podctl.example.com) |
 | `-v, --verbose` | Enable verbose output logs |
 | `-s, --silent` | Suppress non-error output |
 | `--no-color` | Disable ANSI color output |

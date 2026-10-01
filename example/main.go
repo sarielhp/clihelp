@@ -74,7 +74,7 @@ func buildServeCommand() clihelp.Command {
 
 	return clihelp.Command{
 		Name:        "serve",
-		Description: "Start a local HTTP development server for RSS feeds and audio files. Includes live-reload support, CORS headers for cross-origin testing, and a built-in web dashboard for previewing feed metadata before deploying to production.",
+		Description: "Start a local HTTP server for RSS feeds and audio files. Includes live-reload support, CORS headers for cross-origin testing, and a built-in web dashboard for previewing feed metadata before deploying to production.",
 		UsageLine:   "podctl serve [options]",
 		Options: []clihelp.Option{
 			clihelp.Int(&servePort, "-p, --port N", 8080, "Listen HTTP port number"),
@@ -101,7 +101,7 @@ func buildConfigSpaceCommand() clihelp.Command {
 
 	return clihelp.Command{
 		Name:        "space",
-		Description: "Set maximum disk space allocation for temporary cache and build artifacts. Configurable in megabytes or gigabytes with an optional automatic cleanup policy.",
+		Description: "Set the disk space limit for the cache and build artifacts. Configurable in megabytes or gigabytes with an optional automatic cleanup policy.",
 		UsageLine:   "podctl config set space <megabytes> [options]",
 		Args:        clihelp.ExactArgs(1),
 		Parameters: []clihelp.Param{
@@ -249,7 +249,7 @@ func buildPersistentOptions(globals *GlobalOptions) []clihelp.Option {
 		clihelp.Group("Authentication", clihelp.String(&globals.APIKey, "--api-key KEY", "", "API key for cloud provider access")),
 
 		clihelp.Group("Connection & Environment", clihelp.String(&globals.Config, "-c, --config PATH", "~/.config/podctl.yaml", "Path to configuration file")),
-		clihelp.Group("Connection & Environment", clihelp.String(&globals.Endpoint, "--endpoint URL", "https://api.podctl.example.com", "API service endpoint URL")),
+		clihelp.Group("Connection & Environment", clihelp.String(&globals.Endpoint, "--endpoint URL", "https://api.podctl.example.com", "API endpoint URL")),
 
 		clihelp.Group("Output & Logging", clihelp.Bool(&globals.Verbose, "-v, --verbose", false, "Enable verbose output logs")),
 		clihelp.Group("Output & Logging", clihelp.Bool(&globals.Silent, "-s, --silent", false, "Suppress non-error output")),
@@ -331,9 +331,10 @@ var levelSuffixes = [][]string{
 // up to depth 5, as specified in the project todo.
 func buildDeepTree() clihelp.Command {
 	return clihelp.Command{
-		Name:        "deep",
-		Description: "**deep** — This is the [deep command](https://example.com/deep) at the root of the demonstration hierarchy with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines for testing purposes.",
-		UsageLine:   "podctl deep [options] <subcommand> — This is a **very long usage line** for the [deep command](https://example.com/deep) that should definitely trigger word-wrapping in the help output because it exceeds typical terminal widths and needs to be reflowed properly by the formatter.",
+		Name:            "deep",
+		Description:     "**deep** — a nested tree of [demo commands](https://example.com/deep)",
+		LongDescription: "This is the [deep command](https://example.com/deep) at the root of the demonstration hierarchy with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines for testing purposes.",
+		UsageLine:       "podctl deep [options] <subcommand> — This is a **very long usage line** for the [deep command](https://example.com/deep) that should definitely trigger word-wrapping in the help output because it exceeds typical terminal widths and needs to be reflowed properly by the formatter.",
 		Subcommands: []clihelp.Command{
 			buildSubTree("alpha", []string{"deep", "alpha"}, 2),
 			buildSubTree("beta", []string{"deep", "beta"}, 2),
@@ -344,9 +345,10 @@ func buildDeepTree() clihelp.Command {
 // buildSubTree recursively builds a command node and its binary subcommand tree.
 func buildSubTree(name string, path []string, depth int) clihelp.Command {
 	cmd := clihelp.Command{
-		Name:        name,
-		Description: fmt.Sprintf("This is the [%s command](https://example.com/%s) at depth %d with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines.", name, strings.Join(path, "/"), depth),
-		UsageLine:   fmt.Sprintf("podctl %s [options] [arguments...] — This is a **very long usage line** for the [%s command](https://example.com/%s) that should definitely trigger word-wrapping in the help output because it exceeds typical terminal widths and needs to be reflowed properly by the formatter.", strings.Join(path, " "), name, strings.Join(path, "/")),
+		Name:            name,
+		Description:     fmt.Sprintf("The [%s command](https://example.com/%s) at depth %d", name, strings.Join(path, "/"), depth),
+		LongDescription: fmt.Sprintf("This is the [%s command](https://example.com/%s) at depth %d with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines.", name, strings.Join(path, "/"), depth),
+		UsageLine:       fmt.Sprintf("podctl %s [options] [arguments...] — This is a **very long usage line** for the [%s command](https://example.com/%s) that should definitely trigger word-wrapping in the help output because it exceeds typical terminal widths and needs to be reflowed properly by the formatter.", strings.Join(path, " "), name, strings.Join(path, "/")),
 	}
 
 	if depth < 5 {

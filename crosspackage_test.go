@@ -194,7 +194,7 @@ func TestUnexplainedCopiesDetection(t *testing.T) {
 	}{
 		{"an unexplained copy is reported", map[string]string{"wrapWidth": "tree.go"}, nil, 1},
 		{"an explained copy is allowed", map[string]string{"visualLen": "tree.go"},
-			map[string]string{"visualLen": "wrapper, asserted in drift_test.go"}, 0},
+			map[string]string{"visualLen": "one-line wrapper around internal/text.VisualWidth"}, 0},
 		{"an exception with no reason is reported", map[string]string{"visualLen": "tree.go"},
 			map[string]string{"visualLen": "   "}, 1},
 		{"a name only the subpackage has is fine", map[string]string{"renderTreeNode": "tree.go"}, nil, 0},

@@ -18,8 +18,8 @@ podctl deep alpha alpha_one alpha_one_a [options] [arguments...] — This is a *
 
 | Command | Description |
 |---------|-------------|
-| [alpha\_one\_a\_i](deep-alpha-alpha-one-alpha-one-a-alpha-one-a-i.md) | This is the [alpha_one_a_i command](https://example.com/deep/alpha/alpha_one/alpha_one_a/alpha_one_a_i) at depth 5 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
-| [alpha\_one\_a\_ii](deep-alpha-alpha-one-alpha-one-a-alpha-one-a-ii.md) | This is the [alpha_one_a_ii command](https://example.com/deep/alpha/alpha_one/alpha_one_a/alpha_one_a_ii) at depth 5 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
+| [alpha\_one\_a\_i](deep-alpha-alpha-one-alpha-one-a-alpha-one-a-i.md) | The [alpha_one_a_i command](https://example.com/deep/alpha/alpha_one/alpha_one_a/alpha_one_a_i) at depth 5 |
+| [alpha\_one\_a\_ii](deep-alpha-alpha-one-alpha-one-a-alpha-one-a-ii.md) | The [alpha_one_a_ii command](https://example.com/deep/alpha/alpha_one/alpha_one_a/alpha_one_a_ii) at depth 5 |
 
 ## Flags
 
@@ -28,7 +28,7 @@ podctl deep alpha alpha_one alpha_one_a [options] [arguments...] — This is a *
 | `--token TOKEN` | Bearer token for cluster authentication |
 | `--api-key KEY` | API key for cloud provider access |
 | `-c, --config PATH` | Path to configuration file (default: ~/.config/podctl.yaml) |
-| `--endpoint URL` | API service endpoint URL (default: https://api.podctl.example.com) |
+| `--endpoint URL` | API endpoint URL (default: https://api.podctl.example.com) |
 | `-v, --verbose` | Enable verbose output logs |
 | `-s, --silent` | Suppress non-error output |
 | `--no-color` | Disable ANSI color output |

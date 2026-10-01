@@ -104,3 +104,16 @@ func TestPodctl_ConfigGetCompletion(t *testing.T) {
 		t.Errorf("unexpected candidate 'endpoint' for prefix 'sp', got: %q", got)
 	}
 }
+
+// TestExampleAppPassesAudit holds the demonstration app to the standard the
+// library asks of everyone: one-row short descriptions at 80 columns.
+func TestExampleAppPassesAudit(t *testing.T) {
+	var warnings []string
+	err := clihelp.Audit(buildApp(), clihelp.AuditOptions{Warn: func(m string) { warnings = append(warnings, m) }})
+	if err != nil {
+		t.Errorf("Audit(buildApp()) = %v", err)
+	}
+	for _, w := range warnings {
+		t.Errorf("audit warning: %s", w)
+	}
+}

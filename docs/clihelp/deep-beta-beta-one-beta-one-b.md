@@ -18,8 +18,8 @@ podctl deep beta beta_one beta_one_b [options] [arguments...] — This is a **ve
 
 | Command | Description |
 |---------|-------------|
-| [beta\_one\_b\_i](deep-beta-beta-one-beta-one-b-beta-one-b-i.md) | This is the [beta_one_b_i command](https://example.com/deep/beta/beta_one/beta_one_b/beta_one_b_i) at depth 5 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
-| [beta\_one\_b\_ii](deep-beta-beta-one-beta-one-b-beta-one-b-ii.md) | This is the [beta_one_b_ii command](https://example.com/deep/beta/beta_one/beta_one_b/beta_one_b_ii) at depth 5 with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines. |
+| [beta\_one\_b\_i](deep-beta-beta-one-beta-one-b-beta-one-b-i.md) | The [beta_one_b_i command](https://example.com/deep/beta/beta_one/beta_one_b/beta_one_b_i) at depth 5 |
+| [beta\_one\_b\_ii](deep-beta-beta-one-beta-one-b-beta-one-b-ii.md) | The [beta_one_b_ii command](https://example.com/deep/beta/beta_one/beta_one_b/beta_one_b_ii) at depth 5 |
 
 ## Flags
 
@@ -28,7 +28,7 @@ podctl deep beta beta_one beta_one_b [options] [arguments...] — This is a **ve
 | `--token TOKEN` | Bearer token for cluster authentication |
 | `--api-key KEY` | API key for cloud provider access |
 | `-c, --config PATH` | Path to configuration file (default: ~/.config/podctl.yaml) |
-| `--endpoint URL` | API service endpoint URL (default: https://api.podctl.example.com) |
+| `--endpoint URL` | API endpoint URL (default: https://api.podctl.example.com) |
 | `-v, --verbose` | Enable verbose output logs |
 | `-s, --silent` | Suppress non-error output |
 | `--no-color` | Disable ANSI color output |
