@@ -412,12 +412,6 @@ func title(c *Command) string {
 	return c.Name
 }
 
-// subcommandEntries returns the display list for the Subcommands section,
-// preferring explicit entries over the structural Subcommands tree.
-func subcommandEntries(c *Command) []Param {
-	return SubcommandList(*c)
-}
-
 // SubcommandList is the subcommand list to display for a command: an explicit
 // SubcommandEntries when the author supplied one, and otherwise the visible
 // Subcommands under their display names.

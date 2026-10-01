@@ -60,55 +60,40 @@ func auditRowsScoped(scopeOf, noteOf func(int) string, params []Param, opts Audi
 		return nil
 	}
 	var errs []error
-	width := opts.width()
-	indent := colIndentFor(params, width, minTextColumns)
-	textWidth := wrapWidth(width, indent, Options{}.maxContent()) - indent
-	for i, p := range params {
+	width, maxContent := opts.width(), Options{}.maxContent()
+	l := listing(params)
+	textWidth := l.textWidth(width, maxContent)
+	for i, p := range l {
 		if p.Name == examplesFlagSpec || scopeOf(i) == "" {
 			continue // the library's own row: it shapes the column but is not the author's to shorten
 		}
 		rendered := renderInlineTo(p.Description, true)
-		if w := visualLen(rendered); w > textWidth {
-			errs = append(errs, fmt.Errorf("%s: description of %q (%q) is %d columns, %d over the %d that fit on one row at width %d (%sshorten it, or move the detail to LongDescription)",
-				scopeOf(i), p.Name, excerpt(rendered), w, w-textWidth, textWidth, width, noteOf(i)))
+		if l.fits(rendered, width, maxContent) {
+			continue
 		}
+		if strings.Contains(rendered, "\n") {
+			errs = append(errs, fmt.Errorf("%s: description of %q (%q) contains a line break; a listing row is one line (put the rest in LongDescription)",
+				scopeOf(i), p.Name, excerpt(strings.ReplaceAll(rendered, "\n", " "))))
+			continue
+		}
+		w := visualLen(rendered)
+		errs = append(errs, fmt.Errorf("%s: description of %q (%q) is %d columns, %d over the %d that fit on one row at width %d (%sshorten it, or move the detail to LongDescription)",
+			scopeOf(i), p.Name, excerpt(rendered), w, w-textWidth, textWidth, width, noteOf(i)))
 	}
 	return errs
 }
 
-// styleParams is commandParams without the commands the library supplies: their
+// authoredRows is commandRows without the commands the library supplies: their
 // wording is fixed, so it cannot be held to the author's punctuation.
-func styleParams(cmds []Command) []Param {
+func authoredRows(cmds []Command) listing {
 	authored := make([]Command, 0, len(cmds))
 	for _, c := range cmds {
 		if !c.libraryOwned {
 			authored = append(authored, c)
 		}
 	}
-	return commandParams(authored)
-}
-
-func commandParams(cmds []Command) []Param {
-	params := make([]Param, 0, len(cmds))
-	for _, c := range cmds {
-		if c.Hidden {
-			continue
-		}
-		params = append(params, Param{Name: displayNameWithAliases(c), Description: firstSentence(c.Description)})
-	}
-	return params
-}
-
-// optionParams turns an already-collected option list into the rows the
-// renderer draws for it.
-func optionParams(options []Option) []Param {
-	params := make([]Param, 0, len(options))
-	for _, opt := range options {
-		if !opt.Hidden {
-			params = append(params, Param{Name: opt.Flags, Description: decorateOptionDescription(opt)})
-		}
-	}
-	return params
+	rows, _ := commandRows(authored)
+	return rows
 }
 
 // auditLayout checks the layout of the whole tree and reports every violation,
@@ -116,8 +101,10 @@ func optionParams(options []Option) []Param {
 // that in one run. It is independent of the structural checks, which stop at
 // their first error, and audit joins the two.
 func auditLayout(app *App, opts AuditOptions) error {
-	errs := auditListing("the app's commands", commandParams(app.Commands), styleParams(app.Commands), opts)
-	errs = append(errs, auditListing("the app's shortcuts", commandParams(app.Shortcuts), styleParams(app.Shortcuts), opts)...)
+	commands, _ := commandRows(app.Commands)
+	shortcuts, _ := commandRows(app.Shortcuts)
+	errs := auditListing("the app's commands", commands, authoredRows(app.Commands), opts)
+	errs = append(errs, auditListing("the app's shortcuts", shortcuts, authoredRows(app.Shortcuts), opts)...)
 	errs = append(errs, auditOptionListing("the app's flags", app.rootFlags(), opts)...)
 	errs = append(errs, auditHelpFlagsPage(app, opts)...)
 	warnLongText("the app", app.Examples, nil, opts)
@@ -157,11 +144,12 @@ func auditCommandsLayout(app *App, cmds []Command, parent []string, opts AuditOp
 			errs = append(errs, fmt.Errorf("%s: Description must be one line; put the rest in LongDescription", scope))
 		}
 		// The page draws explicit SubcommandEntries instead of the real tree when
-		// the author supplied any (see SubcommandList), and draws their full text;
-		// auditing the tree's rows then would measure something nobody sees.
-		subs, subStyle := commandParams(cmd.Subcommands), styleParams(cmd.Subcommands)
-		if len(cmd.SubcommandEntries) > 0 {
-			subs, subStyle = cmd.SubcommandEntries, cmd.SubcommandEntries
+		// the author supplied any, and draws their full text; subcommandRows says
+		// which it is, exactly as the renderer asks it.
+		subs := subcommandRows(&cmd)
+		subStyle := subs
+		if len(cmd.SubcommandEntries) == 0 {
+			subStyle = authoredRows(cmd.Subcommands)
 		}
 		errs = append(errs, auditListing(scope+" subcommands", subs, subStyle, opts)...)
 		errs = append(errs, auditListing(scope+" parameters", cmd.Parameters, cmd.Parameters, opts)...)
@@ -269,7 +257,7 @@ func auditOwnedOptionListing(scopeOf func(int) string, styleScope string, option
 			raw = append(raw, Param{Name: opt.Flags, Description: opt.Description})
 		}
 	}
-	decorated := optionParams(options)
+	decorated, _ := optionRows(options)
 	noteOf := suffixNotes(decorated, options)
 	errs := auditRowsScoped(scopeOf, noteOf, decorated, opts)
 	if err := auditPeriods(styleScope, raw); err != nil {
@@ -299,7 +287,7 @@ func suffixNotes(decorated []Param, options []Option) func(int) string {
 func auditHelpFlagsPage(app *App, opts AuditOptions) []error {
 	visible := app.collectVisibleFlags()
 	all := append(append([]Option{}, visible...), app.synthesizeStandardFlags(visible)...)
-	decorated := optionParams(all)
+	decorated, _ := optionRows(all)
 	own := len(visible)
 	return auditRowsScoped(func(i int) string {
 		if i >= own {

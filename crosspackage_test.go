@@ -30,9 +30,8 @@ import (
 // types in different packages, and clihelp.Render and tree.Render are different
 // entry points. Those are the package boundary working as intended.
 var sharedHelperExceptions = map[string]string{
-	"firstSentence":     "tree/tree.go: one-line wrapper around internal/text.FirstSentence",
-	"subcommandEntries": "doc/md.go: one-line wrapper around clihelp.SubcommandList; doc/drift_test.go asserts it agrees",
-	"visualLen":         "tree/tree.go: one-line wrapper around internal/text.VisualWidth",
+	"firstSentence": "tree/tree.go: one-line wrapper around internal/text.FirstSentence",
+	"visualLen":     "tree/tree.go: one-line wrapper around internal/text.VisualWidth",
 }
 
 func TestNoUnexplainedHelperCopiesInSubpackages(t *testing.T) {

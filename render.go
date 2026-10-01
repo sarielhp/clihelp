@@ -269,36 +269,16 @@ func (o Options) height() int {
 // changes from the previous visible command's. Commands with an empty Group
 // render without a heading. Hidden commands are skipped.
 func (a *App) renderCommandGrouped(w io.Writer, th Theme, o Options, termWidth int, cmds []Command) {
-	var params []Param
-	var groups []string
-	for _, c := range cmds {
-		if c.Hidden {
-			continue
-		}
-		params = append(params, Param{
-			Name:        displayNameWithAliases(c),
-			Description: firstSentence(c.Description),
-		})
-		groups = append(groups, c.Group)
-	}
+	params, groups := commandRows(cmds)
 	if len(params) == 0 {
 		return
 	}
 	groups = normalizeGroups(groups, "Other Commands")
-	indent := colIndentFor(params, termWidth, minTextColumns)
+	indent, wrap := params.indent(termWidth), params.wrapTo(termWidth, o.maxContent())
 	prev := ""
 
 	isMultiLine := func(p Param) bool {
-		textWidth := wrapWidth(termWidth, indent, o.maxContent()) - indent
-		if textWidth <= 0 {
-			textWidth = 40
-		}
-		// Measure what is drawn, not the markdown it came from. o.inline() only
-		// ever shrinks visible width, so measuring the source was a systematic
-		// false positive: one link in one description put a blank line between
-		// every entry in the list, none of which wrapped.
-		rendered := o.inline(p.Description)
-		return visualLen(rendered) > textWidth || strings.Contains(rendered, "\n")
+		return !params.fits(o.inline(p.Description), termWidth, o.maxContent())
 	}
 
 	// The concise page is held to a few lines, and a blank between every row
@@ -322,7 +302,7 @@ func (a *App) renderCommandGrouped(w io.Writer, th Theme, o Options, termWidth i
 		} else if anyMultiLine && !o.Concise && i > 0 {
 			fmt.Fprintln(w)
 		}
-		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description), th.Subcommand)
+		reflow(w, th.Body, wrap, indent, p.Name, o.inline(p.Description), th.Subcommand)
 	}
 }
 
@@ -352,42 +332,9 @@ func (a *App) usageLine() string {
 	}
 }
 
-// decorateOptionDescription appends the suffixes an option's description
-// carries in every listing: its default, whether it is required, and whether it
-// is deprecated.
-//
-// These twelve lines existed twice — here and in renderOptionsGrouped — and only
-// the other copy was tested, so the default value could vanish from every -h and
-// --help flag table while `help flags` went on showing it. The cross-package
-// guard cannot see a copy made inside one package.
-func decorateOptionDescription(opt Option) string {
-	desc := opt.Description
-	if opt.DefaultText != "" && !strings.Contains(desc, "(default") && !strings.Contains(desc, "[default") {
-		desc += " (default: " + opt.DefaultText + ")"
-	}
-	if opt.Required {
-		desc += " (required)"
-	}
-	if opt.Deprecated != "" {
-		desc += " (deprecated: " + opt.Deprecated + ")"
-	}
-	return desc
-}
-
-func optionsToParams(options []Option) []Param {
-	params := make([]Param, 0, len(options))
-	for _, opt := range options {
-		params = append(params, Param{Name: opt.Flags, Description: decorateOptionDescription(opt)})
-	}
-	return params
-}
-
 func renderOptionList(w io.Writer, th Theme, o Options, termWidth int, options []Option) {
-	params := optionsToParams(options)
-	indent := colIndentFor(params, termWidth, minTextColumns)
-	for _, p := range params {
-		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description), th.Flag)
-	}
+	rows, _ := optionRows(options)
+	rows.write(w, o, termWidth, th.Body, th.Flag)
 }
 
 // renderGlobalShortcuts lists the shortcut commands, if any are visible.
@@ -397,128 +344,13 @@ func renderOptionList(w io.Writer, th Theme, o Options, termWidth int, options [
 // it. renderGlobalFlagsSection, two functions down, has always had the right
 // order: filter, return if empty, then print the heading.
 func (a *App) renderGlobalShortcuts(w io.Writer, th Theme, o Options, termWidth int) {
-	params := make([]Param, 0, len(a.Shortcuts))
-	for _, s := range a.Shortcuts {
-		if !s.Hidden {
-			params = append(params, Param{
-				Name:        displayNameWithAliases(s),
-				Description: firstSentence(s.Description),
-			})
-		}
-	}
-	if len(params) == 0 {
+	rows, _ := commandRows(a.Shortcuts)
+	if len(rows) == 0 {
 		return
 	}
 	th.Accent.Fprintln(w, "Shortcut Commands:")
-	indent := colIndentFor(params, termWidth, minTextColumns)
-	for _, p := range params {
-		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description), th.Subcommand)
-	}
+	rows.write(w, o, termWidth, th.Body, th.Subcommand)
 	fmt.Fprintln(w)
-}
-
-// examplesFlagSpec is the built-in flag EnableExamplesFlag adds to the root page.
-const examplesFlagSpec = "-E, --examples"
-
-// writeUsage writes the "Usage:" line, wrapped under itself. A bracketed group
-// such as "[--tags TAGS]" is one unit: breaking it between the flag and its
-// value leaves "[--tags" at the end of one row and "TAGS]" at the start of the
-// next, which reads as two different things.
-func writeUsage(w io.Writer, th Theme, o Options, termWidth int, usage string) {
-	room := wrapWidth(termWidth, 8, o.maxContent()) - 8
-	wrapGlued(w, room, usage, func(b io.Writer, text string) {
-		reflowMargin(b, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 0, 8,
-			"Usage:", o.inline(text), th.Hdr)
-	})
-}
-
-// wrapGlued runs render over text with the spaces inside its bracketed groups
-// made unbreakable, then turns them back into spaces in the output. room is the
-// columns a row of that text has; a group wider than a row is left breakable,
-// because holding it together would overflow the terminal.
-func wrapGlued(w io.Writer, room int, text string, render func(io.Writer, string)) {
-	var buf bytes.Buffer
-	render(&buf, glueGroups(text, min(maxGluedGroup, room-1)))
-	_, _ = io.WriteString(w, strings.ReplaceAll(buf.String(), groupSpace, " "))
-}
-
-// groupSpace stands in for a space that must not be a line break. It is the
-// Unicode noncharacter U+FDD0, set aside for exactly this kind of internal use:
-// it is not white space to strings.Fields, so the reflow keeps it inside its
-// word; it cannot occur in real text; and go-runewidth measures it as one column
-// under both the narrow and the East Asian width rules, like the space it
-// replaces. A private-use rune looked equivalent and was not — U+E000 is two
-// columns under East Asian rules, so a glued group cost an extra column per
-// space and the same page wrapped differently depending on the user's locale.
-const groupSpace = "\ufdd0"
-
-// maxGluedGroup bounds the groups kept whole; a longer one is prose that
-// happens to sit in brackets, and holding it together would overflow the line.
-const maxGluedGroup = 40
-
-// glueGroups replaces the white space inside each balanced [..] or <..> group of
-// s with groupSpace, for groups whose brackets are at most limit runes apart. An
-// unbalanced opener is left alone. An angle bracket only counts when it hugs its
-// text — "<file>" opens a group, "< in.txt" and "a > b" do not — so a shell
-// redirect or a comparison in a usage line is not mistaken for one.
-func glueGroups(s string, limit int) string {
-	runes := []rune(s)
-	glued := make([]bool, len(runes))
-	isSpace := func(i int) bool { return i < 0 || i >= len(runes) || runes[i] == ' ' || runes[i] == '\t' }
-	for _, pair := range [][2]rune{{'[', ']'}, {'<', '>'}} {
-		var open []int
-		for i, r := range runes {
-			switch {
-			case r == pair[0] && (pair[0] == '[' || !isSpace(i+1)):
-				open = append(open, i)
-			case r == pair[1] && len(open) > 0 && (pair[1] == ']' || !isSpace(i-1)):
-				start := open[len(open)-1]
-				open = open[:len(open)-1]
-				if i-start <= limit {
-					for j := start; j <= i; j++ {
-						glued[j] = true
-					}
-				}
-			}
-		}
-	}
-	for i, r := range runes {
-		if (r == ' ' || r == '\t') && glued[i] {
-			runes[i] = []rune(groupSpace)[0]
-		}
-	}
-	return string(runes)
-}
-
-// rootFlags is the list the root page's "Global Flags" section shows: the
-// persistent and global options, the application's own options, and the built-in
-// examples flag when enabled. Audit measures the same list.
-func (a *App) rootFlags() []Option {
-	var globalFlags []Option
-	for _, f := range a.PersistentOptions {
-		if !f.Hidden {
-			globalFlags = append(globalFlags, f)
-		}
-	}
-	for _, f := range a.GlobalFlags {
-		if !f.Hidden {
-			globalFlags = append(globalFlags, f)
-		}
-	}
-	// The application's own options are the root's local flags. They belong on
-	// the root's page, and nowhere else — this section renders only there.
-	for _, f := range a.Options {
-		if !f.Hidden {
-			globalFlags = append(globalFlags, f)
-		}
-	}
-	if a.EnableExamplesFlag {
-		globalFlags = append(globalFlags, Option{
-			Flags:       examplesFlagSpec,
-			Description: "Show every example in one place; add a command to narrow it",
-		})
-	}
-	return globalFlags
 }
 
 func (a *App) renderGlobalFlagsSection(w io.Writer, th Theme, o Options, termWidth int) {
@@ -670,16 +502,13 @@ func (a *App) buildDefaultUsage(cmd *Command, path []string) string {
 }
 
 func (a *App) renderCommandSubcommands(w io.Writer, th Theme, o Options, termWidth int, cmd *Command) {
-	subs := subcommandEntries(cmd)
-	if len(subs) == 0 {
+	rows := subcommandRows(cmd)
+	if len(rows) == 0 {
 		return
 	}
 	th.Hdr.Fprintln(w, "\nSubcommands:")
 	if len(cmd.SubcommandEntries) > 0 {
-		indent := colIndentFor(subs, termWidth, minTextColumns)
-		for _, s := range subs {
-			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, s.Name, o.inline(s.Description), th.Subcommand)
-		}
+		rows.write(w, o, termWidth, th.Body, th.Subcommand)
 	} else {
 		a.renderCommandGrouped(w, th, o, termWidth, cmd.Subcommands)
 	}
@@ -690,10 +519,7 @@ func renderCommandParams(w io.Writer, th Theme, o Options, termWidth int, params
 		return
 	}
 	th.Hdr.Fprintln(w, "\nParameters:")
-	indent := colIndentFor(params, termWidth, minTextColumns)
-	for _, p := range params {
-		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description))
-	}
+	listing(params).write(w, o, termWidth, th.Body)
 }
 
 func (a *App) renderCommandFlags(w io.Writer, th Theme, o Options, termWidth int, path []string, cmd *Command) {

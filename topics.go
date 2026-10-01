@@ -11,22 +11,14 @@ import (
 // changes from the previous visible option's. Options with an empty Group
 // render without a heading. Hidden options are skipped.
 func renderOptionsGrouped(w io.Writer, th Theme, o Options, termWidth int, opts []Option) {
-	var params []Param
-	var groups []string
-	for _, f := range opts {
-		if f.Hidden {
-			continue
-		}
-		params = append(params, Param{Name: f.Flags, Description: decorateOptionDescription(f)})
-		groups = append(groups, f.Group)
-	}
+	params, groups := optionRows(opts)
 	if len(params) == 0 {
 		return
 	}
 	// See normalizeGroups: renderManPage reaches here with the raw list, so an
 	// ungrouped flag used to be printed under the previous group's heading.
 	groups = normalizeGroups(groups, "Other Flags")
-	indent := colIndentFor(params, termWidth, minTextColumns)
+	indent, wrap := params.indent(termWidth), params.wrapTo(termWidth, o.maxContent())
 	prev := ""
 
 	for i, p := range params {
@@ -38,7 +30,7 @@ func renderOptionsGrouped(w io.Writer, th Theme, o Options, termWidth int, opts 
 			th.Accent.Fprintln(w, g+":")
 			prev = g
 		}
-		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description), th.Flag)
+		reflow(w, th.Body, wrap, indent, p.Name, o.inline(p.Description), th.Flag)
 	}
 }
 
