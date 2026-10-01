@@ -6,6 +6,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/pflag"
 )
@@ -426,23 +427,34 @@ func (a *App) collectLocalOptions(cmd *Command) []Option {
 
 // collectGlobalOptions returns non-hidden app and ancestor persistent/global options for path and cmd.
 func (a *App) collectGlobalOptions(path []string, cmd *Command) []Option {
+	opts, _ := a.collectGlobalOptionsOwned(path, cmd)
+	return opts
+}
+
+// collectGlobalOptionsOwned is collectGlobalOptions plus, for each option, the
+// command that declared it: "" for the application, otherwise that command's
+// path. The audit reports an over-long inherited description against its owner,
+// because the same flag is listed on every page beneath it.
+func (a *App) collectGlobalOptionsOwned(path []string, cmd *Command) ([]Option, []string) {
 	var opts []Option
-	appendAll := func(optSlice []Option) {
+	var owners []string
+	appendAll := func(owner string, optSlice []Option) {
 		for _, o := range optSlice {
 			if !o.Hidden {
 				opts = append(opts, o)
+				owners = append(owners, owner)
 			}
 		}
 	}
-	appendAll(a.PersistentOptions)
-	appendAll(a.GlobalFlags)
-	for _, anc := range a.ancestorsForPath(path...) {
-		appendAll(anc.PersistentOptions)
+	appendAll("", a.PersistentOptions)
+	appendAll("", a.GlobalFlags)
+	for i, anc := range a.ancestorsForPath(path...) {
+		appendAll(strings.Join(path[:i+1], " "), anc.PersistentOptions)
 	}
 	if cmd != nil {
-		appendAll(cmd.PersistentOptions)
+		appendAll(strings.Join(path, " "), cmd.PersistentOptions)
 	}
-	return opts
+	return opts, owners
 }
 
 // CollectOptions returns the ordered option set for a command path: app

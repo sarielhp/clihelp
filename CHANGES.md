@@ -7,6 +7,11 @@ All notable changes to `clihelp` will be documented in this file.
 ### Changed
 - **`bump-version.sh` promotes the changelog.** What has accumulated under `[Unreleased]` becomes the new version's section, dated today, with an empty `[Unreleased]` above it, and the change rides in the version commit. A bump with nothing under `[Unreleased]` is refused and every file is restored. Releases 0.3.45 to 0.3.49 had no headings because nothing in the release path touched this file; they are back-filled below.
 
+### Changed
+- **`Audit` messages say what to fix.** Each layout error now quotes the start of the description, says how many columns it is over (`is 100 columns, 28 over the 72 that fit`), and, for a flag row, says that its `(default: …)`, `(required)` and `(deprecated: …)` suffixes are counted. The errors are headed by their count (`5 layout problems:`), a top-level command is "at the top level" rather than `under path ""`, and the period message agrees with its numbers (`build ends with one, serve, g do not`).
+- **An inherited flag is reported against the command that declared it** (`persistent flags of command g`), not under a scope shared by every page; the application's own are reported once.
+- **`AuditOptions.Width` below 40 is an error** instead of arithmetic that goes negative (`only -4 fit`).
+
 ### Changed — may fail an existing audit
 - **`Audit` now checks `Command.Parameters` and `Command.SubcommandEntries`.** Both are drawn in the same two-column layout as every other listing, but were never measured, so a long parameter description passed `Audit` and wrapped on the page. A listing of parameters or of explicit subcommand entries must now fit one row at `AuditOptions.Width` (default 80) and use one trailing-period style. When `SubcommandEntries` is set the page draws it *instead of* the real `Subcommands`, so the entries are measured and the tree's own rows are not.
   - **If your CI now fails:** run the audit once with `Warn: t.Log` and read the errors — each names the command, the row and how wide it is. Shorten the description (the detail belongs in `LongDescription` or `Notes`), or give the listing one punctuation style. `AuditOptions{Width: …}` audits against a different terminal width.

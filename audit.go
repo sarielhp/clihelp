@@ -34,6 +34,15 @@ func Audit(app *App, opts ...AuditOptions) error {
 	return audit(app, o)
 }
 
+// underPath says where a command sits for an error message: "at the top level"
+// rather than the empty quoted path an author could not make sense of.
+func underPath(path []string) string {
+	if len(path) == 0 {
+		return "at the top level"
+	}
+	return fmt.Sprintf("under path %q", strings.Join(path, " "))
+}
+
 type commandPathInfo struct {
 	path    []string
 	wordSet string
@@ -41,17 +50,17 @@ type commandPathInfo struct {
 
 func auditCommandNameUniqueness(seenNames map[string]bool, cmd Command, currentPath []string) error {
 	if seenNames[cmd.Name] {
-		return fmt.Errorf("duplicate subcommand name %q under path %q", cmd.Name, strings.Join(currentPath, " "))
+		return fmt.Errorf("duplicate subcommand name %q %s", cmd.Name, underPath(currentPath))
 	}
 	seenNames[cmd.Name] = true
 	for _, alias := range cmd.Aliases {
 		if seenNames[alias] {
-			return fmt.Errorf("duplicate subcommand alias %q under path %q", alias, strings.Join(currentPath, " "))
+			return fmt.Errorf("duplicate subcommand alias %q %s", alias, underPath(currentPath))
 		}
 		seenNames[alias] = true
 	}
 	if cmd.Description == "" {
-		return fmt.Errorf("command %q under path %q is missing a Description", cmd.Name, strings.Join(currentPath, " "))
+		return fmt.Errorf("command %q %s is missing a Description", cmd.Name, underPath(currentPath))
 	}
 	return nil
 }
@@ -192,6 +201,9 @@ func auditCommandParameters(cmd Command, currentPath []string) error {
 func audit(app *App, opts AuditOptions) error {
 	if app == nil {
 		return errors.New("clihelp: cannot audit a nil App")
+	}
+	if opts.Width != 0 && opts.Width < minAuditWidth {
+		return fmt.Errorf("clihelp: AuditOptions.Width must be at least %d (got %d); below that the name column alone fills the line", minAuditWidth, opts.Width)
 	}
 	// Every check runs, and what they find is reported together: an author who
 	// fixes a bad example should not then discover, on the next run, the long

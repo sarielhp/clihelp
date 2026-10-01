@@ -321,7 +321,7 @@ func TestAuditPeriodRuleEdges(t *testing.T) {
 	t.Run("names the right side", func(t *testing.T) {
 		app := &App{Name: "a", Commands: []Command{{Name: "c0", Description: "First."}, {Name: "c1", Description: "Second"}, {Name: "c2", Description: "Third"}}}
 		err := Audit(app, AuditOptions{SkipExampleValidation: true})
-		if err == nil || !strings.Contains(err.Error(), "c0 end with one, c1, c2 do not") {
+		if err == nil || !strings.Contains(err.Error(), "c0 ends with one, c1, c2 do not") {
 			t.Errorf("Audit = %v, want c0 under 'end with one' and c1, c2 under 'do not'", err)
 		}
 	})

@@ -9,6 +9,11 @@ import (
 // defaultAuditWidth is the terminal width the layout checks assume.
 const defaultAuditWidth = 80
 
+// minAuditWidth is the narrowest width the audit will measure at. Below it the
+// name column alone fills the line and "how wide may a description be" has no
+// sensible answer — the arithmetic goes negative.
+const minAuditWidth = 40
+
 func (o AuditOptions) width() int {
 	if o.Width > 0 {
 		return o.Width
@@ -22,12 +27,35 @@ func (o AuditOptions) warn(format string, args ...any) {
 	}
 }
 
+// suffixNote is appended to a flag row's message: the renderer draws the
+// default, required and deprecated suffixes, so the audit counts them too, and an
+// author staring at a 66-column row for a 24-character description needs telling.
+const suffixNote = `this row counts its "(default: …)", "(required)" and "(deprecated: …)" suffixes; `
+
+// excerptLen is how much of an over-long description a message quotes: enough to
+// find it in the source, short enough to keep one problem on one line.
+const excerptLen = 50
+
+func excerpt(text string) string {
+	runes := []rune(text)
+	if len(runes) <= excerptLen {
+		return text
+	}
+	return strings.TrimRight(string(runes[:excerptLen]), " ") + "…"
+}
+
 // auditRows checks that every row of one two-column listing renders on a single
 // line at the audit width. The layout is the renderer's own: the shared
 // description column from colIndentFor, and the text width from wrapWidth.
 // A name wider than the column puts the description on its own line, so
 // the same indent applies either way.
 func auditRows(scope string, params []Param, opts AuditOptions) []error {
+	return auditRowsScoped(func(int) string { return scope }, func(int) string { return "" }, params, opts)
+}
+
+// auditRowsScoped is auditRows with a scope and an explanatory note per row, for
+// a listing whose rows are owned by different commands and may carry suffixes.
+func auditRowsScoped(scopeOf, noteOf func(int) string, params []Param, opts AuditOptions) []error {
 	if len(params) == 0 {
 		return nil
 	}
@@ -35,14 +63,14 @@ func auditRows(scope string, params []Param, opts AuditOptions) []error {
 	width := opts.width()
 	indent := colIndentFor(params, width, minTextColumns)
 	textWidth := wrapWidth(width, indent, Options{}.maxContent()) - indent
-	for _, p := range params {
+	for i, p := range params {
 		if p.Name == examplesFlagSpec {
 			continue // the library's own row: it shapes the column but is not the author's to shorten
 		}
 		rendered := renderInlineTo(p.Description, true)
 		if w := visualLen(rendered); w > textWidth {
-			errs = append(errs, fmt.Errorf("%s: description of %q is %d columns, but only %d fit on one row at width %d (shorten it, or move the detail to LongDescription)",
-				scope, p.Name, w, textWidth, width))
+			errs = append(errs, fmt.Errorf("%s: description of %q (%q) is %d columns, %d over the %d that fit on one row at width %d (%sshorten it, or move the detail to LongDescription)",
+				scopeOf(i), p.Name, excerpt(rendered), w, w-textWidth, textWidth, width, noteOf(i)))
 		}
 	}
 	return errs
@@ -94,7 +122,11 @@ func auditLayout(app *App, opts AuditOptions) error {
 	warnLongText("the app", app.Examples, nil, opts)
 	errs = append(errs, auditCommandsLayout(app, app.Commands, nil, opts)...)
 	errs = append(errs, auditCommandsLayout(app, app.Shortcuts, nil, opts)...)
-	return errors.Join(dedupe(errs)...)
+	errs = dedupe(errs)
+	if len(errs) == 0 {
+		return nil
+	}
+	return fmt.Errorf("%d layout %s:\n%w", len(errs), agree(len(errs), "problem", "problems"), errors.Join(errs...))
 }
 
 // dedupe drops repeated messages. The inherited flags are listed on every
@@ -134,7 +166,16 @@ func auditCommandsLayout(app *App, cmds []Command, parent []string, opts AuditOp
 		errs = append(errs, auditListing(scope+" parameters", cmd.Parameters, cmd.Parameters, opts)...)
 		errs = append(errs, auditOptionListing(scope+" flags", app.collectLocalOptions(&cmd), opts)...)
 		if !app.OmitGlobalFlagsInCommands {
-			errs = append(errs, auditOptionListing("global flags on command pages", app.collectGlobalOptions(path, &cmd), opts)...)
+			// The same inherited flag is listed on every page beneath its owner, so a
+			// row is reported against the command that declared it (and, for the
+			// application's own, once for all of them — identical messages merge).
+			global, owners := app.collectGlobalOptionsOwned(path, &cmd)
+			errs = append(errs, auditOwnedOptionListing(func(i int) string {
+				if owners[i] == "" {
+					return "the app's global flags on command pages"
+				}
+				return "persistent flags of command " + owners[i]
+			}, "global flags on command pages", global, opts)...)
 		}
 		warnLongText(scope, cmd.Examples, cmd.Notes, opts)
 		errs = append(errs, auditCommandsLayout(app, cmd.Subcommands, path, opts)...)
@@ -198,19 +239,47 @@ func auditPeriods(scope string, params []Param) error {
 	if len(with) == 0 || len(without) == 0 {
 		return nil
 	}
-	return fmt.Errorf("%s: descriptions disagree about a trailing period: %s end with one, %s do not (use one style throughout the listing)",
-		scope, strings.Join(with, ", "), strings.Join(without, ", "))
+	return fmt.Errorf("%s: descriptions disagree about a trailing period: %s %s, %s %s (use one style throughout the listing)",
+		scope, strings.Join(with, ", "), agree(len(with), "ends with one", "end with one"),
+		strings.Join(without, ", "), agree(len(without), "does not", "do not"))
+}
+
+// agree picks the verb form for n subjects.
+func agree(n int, singular, plural string) string {
+	if n == 1 {
+		return singular
+	}
+	return plural
 }
 
 // auditOptionListing is auditListing for a flag list. The one-row rule measures
 // the decorated text the renderer draws; the punctuation rule reads the author's
 // own words, since a "(default: x)" suffix would otherwise hide a full stop.
 func auditOptionListing(scope string, options []Option, opts AuditOptions) []error {
+	return auditOwnedOptionListing(func(int) string { return scope }, scope, options, opts)
+}
+
+// auditOwnedOptionListing is auditOptionListing with a scope per row. The
+// options are already collected (hidden ones dropped), so row i is option i.
+func auditOwnedOptionListing(scopeOf func(int) string, styleScope string, options []Option, opts AuditOptions) []error {
 	raw := make([]Param, 0, len(options))
 	for _, opt := range options {
 		if !opt.Hidden {
 			raw = append(raw, Param{Name: opt.Flags, Description: opt.Description})
 		}
 	}
-	return auditListing(scope, optionParams(options), raw, opts)
+	decorated := optionParams(options)
+	// Say that suffixes are counted only on a row that has one; an author whose
+	// 24-character description is 66 columns needs telling, one whose is not does not.
+	noteOf := func(i int) string {
+		if decorated[i].Description != options[i].Description {
+			return suffixNote
+		}
+		return ""
+	}
+	errs := auditRowsScoped(scopeOf, noteOf, decorated, opts)
+	if err := auditPeriods(styleScope, raw); err != nil {
+		errs = append(errs, err)
+	}
+	return errs
 }
