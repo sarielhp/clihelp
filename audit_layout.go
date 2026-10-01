@@ -112,14 +112,14 @@ func warnLongText(scope string, examples []Example, notes []Note, opts AuditOpti
 			continue
 		}
 		for _, line := range strings.Split(n.Text, "\n") {
-			if w := VisualWidth(line); w > width {
+			if w := visualLen(line); w > width {
 				opts.warn("%s: verbatim note %q has a %d-column line, wider than %d; it will not be wrapped", scope, n.Heading, w, width)
 				break
 			}
 		}
 	}
 	for _, ex := range examples {
-		if w := VisualWidth(ex.Line); w > width {
+		if w := visualLen(ex.Line); w > width {
 			opts.warn("%s: example %q is %d columns, wider than %d", scope, ex.Line, w, width)
 		}
 	}

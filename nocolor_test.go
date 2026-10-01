@@ -59,8 +59,8 @@ func TestOptionsNoColorIsPerRender(t *testing.T) {
 	if strings.ContainsRune(plain.String(), '\x1b') {
 		t.Errorf("Options.NoColor still emitted escapes:\n%q", plain.String())
 	}
-	if StripANSI(coloured.String()) == plain.String() {
+	if stripANSI(coloured.String()) == plain.String() {
 		return // identical once stripped, which is the point
 	}
-	t.Errorf("NoColor changed more than the colour:\n%q\n%q", StripANSI(coloured.String()), plain.String())
+	t.Errorf("NoColor changed more than the colour:\n%q\n%q", stripANSI(coloured.String()), plain.String())
 }

@@ -23,7 +23,7 @@ import (
 // fact that there was output.
 func requireRendered(t *testing.T, out string) {
 	t.Helper()
-	if strings.TrimSpace(StripANSI(out)) == "" {
+	if strings.TrimSpace(stripANSI(out)) == "" {
 		t.Fatalf("nothing was rendered, so every property below holds vacuously: %q", out)
 	}
 }
@@ -41,16 +41,16 @@ func assertFitsWidth(t *testing.T, out string, width int) {
 		if inExamples {
 			continue
 		}
-		c := VisualWidth(line)
+		c := visualLen(line)
 		if c <= width {
 			continue
 		}
 		// A line can only be brought inside the width if something on it can be
 		// broken. A name wider than the terminal has nowhere to go.
-		indent := VisualWidth(line) - VisualWidth(strings.TrimLeft(line, " "))
+		indent := visualLen(line) - visualLen(strings.TrimLeft(line, " "))
 		longest := 0
 		for _, word := range strings.Fields(line) {
-			if w := VisualWidth(word); w > longest {
+			if w := visualLen(word); w > longest {
 				longest = w
 			}
 		}
@@ -131,7 +131,7 @@ func TestWideRunesShareOneDescriptionColumn(t *testing.T) {
 			prefix := "  " + name
 			if strings.HasPrefix(line, prefix) {
 				rest := strings.TrimLeft(line[len(prefix):], " ")
-				columns[name] = VisualWidth(line) - VisualWidth(rest)
+				columns[name] = visualLen(line) - visualLen(rest)
 			}
 		}
 	}
@@ -163,7 +163,7 @@ func TestMaxContentWidthReachesTheFlagTable(t *testing.T) {
 	widest := func(s string) int {
 		max := 0
 		for _, l := range strings.Split(s, "\n") {
-			if w := VisualWidth(l); w > max {
+			if w := visualLen(l); w > max {
 				max = w
 			}
 		}

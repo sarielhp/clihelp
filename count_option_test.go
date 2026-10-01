@@ -101,7 +101,7 @@ func TestCountRendersInHelp(t *testing.T) {
 	}}}
 	out := silentApp(app)
 	app.RenderCommand(Options{Writer: out, Width: 100}, "build")
-	if body := StripANSI(out.String()); !strings.Contains(body, "-v, --verbose") ||
+	if body := stripANSI(out.String()); !strings.Contains(body, "-v, --verbose") ||
 		!strings.Contains(body, "Be louder.") {
 		t.Errorf("the counting flag is missing from the help:\n%s", body)
 	}

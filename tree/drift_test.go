@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sarielhp/clihelp"
+	"github.com/sarielhp/clihelp/internal/text"
 )
 
 // This package once carried its own copies of clihelp's text helpers, and both
@@ -23,8 +23,8 @@ func TestVisualLenAgreesWithClihelp(t *testing.T) {
 		"\x1b]0;a window title\x07after",
 		"日本語",
 	} {
-		if got, want := visualLen(s), clihelp.VisualWidth(s); got != want {
-			t.Errorf("visualLen(%q) = %d, clihelp says %d", s, got, want)
+		if got, want := visualLen(s), text.VisualWidth(s); got != want {
+			t.Errorf("visualLen(%q) = %d, text says %d", s, got, want)
 		}
 	}
 }
@@ -41,8 +41,8 @@ func TestFirstSentenceAgreesWithClihelp(t *testing.T) {
 		"",
 	} {
 		got := firstSentence(s)
-		if want := clihelp.FirstSentence(s); got != want {
-			t.Errorf("firstSentence(%q) = %q, clihelp says %q", s, got, want)
+		if want := text.FirstSentence(s); got != want {
+			t.Errorf("firstSentence(%q) = %q, text says %q", s, got, want)
 		}
 		if strings.ContainsAny(got, "\n") {
 			t.Errorf("firstSentence(%q) returned a newline: %q — reflowTree assumes one line", s, got)

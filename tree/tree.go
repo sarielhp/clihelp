@@ -9,6 +9,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/sarielhp/clihelp"
+	"github.com/sarielhp/clihelp/internal/text"
 )
 
 // Options controls tree rendering.
@@ -153,15 +154,15 @@ func renderTreeTo(w io.Writer, th clihelp.Theme, width int, commands []clihelp.C
 // three columns instead of one, so descriptions were indented and wrapped as if
 // the tree were far wider than it is.
 func visualLen(s string) int {
-	return clihelp.VisualWidth(s)
+	return text.VisualWidth(s)
 }
 
-// firstSentence is clihelp's own, not a copy of it. The copy that used to live
+// firstSentence is internal/text's, not a copy of it. The copy that used to live
 // here checked for ". " before truncating at a line break, so a description
 // whose first full stop fell on a later line yielded a string containing
 // newlines — and reflowTree below assumes one line.
 func firstSentence(s string) string {
-	return clihelp.FirstSentence(s)
+	return text.FirstSentence(s)
 }
 
 func colorizeTreeWord(c *color.Color, word string) string {

@@ -162,7 +162,7 @@ func TestOptionalValueRendersItsBrackets(t *testing.T) {
 	app := optionalApp(&move)
 	out := silentApp(app)
 	app.RenderCommand(Options{Writer: out, Width: 100}, "scan")
-	if body := StripANSI(out.String()); !strings.Contains(body, "--move [From]") {
+	if body := stripANSI(out.String()); !strings.Contains(body, "--move [From]") {
 		t.Errorf("the optional value is not shown as optional:\n%s", body)
 	}
 }

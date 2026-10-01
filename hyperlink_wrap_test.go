@@ -88,8 +88,8 @@ func TestUnwrappedHyperlinkIsUntouched(t *testing.T) {
 	if got := strings.Count(buf.String(), osc8); got != 2 {
 		t.Errorf("a link that fits was rewritten: %d OSC introducers, want 2:\n%q", got, buf.String())
 	}
-	if !strings.Contains(StripANSI(buf.String()), "see docs now") {
-		t.Errorf("visible text changed: %q", StripANSI(buf.String()))
+	if !strings.Contains(stripANSI(buf.String()), "see docs now") {
+		t.Errorf("visible text changed: %q", stripANSI(buf.String()))
 	}
 }
 
@@ -107,8 +107,8 @@ func TestStripANSICoversWhatWeCanEmit(t *testing.T) {
 		{"complete osc 8", "a" + osc8 + "http://x" + oscEnd + "b" + osc8 + oscEnd, "ab"},
 		{"osc terminated by BEL", "a\x1b]0;title\x07b", "ab"},
 	} {
-		if got := StripANSI(tt.in); got != tt.want {
-			t.Errorf("%s: StripANSI(%q) = %q, want %q (width %d)", tt.name, tt.in, got, tt.want, VisualWidth(tt.in))
+		if got := stripANSI(tt.in); got != tt.want {
+			t.Errorf("%s: stripANSI(%q) = %q, want %q (width %d)", tt.name, tt.in, got, tt.want, visualLen(tt.in))
 		}
 	}
 }

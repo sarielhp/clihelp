@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/sarielhp/clihelp"
+	"github.com/sarielhp/clihelp/internal/text"
 )
 
 // This package used to hold a 499-line second renderer that reproduced clihelp's
@@ -46,7 +47,7 @@ func render(t *testing.T, app *clihelp.App, width int, path []string) string {
 	} else if !app.RenderCommand(clihelp.Options{Writer: &buf, Width: width}, path...) {
 		t.Fatalf("no page for %q", strings.Join(path, " "))
 	}
-	if strings.TrimSpace(clihelp.StripANSI(buf.String())) == "" {
+	if strings.TrimSpace(text.StripANSI(buf.String())) == "" {
 		t.Fatalf("%q rendered nothing, so every property below holds vacuously",
 			strings.Join(path, " "))
 	}
@@ -68,27 +69,27 @@ func TestEveryPageFitsItsWidth(t *testing.T) {
 		for _, path := range append([][]string{nil}, pages...) {
 			inExamples := false
 			for _, line := range strings.Split(render(t, app, width, path), "\n") {
-				plain := clihelp.StripANSI(line)
+				plain := text.StripANSI(line)
 				if trimmed := strings.TrimSpace(plain); strings.HasSuffix(trimmed, ":") {
 					inExamples = trimmed == "Examples:"
 				}
-				if inExamples || clihelp.VisualWidth(line) <= width {
+				if inExamples || text.VisualWidth(line) <= width {
 					continue
 				}
 				// A continuation line starts at its column, and the column is
 				// decided by the layout rather than by wrapping — so the room a
 				// wrapper actually had is the width less the indent.
-				indent := clihelp.VisualWidth(plain) - clihelp.VisualWidth(strings.TrimLeft(plain, " "))
+				indent := text.VisualWidth(plain) - text.VisualWidth(strings.TrimLeft(plain, " "))
 				widest := 0
 				for _, word := range strings.Fields(plain) {
-					if w := clihelp.VisualWidth(word); w > widest {
+					if w := text.VisualWidth(word); w > widest {
 						widest = w
 					}
 				}
 				if indent+widest <= width {
 					t.Errorf("width %d, page %q: a line of %d columns whose widest word is "+
 						"%d could have been broken and was not:\n%q",
-						width, strings.Join(path, " "), clihelp.VisualWidth(line), widest, plain)
+						width, strings.Join(path, " "), text.VisualWidth(line), widest, plain)
 				}
 			}
 		}
@@ -105,7 +106,7 @@ var (
 func TestNoPageLeaksMarkupOrURLs(t *testing.T) {
 	app, pages := paths(t)
 	for _, path := range append([][]string{nil}, pages...) {
-		plain := clihelp.StripANSI(render(t, app, 70, path))
+		plain := text.StripANSI(render(t, app, 70, path))
 		if m := bareMarkdown.FindString(plain); m != "" {
 			t.Errorf("page %q shows raw markdown %q", strings.Join(path, " "), m)
 		}
@@ -143,7 +144,7 @@ func TestNoPageHasTrailingWhitespace(t *testing.T) {
 	app, pages := paths(t)
 	for _, path := range append([][]string{nil}, pages...) {
 		for i, line := range strings.Split(strings.TrimRight(render(t, app, 70, path), "\n"), "\n") {
-			plain := clihelp.StripANSI(line)
+			plain := text.StripANSI(line)
 			if plain != strings.TrimRight(plain, " \t") {
 				t.Errorf("page %q line %d ends in whitespace: %q",
 					strings.Join(path, " "), i, plain)
@@ -173,7 +174,7 @@ func TestEachPageIsAboutItsOwnCommand(t *testing.T) {
 	app, pages := paths(t)
 	seen := map[string]string{}
 	for _, path := range pages {
-		body := clihelp.StripANSI(render(t, app, 70, path))
+		body := text.StripANSI(render(t, app, 70, path))
 		leaf := path[len(path)-1]
 		if !strings.Contains(body, leaf) {
 			t.Errorf("page %q never names %q", strings.Join(path, " "), leaf)

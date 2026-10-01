@@ -3,82 +3,23 @@ package clihelp
 import (
 	"fmt"
 	"io"
-	"regexp"
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/mattn/go-runewidth"
+	"github.com/sarielhp/clihelp/internal/text"
 )
 
 // defaultMaxColIndent defines the standard column threshold for description
 // text alignment in two-column command and option listings (GNU standard: 24).
 const defaultMaxColIndent = 24
 
-var ansiRegex = regexp.MustCompile(`\x1b\[[0-9;:?<=>!]*[@-~]|\x1b\][^\x1b\x07]*(?:\x07|\x1b\\)?`)
+// stripANSI, visualLen and firstSentence are the text helpers shared with the
+// doc and tree subpackages; internal/text owns the one copy.
+func stripANSI(s string) string { return text.StripANSI(s) }
 
-// stripANSI removes both CSI escape sequences (e.g. \x1b[31m) and OSC
-// sequences (e.g. \x1b]8;;url\x1b\ for hyperlinks, \x1b]0;title\x07 for
-// window titles) from s, returning only the visible text.
-func stripANSI(s string) string {
-	return StripANSI(s)
-}
+func visualLen(s string) int { return text.VisualWidth(s) }
 
-// StripANSI removes the escape sequences clihelp itself emits — CSI colour codes
-// and OSC sequences, including the OSC 8 hyperlinks this library sets — leaving
-// the text a terminal actually displays.
-//
-// It is exported because the subpackages need it. tree/ had its own width
-// measurement built on a third-party stripper that does not handle OSC, so a
-// hyperlink measured 22 columns wide instead of 4.
-func StripANSI(s string) string {
-	return ansiRegex.ReplaceAllString(s, "")
-}
-
-// visualLen returns the display column width of s, ignoring ANSI escape
-// codes. Wide East-Asian characters count as two columns.
-func visualLen(s string) int {
-	return VisualWidth(s)
-}
-
-// VisualWidth is the number of terminal columns s occupies: escape sequences
-// cost nothing, and a wide rune costs two. Every layout decision in this library
-// and its subpackages has to measure the same way, or columns do not line up.
-func VisualWidth(s string) int {
-	// ToValidUTF8 makes the measurement additive over a whitespace join, which
-	// reflowWords depends on: it accumulates per-word widths and compares the sum
-	// to the line width, and runewidth's grapheme segmentation made a stray byte
-	// measure differently on its own than in context, pushing a line one column
-	// past the width it was given. A terminal draws one replacement glyph for
-	// such a byte, which is what this now measures.
-	return runewidth.StringWidth(expandTabs(strings.ToValidUTF8(StripANSI(s), "\uFFFD")))
-}
-
-// tabStop is the column interval a terminal advances a tab to.
-const tabStop = 8
-
-// expandTabs replaces tabs with the spaces a terminal would draw.
-//
-// runewidth measures a tab as zero columns while a terminal advances to the next
-// stop, so a tab in a Param.Name or a list marker desynchronised the hanging
-// indent from what was actually on screen.
-func expandTabs(s string) string {
-	if !strings.ContainsRune(s, '\t') {
-		return s
-	}
-	var b strings.Builder
-	col := 0
-	for _, r := range s {
-		if r == '\t' {
-			pad := tabStop - col%tabStop
-			b.WriteString(strings.Repeat(" ", pad))
-			col += pad
-			continue
-		}
-		b.WriteRune(r)
-		col += runewidth.RuneWidth(r)
-	}
-	return b.String()
-}
+func firstSentence(s string) string { return text.FirstSentence(s) }
 
 // splitLines splits text on '\n', preserving empty segments so consecutive
 // newlines produce blank lines. Trailing '\r' (CRLF line endings) is trimmed.
@@ -399,56 +340,6 @@ func reflowMargin(w io.Writer, c *color.Color, width, margin, indent int, prefix
 // separator writes a horizontal rule in the accent color.
 func separator(w io.Writer, th Theme, width int) {
 	th.Accent.Fprintln(w, strings.Repeat("=", width))
-}
-
-// FirstSentence returns the first sentence of s, or the first line/paragraph if shorter.
-func FirstSentence(s string) string {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return ""
-	}
-	if idx := strings.Index(s, "\n\n"); idx != -1 {
-		s = strings.TrimSpace(s[:idx])
-	}
-	if idx := strings.Index(s, "\n"); idx != -1 {
-		s = strings.TrimSpace(s[:idx])
-	}
-	if idx := sentenceBreak(s); idx != -1 {
-		return s[:idx+1]
-	}
-	return s
-}
-
-// sentenceBreak finds the first ". " that is not inside a markdown construct,
-// or -1.
-//
-// Cutting at the first ". " full stop left raw markup in the help: a version
-// number in a URL ("…/v1. 2/y"), an abbreviation in a code span ("`a. b`") or
-// an emphasised phrase ("**a. b**") all contain one, and the truncated result
-// was then rendered as literal "[it](http://x/v1." on screen.
-func sentenceBreak(s string) int {
-	code, emphasis, link := false, false, 0
-	for i := 0; i < len(s); i++ {
-		switch {
-		case s[i] == '`':
-			code = !code
-		case !code && i+1 < len(s) && s[i] == '*' && s[i+1] == '*':
-			emphasis = !emphasis
-			i++
-		case !code && s[i] == '[':
-			link++
-		case !code && s[i] == ')' && link > 0:
-			link--
-		case !code && !emphasis && link == 0 && s[i] == '.' && i+1 < len(s) && s[i+1] == ' ':
-			return i
-		}
-	}
-	return -1
-}
-
-// firstSentence is an internal alias for FirstSentence.
-func firstSentence(s string) string {
-	return FirstSentence(s)
 }
 
 // commandArgs extracts the positional argument signature for cmd, if any.

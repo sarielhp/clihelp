@@ -59,7 +59,7 @@ func testApp() *App {
 // and leaves the URL visible. Forty assertions here read its output, and
 // TestExampleAppNoBareMarkdownAndNoVisibleURLs — whose whole job is proving URLs
 // stay hidden — would have reported a visible URL had it used this helper.
-func strip(s string) string { return StripANSI(s) }
+func strip(s string) string { return stripANSI(s) }
 
 func TestExampleAppNoBareMarkdownAndNoVisibleURLs(t *testing.T) {
 	had := color.NoColor

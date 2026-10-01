@@ -47,7 +47,7 @@ func TestEnableExamplesFlag(t *testing.T) {
 		if err := app.Execute([]string{"-E"}); err != nil {
 			t.Fatalf("unexpected error for -E: %v", err)
 		}
-		got := StripANSI(out.String())
+		got := stripANSI(out.String())
 		if !strings.Contains(got, "myapp --help") || !strings.Contains(got, "myapp scan inbox") || !strings.Contains(got, "myapp send --to") {
 			t.Errorf("-E output missing expected examples:\n%s", got)
 		}
@@ -56,7 +56,7 @@ func TestEnableExamplesFlag(t *testing.T) {
 		if err := app.Execute([]string{"--examples"}); err != nil {
 			t.Fatalf("unexpected error for --examples: %v", err)
 		}
-		got = StripANSI(out.String())
+		got = stripANSI(out.String())
 		if !strings.Contains(got, "myapp --help") || !strings.Contains(got, "myapp scan inbox") || !strings.Contains(got, "myapp send --to") {
 			t.Errorf("--examples output missing expected examples:\n%s", got)
 		}
@@ -70,7 +70,7 @@ func TestEnableExamplesFlag(t *testing.T) {
 		if err := app.Execute([]string{"-E", "scan"}); err != nil {
 			t.Fatalf("unexpected error for -E scan: %v", err)
 		}
-		got := StripANSI(out.String())
+		got := stripANSI(out.String())
 		if !strings.Contains(got, "myapp scan inbox") {
 			t.Errorf("-E scan output missing scan example:\n%s", got)
 		}
@@ -83,7 +83,7 @@ func TestEnableExamplesFlag(t *testing.T) {
 		if err := app.Execute([]string{"scan", "-E"}); err != nil {
 			t.Fatalf("unexpected error for scan -E: %v", err)
 		}
-		got = StripANSI(out.String())
+		got = stripANSI(out.String())
 		if !strings.Contains(got, "myapp scan inbox") {
 			t.Errorf("scan -E output missing scan example:\n%s", got)
 		}
@@ -119,13 +119,13 @@ func TestEnableExamplesFlag(t *testing.T) {
 		appDisabled := makeApp(false, &disabledOut)
 
 		appEnabled.RenderGlobal(Options{Writer: &enabledOut, Width: 80})
-		enabledBody := StripANSI(enabledOut.String())
+		enabledBody := stripANSI(enabledOut.String())
 		if !strings.Contains(enabledBody, "-E, --examples") {
 			t.Errorf("RenderGlobal() with EnableExamplesFlag=true did not advertise -E, --examples:\n%s", enabledBody)
 		}
 
 		appDisabled.RenderGlobal(Options{Writer: &disabledOut, Width: 80})
-		disabledBody := StripANSI(disabledOut.String())
+		disabledBody := stripANSI(disabledOut.String())
 		if strings.Contains(disabledBody, "-E, --examples") {
 			t.Errorf("RenderGlobal() with EnableExamplesFlag=false unexpectedly advertised -E, --examples:\n%s", disabledBody)
 		}

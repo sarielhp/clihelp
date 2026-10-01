@@ -149,7 +149,7 @@ func manUsageLine(app *App, path []string, cmd *Command) string {
 func manSummary(name, description string) string {
 	var b strings.Builder
 	renderInline(&b, description)
-	summary := FirstSentence(stripANSI(b.String()))
+	summary := firstSentence(stripANSI(b.String()))
 	if rest, found := strings.CutPrefix(summary, name); found {
 		summary = strings.TrimLeft(rest, " \t\u2014\u2013-")
 	}

@@ -37,7 +37,7 @@ func TestAuthorStringsCannotSteerTheTerminal(t *testing.T) {
 					}
 				}
 			}
-			if strings.ContainsAny(StripANSI(out), "\x1b\a\r") {
+			if strings.ContainsAny(stripANSI(out), "\x1b\a\r") {
 				t.Errorf("a control byte reaches the terminal: %q -> %q", tt.in, out)
 			}
 		})
@@ -68,8 +68,8 @@ func TestLinkURLCannotBreakTheEscape(t *testing.T) {
 		if strings.ContainsAny(payload, " \t\n\x7f") {
 			t.Errorf("URL %q leaves a splittable byte in the OSC payload: %q", url, payload)
 		}
-		if strings.Contains(StripANSI(out), "]8;;") {
-			t.Errorf("URL %q leaked OSC bytes into visible text: %q", url, StripANSI(out))
+		if strings.Contains(stripANSI(out), "]8;;") {
+			t.Errorf("URL %q leaked OSC bytes into visible text: %q", url, stripANSI(out))
 		}
 	}
 }

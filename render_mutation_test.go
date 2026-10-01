@@ -24,8 +24,8 @@ func TestTabsAdvanceToTheNextStop(t *testing.T) {
 		{"\t\t", 16},
 		{"ab", 2},
 	} {
-		if got := VisualWidth(tt.in); got != tt.want {
-			t.Errorf("VisualWidth(%q) = %d, want %d", tt.in, got, tt.want)
+		if got := visualLen(tt.in); got != tt.want {
+			t.Errorf("visualLen(%q) = %d, want %d", tt.in, got, tt.want)
 		}
 	}
 }
@@ -51,13 +51,13 @@ func TestAnOverWideLineHoldsOnlyOneWord(t *testing.T) {
 			reflow(&buf, color.New(color.FgWhite), tt.width, tt.indent, tt.prefix, tt.text)
 			requireRendered(t, buf.String())
 			for _, line := range strings.Split(strings.TrimRight(buf.String(), "\n"), "\n") {
-				if VisualWidth(line) <= tt.width {
+				if visualLen(line) <= tt.width {
 					continue
 				}
-				if n := len(strings.Fields(StripANSI(line))); n > 1 {
+				if n := len(strings.Fields(stripANSI(line))); n > 1 {
 					t.Errorf("a line of %d columns over a width of %d holds %d words, "+
 						"so it could have been broken:\n%q",
-						VisualWidth(line), tt.width, n, line)
+						visualLen(line), tt.width, n, line)
 				}
 			}
 		})
@@ -141,7 +141,7 @@ func TestRedirectedHelpUsesTheFixedWidth(t *testing.T) {
 	var buf bytes.Buffer
 	app.RenderGlobal(Options{Writer: &buf})
 	for _, line := range strings.Split(buf.String(), "\n") {
-		if got := VisualWidth(line); got > 70 && len(strings.Fields(StripANSI(line))) > 1 {
+		if got := visualLen(line); got > 70 && len(strings.Fields(stripANSI(line))) > 1 {
 			t.Errorf("a redirected help line ran to %d columns:\n%q", got, line)
 		}
 	}
@@ -251,7 +251,7 @@ func TestEmphasisDoesNotBindAcrossSpaces(t *testing.T) {
 		{"a **b** c", "a b c"},
 		{"a *b* c", "a b c"},
 	} {
-		if got := StripANSI(renderInlineTo(tt.in, false)); got != tt.want {
+		if got := stripANSI(renderInlineTo(tt.in, false)); got != tt.want {
 			t.Errorf("inlineMarkdown(%q) rendered as %q, want %q", tt.in, got, tt.want)
 		}
 	}
@@ -295,7 +295,7 @@ func TestAnOverWideNameTakesItsOwnLine(t *testing.T) {
 	long := "--an-extremely-long-flag-name-far-past-its-column"
 	reflow(&buf, color.New(color.FgWhite), width, indent, long,
 		"The description belongs on the next line, at the column.")
-	lines := strings.Split(strings.TrimRight(StripANSI(buf.String()), "\n"), "\n")
+	lines := strings.Split(strings.TrimRight(stripANSI(buf.String()), "\n"), "\n")
 
 	if len(lines) < 2 {
 		t.Fatalf("the name and its description shared one line:\n%q", buf.String())
@@ -319,7 +319,7 @@ func TestAnOverWideNameTakesItsOwnLine(t *testing.T) {
 	// A name that does fit keeps its description beside it.
 	buf.Reset()
 	reflow(&buf, color.New(color.FgWhite), width, indent, "-s", "Short.")
-	if first := strings.Split(StripANSI(buf.String()), "\n")[0]; !strings.Contains(first, "Short.") {
+	if first := strings.Split(stripANSI(buf.String()), "\n")[0]; !strings.Contains(first, "Short.") {
 		t.Errorf("a name that fits was given its own line anyway: %q", first)
 	}
 }
@@ -356,7 +356,7 @@ func TestAnUngroupedListGetsNoHeading(t *testing.T) {
 	}
 	var buf bytes.Buffer
 	app.RenderGlobal(Options{Writer: &buf, Width: 80})
-	body := StripANSI(buf.String())
+	body := stripANSI(buf.String())
 	for _, line := range strings.Split(body, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "Other" || trimmed == "Other:" {
@@ -415,22 +415,22 @@ func TestGlobalNoteAppearsOnTheExtendedHelp(t *testing.T) {
 	app.RenderGlobal(Options{Writer: &extended, Width: 80})
 	app.RenderGlobal(Options{Writer: &concise, Width: 80, Concise: true})
 
-	if !strings.Contains(StripANSI(extended.String()), "the manual") {
+	if !strings.Contains(stripANSI(extended.String()), "the manual") {
 		t.Errorf("the note is missing from the extended help:\n%s", extended.String())
 	}
-	if strings.Contains(StripANSI(concise.String()), "the manual") {
+	if strings.Contains(stripANSI(concise.String()), "the manual") {
 		t.Errorf("the note appeared on the concise page, which is a prompt:\n%s", concise.String())
 	}
 	// The label is shown, never the URL: that is what OSC 8 is for.
-	if strings.Contains(StripANSI(extended.String()), "https://") {
-		t.Errorf("the note's URL was spelled out:\n%s", StripANSI(extended.String()))
+	if strings.Contains(stripANSI(extended.String()), "https://") {
+		t.Errorf("the note's URL was spelled out:\n%s", stripANSI(extended.String()))
 	}
 
 	// A note that merely repeats the description is not printed twice.
 	app.GlobalNote = app.Description
 	var repeated bytes.Buffer
 	app.RenderGlobal(Options{Writer: &repeated, Width: 80})
-	if n := strings.Count(StripANSI(repeated.String()), "Does a thing."); n != 1 {
+	if n := strings.Count(stripANSI(repeated.String()), "Does a thing."); n != 1 {
 		t.Errorf("a note identical to the description appeared %d times", n)
 	}
 }

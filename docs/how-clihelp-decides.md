@@ -216,7 +216,7 @@ these exist:
 | Code to print help when a command is called bare | decision 3 |
 | A wrapper that intercepts `Run` to show usage | decision 3 — and it will shadow the errors above |
 | Your own `-h` handling | decision 5 |
-| Width-aware wrapping, column alignment, ANSI-safe truncation | `format.go`, and exported as `VisualWidth` / `StripANSI` if you need to match it |
+| Width-aware wrapping, column alignment, ANSI-safe truncation | `format.go`, measuring with the shared `internal/text` helpers |
 | A second renderer to check the first | mutation-tested at 38/38; a golden test of your own output is cheaper and catches more |
 | Shell completion scripts, Alt-H key bindings, a man page | one mounted `CompletionCommand()`, one command for the user |
 | Static checks that your examples still parse | `Audit(app)` — run it in CI |

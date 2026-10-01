@@ -128,7 +128,7 @@ func TestMissingArgumentsShowTheCommandsHelp(t *testing.T) {
 		if err == nil {
 			t.Fatal("the command printed help and reported success; a script would think it ran")
 		}
-		body := StripANSI(errOut.String())
+		body := stripANSI(errOut.String())
 		if !strings.Contains(body, "<prefix>") || !strings.Contains(body, "Label prefix to scan.") {
 			t.Errorf("the help did not name the missing parameter:\n%s", body)
 		}
@@ -143,7 +143,7 @@ func TestMissingArgumentsShowTheCommandsHelp(t *testing.T) {
 		if err == nil {
 			t.Fatal("two arguments were accepted by ExactArgs(1)")
 		}
-		if strings.Contains(StripANSI(errOut.String()), "Label prefix to scan.") {
+		if strings.Contains(stripANSI(errOut.String()), "Label prefix to scan.") {
 			t.Errorf("a page of help was printed for a user who did supply arguments:\n%s", errOut.String())
 		}
 	})

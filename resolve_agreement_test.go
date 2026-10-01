@@ -130,8 +130,8 @@ func TestShortcutSubcommandHelpShowsItsPersistentFlags(t *testing.T) {
 	if err := app.Execute([]string{"help", "sc", "sub"}); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(StripANSI(out.String()), "--sc-flag") {
-		t.Errorf("the page omits a flag the command accepts:\n%s", StripANSI(out.String()))
+	if !strings.Contains(stripANSI(out.String()), "--sc-flag") {
+		t.Errorf("the page omits a flag the command accepts:\n%s", stripANSI(out.String()))
 	}
 }
 

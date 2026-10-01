@@ -51,7 +51,7 @@ func TestHelpStillWorksWhereItCanMeanHelp(t *testing.T) {
 	if err := app.Execute([]string{"remote", "help"}); err != nil {
 		t.Fatalf("`app remote help` failed: %v", err)
 	}
-	if !strings.Contains(StripANSI(out.String()), "add") {
+	if !strings.Contains(stripANSI(out.String()), "add") {
 		t.Errorf("`app remote help` did not render the group's help:\n%s", out.String())
 	}
 	out.Reset()
@@ -99,7 +99,7 @@ func TestFlagsAfterHelpAreNotPartOfThePath(t *testing.T) {
 			t.Errorf("`app %s` failed: %v", strings.Join(args, " "), err)
 			continue
 		}
-		if !strings.Contains(StripANSI(out.String()), "Deploy it.") {
+		if !strings.Contains(stripANSI(out.String()), "Deploy it.") {
 			t.Errorf("`app %s` did not render deploy's help:\n%s", strings.Join(args, " "), out.String())
 		}
 	}

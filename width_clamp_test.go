@@ -30,8 +30,8 @@ func TestNarrowTerminalKeepsAUsableTextColumn(t *testing.T) {
 	for _, width := range []int{20, 40, 80} {
 		var buf bytes.Buffer
 		app.RenderGlobal(Options{Writer: &buf, Width: width})
-		for _, line := range strings.Split(StripANSI(buf.String()), "\n") {
-			if w := VisualWidth(line); w > width && len(strings.Fields(line)) > 1 {
+		for _, line := range strings.Split(stripANSI(buf.String()), "\n") {
+			if w := visualLen(line); w > width && len(strings.Fields(line)) > 1 {
 				t.Errorf("width %d: a line is %d columns: %q", width, w, line)
 			}
 		}
@@ -49,17 +49,17 @@ func TestTitleFitsInsideItsSeparator(t *testing.T) {
 	app.RenderCommand(Options{Writer: &buf, Width: 200}, "c")
 
 	rule := 0
-	for _, line := range strings.Split(StripANSI(buf.String()), "\n") {
+	for _, line := range strings.Split(stripANSI(buf.String()), "\n") {
 		if trimmed := strings.TrimSpace(line); len(trimmed) > 10 && strings.Trim(trimmed, "-=─") == "" {
-			rule = VisualWidth(trimmed)
+			rule = visualLen(trimmed)
 			break
 		}
 	}
 	if rule == 0 {
 		t.Fatal("the fixture is wrong: no separator rule was drawn")
 	}
-	for _, line := range strings.Split(StripANSI(buf.String()), "\n") {
-		if w := VisualWidth(line); w > rule && strings.Contains(line, "ab") {
+	for _, line := range strings.Split(stripANSI(buf.String()), "\n") {
+		if w := visualLen(line); w > rule && strings.Contains(line, "ab") {
 			t.Errorf("a title line is %d columns inside a %d-column rule: %q", w, rule, line)
 		}
 	}
@@ -72,10 +72,10 @@ func TestVisualWidthIsAdditiveOverAJoin(t *testing.T) {
 	parts := []string{"00000\xf60", "000000000000000", "0"}
 	sum := 0
 	for _, p := range parts {
-		sum += VisualWidth(p)
+		sum += visualLen(p)
 	}
 	sum += len(parts) - 1 // the joining spaces
-	if whole := VisualWidth(strings.Join(parts, " ")); whole != sum {
+	if whole := visualLen(strings.Join(parts, " ")); whole != sum {
 		t.Errorf("VisualWidth is not additive: parts sum to %d, the join measures %d", sum, whole)
 	}
 }

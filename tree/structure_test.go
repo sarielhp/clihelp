@@ -7,6 +7,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/sarielhp/clihelp"
+	"github.com/sarielhp/clihelp/internal/text"
 )
 
 func renderPlain(t *testing.T, app *clihelp.App, width int) []string {
@@ -17,7 +18,7 @@ func renderPlain(t *testing.T, app *clihelp.App, width int) []string {
 
 	var buf bytes.Buffer
 	Render(&buf, app, Options{Writer: &buf, Width: width})
-	return strings.Split(strings.TrimRight(clihelp.StripANSI(buf.String()), "\n"), "\n")
+	return strings.Split(strings.TrimRight(text.StripANSI(buf.String()), "\n"), "\n")
 }
 
 // lineFor returns the rendered line whose name column is display, and the

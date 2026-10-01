@@ -36,7 +36,7 @@ func TestUngroupedEntriesDoNotJoinThePreviousGroup(t *testing.T) {
 	}}
 	var buf bytes.Buffer
 	app.RenderGlobal(Options{Writer: &buf, Width: 70})
-	out := StripANSI(buf.String())
+	out := stripANSI(buf.String())
 
 	if got := headingOf(out, "two"); got == "Group A:" || got == "Group B:" {
 		t.Errorf("a command declaring no group is listed under %q:\n%s", got, out)
@@ -64,7 +64,7 @@ func TestUngroupedFlagsDoNotJoinThePreviousGroup(t *testing.T) {
 	}
 	var buf bytes.Buffer
 	app.renderManPage(Options{Writer: &buf, Width: 70})
-	out := StripANSI(buf.String())
+	out := stripANSI(buf.String())
 	if got := headingOf(out, "--b"); got == "Networking:" {
 		t.Errorf("an ungrouped flag is listed under %q:\n%s", got, out)
 	}
@@ -80,7 +80,7 @@ func TestUsageHonoursSubcommandEntries(t *testing.T) {
 	}}}
 	var buf bytes.Buffer
 	app.RenderCommand(Options{Writer: &buf, Width: 70}, "config")
-	out := StripANSI(buf.String())
+	out := stripANSI(buf.String())
 	if strings.Contains(out, "Subcommands:") && !strings.Contains(out, "<subcommand>") {
 		t.Errorf("Usage promises no subcommand but a Subcommands list follows:\n%s", out)
 	}
@@ -96,10 +96,10 @@ func TestOptionsThemeLayersOntoAppTheme(t *testing.T) {
 	app.RenderCommand(Options{Writer: &withApp, Width: 70}, "c")
 	app.RenderCommand(Options{Writer: &withOpts, Width: 70, Theme: &Theme{}}, "c")
 
-	if !strings.Contains(StripANSI(withApp.String()), "T: ") {
+	if !strings.Contains(stripANSI(withApp.String()), "T: ") {
 		t.Fatalf("the fixture is wrong: App.Theme.TitlePrefix did not render:\n%s", withApp.String())
 	}
-	if !strings.Contains(StripANSI(withOpts.String()), "T: ") {
+	if !strings.Contains(stripANSI(withOpts.String()), "T: ") {
 		t.Errorf("an empty Options.Theme dropped App.Theme.TitlePrefix:\n%s", withOpts.String())
 	}
 	if withApp.String() != withOpts.String() {
@@ -122,7 +122,7 @@ func TestGroupedListSpacingIsDecidedOnWhatIsDrawn(t *testing.T) {
 		}}
 		var buf bytes.Buffer
 		app.RenderGlobal(Options{Writer: &buf, Width: 100})
-		return StripANSI(buf.String())
+		return stripANSI(buf.String())
 	}
 	if render("Open [the docs]("+longURL+") for more.") != render("Open the docs for more.") {
 		t.Errorf("a link changed the layout of a list whose visible text is identical")
@@ -137,10 +137,10 @@ func TestFirstSentenceKeepsMarkdownIntact(t *testing.T) {
 		"Use `a. b` for that.",
 		"Set **a. b** please.",
 	} {
-		got := FirstSentence(in)
+		got := firstSentence(in)
 		if strings.Count(got, "`")%2 != 0 || strings.Count(got, "**")%2 != 0 ||
 			strings.Count(got, "[") != strings.Count(got, ")") {
-			t.Errorf("FirstSentence(%q) = %q — unbalanced markdown reaches the terminal", in, got)
+			t.Errorf("firstSentence(%q) = %q — unbalanced markdown reaches the terminal", in, got)
 		}
 	}
 }
@@ -163,7 +163,7 @@ func TestBackslashOnlyEscapesPunctuation(t *testing.T) {
 
 // L9 — a link with empty text rendered nothing visible at all.
 func TestEmptyLinkTextFallsBackToTheURL(t *testing.T) {
-	if got := StripANSI(inlineMarkdown("[](http://x)")); got == "" {
+	if got := stripANSI(inlineMarkdown("[](http://x)")); got == "" {
 		t.Errorf("[](url) rendered nothing visible: %q", inlineMarkdown("[](http://x)"))
 	}
 }

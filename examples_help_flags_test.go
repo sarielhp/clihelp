@@ -83,7 +83,7 @@ func TestHelpFlagsInExamplesActuallyRun(t *testing.T) {
 		// "Did not error" was the whole assertion, so a help flag that quietly
 		// printed nothing passed as working. What the user asked for is the help
 		// page, so that is what is checked.
-		if body := StripANSI(out.String()); !strings.Contains(body, "Build it.") {
+		if body := stripANSI(out.String()); !strings.Contains(body, "Build it.") {
 			t.Errorf("`myapp %s` printed no help:\n%s", strings.Join(tt.args, " "), body)
 		}
 	}

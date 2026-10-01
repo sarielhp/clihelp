@@ -36,8 +36,8 @@ func TestNoWhitespaceOnlyLines(t *testing.T) {
 func TestZeroWidthWordDoesNotGlueTheNext(t *testing.T) {
 	var buf bytes.Buffer
 	reflow(&buf, plainColor(), 40, 2, "", "\x1b[0m alpha beta")
-	if strings.Contains(StripANSI(buf.String()), "alphabeta") {
-		t.Errorf("a zero-width word swallowed the following space: %q", StripANSI(buf.String()))
+	if strings.Contains(stripANSI(buf.String()), "alphabeta") {
+		t.Errorf("a zero-width word swallowed the following space: %q", stripANSI(buf.String()))
 	}
 }
 
@@ -62,8 +62,8 @@ func TestNoHeadingWithoutRows(t *testing.T) {
 	}
 	var buf bytes.Buffer
 	app.RenderGlobal(Options{Writer: &buf, Width: 70})
-	if strings.Contains(StripANSI(buf.String()), "Shortcut Commands:") {
-		t.Errorf("a heading was printed with no rows under it:\n%s", StripANSI(buf.String()))
+	if strings.Contains(stripANSI(buf.String()), "Shortcut Commands:") {
+		t.Errorf("a heading was printed with no rows under it:\n%s", stripANSI(buf.String()))
 	}
 }
 
@@ -74,7 +74,7 @@ func TestPrefixIsAlwaysOneLine(t *testing.T) {
 	var buf bytes.Buffer
 	reflow(&buf, plainColor(), 58, 20, "two\nlines", "the description")
 	first := strings.SplitN(buf.String(), "\n", 2)[0]
-	if strings.TrimSpace(StripANSI(first)) == "" {
+	if strings.TrimSpace(stripANSI(first)) == "" {
 		t.Errorf("a multi-line prefix produced an empty first row: %q", buf.String())
 	}
 	if strings.Count(strings.TrimRight(buf.String(), "\n"), "\n") > 1 {
@@ -102,7 +102,7 @@ func TestLinkScanIsNotQuadratic(t *testing.T) {
 // L6 — a tab measured zero columns while a terminal advances to the next stop,
 // so the hanging indent and the prefix column desynchronised from what is drawn.
 func TestTabsAreMeasuredAsDrawn(t *testing.T) {
-	if got := VisualWidth("\t"); got == 0 {
+	if got := visualLen("\t"); got == 0 {
 		t.Errorf("a tab measures 0 columns; a terminal advances to the next stop")
 	}
 	var buf bytes.Buffer

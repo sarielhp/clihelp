@@ -76,7 +76,7 @@ func TestConciseGlobalHelpFitsItsBudget(t *testing.T) {
 func TestTruncatedHelpSaysWhereTheRestIs(t *testing.T) {
 	var buf bytes.Buffer
 	budgetApp().RenderCommand(Options{Writer: &buf, Width: 80, Concise: true}, "sync")
-	out := StripANSI(buf.String())
+	out := stripANSI(buf.String())
 	if !strings.Contains(out, "more lines") {
 		t.Errorf("truncated help does not say how much was dropped:\n%s", out)
 	}
@@ -109,7 +109,7 @@ func TestConciseMaxLinesOverridesTheBudget(t *testing.T) {
 	if n := lineCount(buf.String()); n <= conciseHelpLines {
 		t.Errorf("ConciseMaxLines=-1 still truncated to %d lines", n)
 	}
-	if strings.Contains(StripANSI(buf.String()), "more lines") {
+	if strings.Contains(stripANSI(buf.String()), "more lines") {
 		t.Errorf("ConciseMaxLines=-1 still added a truncation note")
 	}
 }

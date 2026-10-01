@@ -284,7 +284,7 @@ func TestHelpExamplesCollectsTheWholeTree(t *testing.T) {
 	if err := app.Execute([]string{"help", "examples"}); err != nil {
 		t.Fatalf("`demo help examples` failed: %v", err)
 	}
-	body := StripANSI(out.String())
+	body := stripANSI(out.String())
 
 	for _, want := range []string{
 		"demo build x", "demo build --fast x", "demo build all",
@@ -318,7 +318,7 @@ func TestHelpExamplesWithNoneDeclared(t *testing.T) {
 	if err := app.Execute([]string{"help", "examples"}); err != nil {
 		t.Fatal(err)
 	}
-	if body := StripANSI(out.String()); !strings.Contains(body, "No examples are declared") {
+	if body := stripANSI(out.String()); !strings.Contains(body, "No examples are declared") {
 		t.Errorf("expected a plain statement, got:\n%s", body)
 	}
 }
@@ -354,7 +354,7 @@ func TestHelpExamplesForOneCommand(t *testing.T) {
 		if err := app.Execute([]string{"help", "examples", "build"}); err != nil {
 			t.Fatal(err)
 		}
-		body := StripANSI(out.String())
+		body := stripANSI(out.String())
 		for _, want := range []string{"Build's own.", "Nested."} {
 			if !strings.Contains(body, want) {
 				t.Errorf("missing %q:\n%s", want, body)
@@ -372,7 +372,7 @@ func TestHelpExamplesForOneCommand(t *testing.T) {
 		if err := app.Execute([]string{"help", "examples", "build", "all"}); err != nil {
 			t.Fatal(err)
 		}
-		body := StripANSI(out.String())
+		body := stripANSI(out.String())
 		if !strings.Contains(body, "Nested.") || strings.Contains(body, "Build's own.") {
 			t.Errorf("a nested path did not narrow to its own command:\n%s", body)
 		}
@@ -386,7 +386,7 @@ func TestHelpExamplesForOneCommand(t *testing.T) {
 		if err := app.Execute([]string{"help", "examples", "nosuch"}); err != nil {
 			t.Fatal(err)
 		}
-		if body := StripANSI(out.String()); !strings.Contains(body, "No command") {
+		if body := stripANSI(out.String()); !strings.Contains(body, "No command") {
 			t.Errorf("expected a plain statement, got:\n%s", body)
 		}
 	})
@@ -400,7 +400,7 @@ func TestHelpExamplesForOneCommand(t *testing.T) {
 		if err := own.Execute([]string{"help", "examples"}); err != nil {
 			t.Fatal(err)
 		}
-		if body := StripANSI(out.String()); !strings.Contains(body, "The author's own command.") {
+		if body := stripANSI(out.String()); !strings.Contains(body, "The author's own command.") {
 			t.Errorf("the topic shadowed a real command:\n%s", body)
 		}
 	})

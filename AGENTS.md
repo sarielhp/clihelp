@@ -219,6 +219,7 @@ a redirecting caller sees it, and that caller wants it.
 | `protocol_test.go` | The `__clihelp` verbs, their argument grammar, and wrapper generation |
 | `explain_test.go`, `explain_shell_test.go` | Command-line expansion, the height budget, and the live shell key bindings |
 | `shellquote_test.go` | Shell quoting of generated source and `App.Name` validation |
+| `internal/text/` | `StripANSI`, `VisualWidth` and `FirstSentence`, shared by this package, `doc/` and `tree/` and importable by no consumer |
 | `doc/` | Subpackage for GitHub-friendly markdown documentation site generation (`doc.RenderMarkdown`) |
 | `docs/` | User and developer documentation guides, site index, and generated markdown reference sites |
 | `docs_drift_test.go` | Guard verifying that documentation prose only names real exported symbols and members |

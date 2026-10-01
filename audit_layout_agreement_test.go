@@ -17,7 +17,7 @@ func rowDescription(lead, words int) string {
 // trimmed text begins with label occupies, not counting a line that holds only
 // the label (a name too wide for its column sits on a line of its own).
 func descriptionLines(page, label string) int {
-	lines := strings.Split(StripANSI(page), "\n")
+	lines := strings.Split(stripANSI(page), "\n")
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if !strings.HasPrefix(trimmed, label) {

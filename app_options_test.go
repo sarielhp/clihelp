@@ -125,13 +125,13 @@ func TestAppOptionsRenderOnTheRootOnly(t *testing.T) {
 	}
 	out := silentApp(app)
 	app.RenderGlobal(Options{Writer: out, Width: 100})
-	if !strings.Contains(StripANSI(out.String()), "--root-only") {
+	if !strings.Contains(stripANSI(out.String()), "--root-only") {
 		t.Errorf("the root's own flag is missing from its help:\n%s", out.String())
 	}
 
 	sub := silentApp(app)
 	app.RenderCommand(Options{Writer: sub, Width: 100}, "fetch")
-	if strings.Contains(StripANSI(sub.String()), "--root-only") {
+	if strings.Contains(stripANSI(sub.String()), "--root-only") {
 		t.Errorf("the root's own flag appeared on a command's help:\n%s", sub.String())
 	}
 }

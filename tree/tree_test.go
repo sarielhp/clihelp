@@ -7,6 +7,7 @@ import (
 
 	"github.com/mattn/go-runewidth"
 	"github.com/sarielhp/clihelp"
+	"github.com/sarielhp/clihelp/internal/text"
 	"github.com/sarielhp/clihelp/tree"
 )
 
@@ -31,7 +32,7 @@ func TestRender(t *testing.T) {
 
 	var buf bytes.Buffer
 	tree.Render(&buf, app, tree.Options{Width: 80})
-	out := clihelp.StripANSI(buf.String())
+	out := text.StripANSI(buf.String())
 
 	if !strings.Contains(out, "build") {
 		t.Errorf("Tree output missing build: %q", out)
@@ -69,7 +70,7 @@ func TestRenderMeasuresWidthInColumns(t *testing.T) {
 	tree.Render(&buf, app, tree.Options{Width: width})
 
 	var descLine string
-	for _, line := range strings.Split(clihelp.StripANSI(buf.String()), "\n") {
+	for _, line := range strings.Split(text.StripANSI(buf.String()), "\n") {
 		if runewidth.StringWidth(line) > width {
 			t.Errorf("line is %d columns wide, over the %d requested:\n%q", runewidth.StringWidth(line), width, line)
 		}
