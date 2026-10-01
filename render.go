@@ -65,7 +65,7 @@ type Options struct {
 	// Writer is the output destination. When nil, os.Stdout is used.
 	Writer io.Writer
 	// Width is the target terminal width in columns. When zero it is
-	// auto-detected with a 70-column fallback for non-terminal output.
+	// auto-detected with an 80-column fallback for non-terminal output.
 	Width int
 	// MaxContentWidth caps the wrap width to indent+MaxContentWidth columns.
 	// When zero it defaults to 80. Set to a larger value to allow content to
@@ -209,15 +209,14 @@ func applyTheme(th Theme, src *Theme) Theme {
 
 // width resolves the layout width: an explicit Width wins, otherwise the
 // Writer's terminal width is used when it is a terminal file, falling back to
-// stdout, then a 70-column fallback for non-terminals.
+// stdout, then COLUMNS, then fallbackWidth for non-terminals.
 // termFd resolves the descriptor the output goes to and whether it is a
 // terminal.
 //
 // It asks for the capability rather than the concrete type: an application that
 // sets App.Stdout to a bufio.Writer or a colorable wrapper — a very ordinary
-// setup — used to be treated as a non-terminal by all three callers, so it never
-// paged and its width collapsed to the 70-column fallback on a 200-column
-// screen. This was written out three times with three different fallbacks.
+// setup — used to be treated as a non-terminal by all three callers, so its
+// width collapsed to the fallback on a 200-column screen. This was written out three times with three different fallbacks.
 func (o Options) termFd() (int, bool) {
 	w := o.out()
 	f, ok := w.(interface{ Fd() uintptr })
@@ -227,6 +226,11 @@ func (o Options) termFd() (int, bool) {
 	fd := int(f.Fd())
 	return fd, term.IsTerminal(fd)
 }
+
+// fallbackWidth is the layout width when nothing says otherwise: a redirected
+// or piped run. It equals the width Audit holds short descriptions to, so help
+// that passes the audit is not re-wrapped when it is written to a file.
+const fallbackWidth = 80
 
 func (o Options) width() int {
 	if o.Width > 0 {
@@ -241,7 +245,7 @@ func (o Options) width() int {
 	if c := envInt("COLUMNS"); c > 0 {
 		return c
 	}
-	return 70
+	return fallbackWidth
 }
 
 // height resolves the layout height: the Writer's terminal height is used

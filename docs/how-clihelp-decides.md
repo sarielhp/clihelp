@@ -111,10 +111,10 @@ working against the library.** Check this document before writing it.
 ### 7. How wide, how tall, and whether to page
 
 - **Reads:** `Options.Width`, else the terminal file descriptor (via `term.GetSize`),
-  else the `COLUMNS` environment variable, else **70 columns**;
+  else the `COLUMNS` environment variable, else **80 columns**;
   `Options.MaxContentWidth`, else 80; the concise-help budget uses the
   terminal height (or the `LINES` environment variable for non-terminals).
-- **Note:** 70 is what every redirected `--help` in every program built on this
+- **Note:** 80 is what every redirected `--help` in every program built on this
   library is laid out at unless `$COLUMNS` is set in the environment.
 
 ### 8. Whether to emit colour

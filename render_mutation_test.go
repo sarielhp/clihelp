@@ -125,8 +125,8 @@ func TestTheDescriptionColumnIsNeverClampedToNothing(t *testing.T) {
 // out at.
 func TestRedirectedHelpUsesTheFixedWidth(t *testing.T) {
 	var probe bytes.Buffer
-	if got := (Options{Writer: &probe}).width(); got != 70 {
-		t.Errorf("a non-terminal writer laid out at %d columns, want 70", got)
+	if got := (Options{Writer: &probe}).width(); got != 80 {
+		t.Errorf("a non-terminal writer laid out at %d columns, want 80", got)
 	}
 
 	app := &App{
@@ -141,7 +141,7 @@ func TestRedirectedHelpUsesTheFixedWidth(t *testing.T) {
 	var buf bytes.Buffer
 	app.RenderGlobal(Options{Writer: &buf})
 	for _, line := range strings.Split(buf.String(), "\n") {
-		if got := visualLen(line); got > 70 && len(strings.Fields(stripANSI(line))) > 1 {
+		if got := visualLen(line); got > fallbackWidth && len(strings.Fields(stripANSI(line))) > 1 {
 			t.Errorf("a redirected help line ran to %d columns:\n%q", got, line)
 		}
 	}

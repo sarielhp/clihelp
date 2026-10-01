@@ -7,6 +7,10 @@ All notable changes to `clihelp` will be documented in this file.
 ### Added
 - **Layout checks in `Audit`**: every short description (command, subcommand, shortcut and flag listings) must render on one row at `AuditOptions.Width` (default 80), measured with the renderer's own column layout; a multi-line `Command.Description` is an error. `LongDescription`, `Notes` and extended help are unlimited. Verbatim notes and example lines wider than `Width` go to the new `AuditOptions.Warn` callback instead of failing. All violations are reported together, and flag rows are measured with their `(default: …)`, `(required)` and `(deprecated: …)` suffixes.
 
+### Changed
+- **Redirected help is laid out at 80 columns, not 70.** The fallback when stdout is not a terminal and `COLUMNS` is unset now equals the width `Audit` holds short descriptions to, so help that passes the audit is not re-wrapped when written to a file or pipe.
+- **Concise help no longer ends on a bare section heading.** When the line budget cuts a page directly under a heading such as `Examples:`, the heading is dropped and counted in the "more lines" note.
+
 ### Removed
 - **`StripANSI`, `VisualWidth` and `FirstSentence`** moved to `internal/text`. They were exported only so `tree/` could share them; one copy now serves this package, `doc/` and `tree/`.
 - **`App.Render`** (use `RenderGlobal` or `RenderCommand`), **`SuggestCommand`** and **`ColorizeExampleLineWithApp`**: no caller outside the package.

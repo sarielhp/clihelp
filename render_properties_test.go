@@ -275,11 +275,11 @@ func TestColumnsAndLinesFromEnvironment(t *testing.T) {
 		wantWidth  int
 		wantHeight int
 	}{
-		{"default fallback when unset", "", "", 0, 70, 0},
+		{"default fallback when unset", "", "", 0, 80, 0},
 		{"COLUMNS and LINES set", "110", "45", 0, 110, 45},
 		{"explicit Width overrides COLUMNS", "110", "45", 95, 95, 45},
-		{"invalid COLUMNS falls back to 70", "invalid", "", 0, 70, 0},
-		{"negative COLUMNS falls back to 70", "-10", "", 0, 70, 0},
+		{"invalid COLUMNS falls back to 80", "invalid", "", 0, 80, 0},
+		{"negative COLUMNS falls back to 80", "-10", "", 0, 80, 0},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("COLUMNS", tt.envCols)

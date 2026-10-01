@@ -143,7 +143,7 @@ a redirecting caller sees it, and that caller wants it.
 - Self-documenting, clean, formatted Go code (`gofmt -s -w .`)
 - **No direct ANSI escape codes** in code or tests (`\033`, `\x1b`) — always use external packages (`github.com/fatih/color`, `github.com/acarl005/stripansi`). **Sole exception:** the SGR/OSC8 constants in `inline.go` (neither dependency can emit OSC8 link sequences). Do not add ANSI escapes anywhere else.
 - ANSI color formatting for terminal headers and labels
-- Terminal width auto-detection with fallback to 70 characters for non-TTY environments
+- Terminal width auto-detection with fallback to 80 characters for non-TTY environments
 - All functions return clean outputs; no `os.Exit` inside library code
 
 ## Testing

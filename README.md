@@ -28,7 +28,7 @@ It provides clean, structured usage messages with support for ANSI colors and cl
 - **Alt-H: Expand and Explain** — an optional key binding that rewrites the abbreviated command names on the line to their full names and prints that command's help, capped at two thirds of the screen. Alt-H is already zsh's and fish's own key for explaining a command; clihelp fills it in for programs that ship no manual.
 - **Manual Pages** — `__clihelp manpage` writes a real roff page for `man(1)`; installing one also makes Alt-H answer natively in zsh and fish.
 - **Reachable Without Author Opt-In** — every clihelp program answers the reserved `__clihelp` argument, so a dotfiles script or a packager can set up a program whose author never mounted `CompletionCommand()`.
-- **Rich Terminal Styling** — Theme-driven ANSI colors, auto-detected terminal width with 70-column fallback, hanging indents for lists, and ANSI-aware word wrapping.
+- **Rich Terminal Styling** — Theme-driven ANSI colors, auto-detected terminal width with 80-column fallback, hanging indents for lists, and ANSI-aware word wrapping.
 - **Verbatim Text & Fenced Code Blocks (`Note.Raw`)** — Preserve ASCII diagrams, preformatted configs, and markdown fenced code blocks in notes without line reflow or whitespace collapsing.
 - **Inline Markdown & OSC 8 Hyperlinks** — Rich text formatting in descriptions: bold, italic, code, strikethrough, and clickable terminal hyperlinks.
 - **Markdown Documentation Generator** — Automatically generates navigable, GitHub-friendly Markdown doc trees with SHA-256 change-detection caching.
@@ -292,7 +292,7 @@ Descriptions and notes support markdown-like inline formatting:
 
 ### Width & wrapping
 
-- Terminal width is auto-detected with a **70-column fallback** for non-TTY output.
+- Terminal width is auto-detected with a **80-column fallback** for non-TTY output.
 - Content wraps at `min(terminal width, indent + MaxContentWidth)` columns (default `MaxContentWidth` is 80), so indented lists gain extra horizontal room without exceeding the terminal. The description column is also reduced on a narrow terminal so that a usable text column remains; a name wider than the terminal is placed on its own line, and an example command line is never wrapped, so those two can still run over. Set `Options.MaxContentWidth` to change the content cap.
 - **Hanging list indentation:** Bullet lists (`- `, `* `, `• `) and numbered lists (`1. `, `2. `, etc.) automatically wrap continuation lines with hanging indents aligned to the list item text.
 - **Verbatim notes & code blocks:** Use `Note.Raw: true` or markdown code fences (```` ``` ````) to preserve ASCII diagrams, preformatted spacing, and tables without line reflow or space collapsing.
