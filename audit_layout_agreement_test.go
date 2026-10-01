@@ -13,9 +13,11 @@ func rowDescription(lead, words int) string {
 	return strings.Repeat("x", lead) + " " + strings.Repeat("xxx ", words) + "END"
 }
 
-// descriptionLines counts the lines the entry starting at the line whose
-// trimmed text begins with label occupies, not counting a line that holds only
-// the label (a name too wide for its column sits on a line of its own).
+// descriptionLines counts the lines the entry whose trimmed text begins with
+// label occupies, not counting a line that holds only the label (a name too wide
+// for its column sits on a line of its own). Entries are not always separated by
+// a blank line, so the entry ends at the first following line that is not
+// indented deeper than the entry itself.
 func descriptionLines(page, label string) int {
 	lines := strings.Split(stripANSI(page), "\n")
 	for i, line := range lines {
@@ -23,9 +25,10 @@ func descriptionLines(page, label string) int {
 		if !strings.HasPrefix(trimmed, label) {
 			continue
 		}
-		n := 0
-		for _, l := range lines[i:] {
-			if strings.TrimSpace(l) == "" {
+		indent := len(line) - len(strings.TrimLeft(line, " "))
+		n := 1
+		for _, l := range lines[i+1:] {
+			if strings.TrimSpace(l) == "" || len(l)-len(strings.TrimLeft(l, " ")) <= indent {
 				break
 			}
 			n++
@@ -73,34 +76,81 @@ func TestAuditAgreesWithTheRenderer(t *testing.T) {
 		{"command flag", "--out", func(d string) *App {
 			return &App{Name: "a", Commands: []Command{{Name: "job", Description: "Jobs", Options: []Option{{Flags: "--out <f>", Description: d}}}}}
 		}, []string{"job"}},
+		{"local flag beside a wide persistent flag", "--out", func(d string) *App {
+			return &App{Name: "a", Commands: []Command{{Name: "job", Description: "Jobs",
+				PersistentOptions: []Option{{Flags: "--persistent-flag-x", Description: "short"}},
+				Options:           []Option{{Flags: "--out <f>", Description: d}}}}}
+		}, []string{"job"}},
+		{"inherited flag beside a wide local flag", "-g", func(d string) *App {
+			return &App{Name: "a",
+				PersistentOptions: []Option{{Flags: "-g", Description: d}},
+				Commands: []Command{{Name: "job", Description: "Jobs",
+					Options: []Option{{Flags: "--local-flag-nm-xx", Description: "short"}}}}}
+		}, []string{"job"}},
+		{"grouped flags", "--grouped", func(d string) *App {
+			return &App{Name: "a", GlobalFlags: []Option{
+				{Flags: "--grouped", Description: d, Group: "One"},
+				{Flags: "--other-wide-flag-x", Description: "short", Group: "Two"}}}
+		}, nil},
+		{"flag beside the built-in examples flag", "--gx", func(d string) *App {
+			return &App{Name: "a", EnableExamplesFlag: true, GlobalFlags: []Option{{Flags: "--gx", Description: d}},
+				Commands: []Command{{Name: "job", Description: "Jobs", Examples: []Example{{Line: "a job"}}}}}
+		}, nil},
+		{"app option beside global flags", "--own", func(d string) *App {
+			return &App{Name: "a",
+				GlobalFlags: []Option{{Flags: "--global-flag-nm-x", Description: "short"}},
+				Options:     []Option{{Flags: "--own", Description: d}}}
+		}, nil},
 	}
 	for _, tc := range cases {
-		for lead := 1; lead <= 4; lead++ {
-			for words := 0; words <= 22; words++ {
-				desc := rowDescription(lead, words)
-				t.Run(fmt.Sprintf("%s/%d", tc.name, len(desc)), func(t *testing.T) {
-					app := tc.build(desc)
-					var buf bytes.Buffer
-					o := Options{Writer: &buf, Width: 80}
-					if tc.path != nil {
-						if !app.RenderCommand(o, tc.path...) {
-							t.Fatal("RenderCommand did not find the command")
+		for _, width := range []int{60, 80, 100} {
+			for lead := 1; lead <= 4; lead++ {
+				for words := 0; words <= 22; words++ {
+					desc := rowDescription(lead, words)
+					t.Run(fmt.Sprintf("%s/w%d/%d", tc.name, width, len(desc)), func(t *testing.T) {
+						app := tc.build(desc)
+						var buf bytes.Buffer
+						o := Options{Writer: &buf, Width: width}
+						if tc.path != nil {
+							if !app.RenderCommand(o, tc.path...) {
+								t.Fatal("RenderCommand did not find the command")
+							}
+						} else {
+							app.RenderGlobal(o)
 						}
-					} else {
-						app.RenderGlobal(o)
-					}
-					lines := descriptionLines(buf.String(), tc.label)
-					if lines < 0 {
-						t.Fatalf("label %q not found in:\n%s", tc.label, buf.String())
-					}
-					oneRow := lines == 1
-					err := Audit(app, AuditOptions{SkipExampleValidation: true})
-					if oneRow != (err == nil) {
-						t.Errorf("description of %d columns: rendered on %d line(s), Audit = %v\n%s",
-							len(desc), lines, err, buf.String())
-					}
-				})
+						lines := descriptionLines(buf.String(), tc.label)
+						if lines < 0 {
+							t.Fatalf("label %q not found in:\n%s", tc.label, buf.String())
+						}
+						oneRow := lines == 1
+						err := Audit(app, AuditOptions{SkipExampleValidation: true, Width: width})
+						if oneRow != (err == nil) {
+							t.Errorf("description of %d columns: rendered on %d line(s), Audit = %v\n%s",
+								len(desc), lines, err, buf.String())
+						}
+					})
+				}
 			}
 		}
+	}
+}
+
+// The inherited flags are listed on every command page, so a single over-long
+// global description must be reported once and not once per command.
+func TestAuditReportsAnInheritedFlagOnce(t *testing.T) {
+	app := &App{Name: "a",
+		GlobalFlags: []Option{{Flags: "--g", Description: strings.Repeat("word ", 30)}},
+		Commands: []Command{
+			{Name: "one", Description: "One"},
+			{Name: "two", Description: "Two"},
+			{Name: "three", Description: "Three"},
+		}}
+	err := Audit(app, AuditOptions{SkipExampleValidation: true})
+	if err == nil {
+		t.Fatal("Audit = nil, want an error")
+	}
+	// Once for the root page and once for the command pages, which share one column.
+	if n := strings.Count(err.Error(), `description of "--g"`); n != 2 {
+		t.Errorf("--g reported %d times, want 2:\n%v", n, err)
 	}
 }

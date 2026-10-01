@@ -26,7 +26,7 @@
 | `tools/map.sh` | Print package structure, key types, and exported functions |
 | `tools/version.sh` | Print current version from `VERSION` file |
 | `tools/bump-version.sh` | Bump patch version in `VERSION`, git add/commit/push |
-| `tools/commit.sh <msg>` | Quality gate + stage + commit (silent, outputs "Success <msg>") |
+| `tools/commit.sh <msg>` | Quality gate + stage + commit; silent on success, prints the failing step's output on failure. `COMMIT_TRAILER` adds a trailer paragraph |
 | `tools/checkpoint.sh` | Auto micro-commit of all changes (saves work state) |
 | `tools/ex_podcl [args]` | Incrementally build and execute `podctl` example with CLI arguments |
 | `tools/ex_mail_cli [args]` | Incrementally build and execute `mail_cli` example with CLI arguments |

@@ -36,6 +36,9 @@ func auditRows(scope string, params []Param, opts AuditOptions) []error {
 	indent := colIndentFor(params, width, minTextColumns)
 	textWidth := wrapWidth(width, indent, Options{}.maxContent()) - indent
 	for _, p := range params {
+		if p.Name == examplesFlagSpec {
+			continue // the library's own row: it shapes the column but is not the author's to shorten
+		}
 		rendered := renderInlineTo(p.Description, true)
 		if w := visualLen(rendered); w > textWidth {
 			errs = append(errs, fmt.Errorf("%s: description of %q is %d columns, but only %d fit on one row at width %d (shorten it, or move the detail to LongDescription)",
@@ -56,13 +59,13 @@ func commandParams(cmds []Command) []Param {
 	return params
 }
 
-func visibleOptionParams(groups ...[]Option) []Param {
-	var params []Param
-	for _, options := range groups {
-		for _, opt := range options {
-			if !opt.Hidden {
-				params = append(params, Param{Name: opt.Flags, Description: decorateOptionDescription(opt)})
-			}
+// optionParams turns an already-collected option list into the rows the
+// renderer draws for it.
+func optionParams(options []Option) []Param {
+	params := make([]Param, 0, len(options))
+	for _, opt := range options {
+		if !opt.Hidden {
+			params = append(params, Param{Name: opt.Flags, Description: decorateOptionDescription(opt)})
 		}
 	}
 	return params
@@ -75,17 +78,32 @@ func visibleOptionParams(groups ...[]Option) []Param {
 func auditLayout(app *App, opts AuditOptions) error {
 	errs := auditRows("the app's commands", commandParams(app.Commands), opts)
 	errs = append(errs, auditRows("the app's shortcuts", commandParams(app.Shortcuts), opts)...)
-	errs = append(errs, auditRows("the app's flags", visibleOptionParams(app.PersistentOptions, app.GlobalFlags, app.Options), opts)...)
+	errs = append(errs, auditRows("the app's flags", optionParams(app.rootFlags()), opts)...)
 	warnLongText("the app", app.Examples, nil, opts)
-	errs = append(errs, auditCommandsLayout(app.Commands, nil, opts)...)
-	errs = append(errs, auditCommandsLayout(app.Shortcuts, nil, opts)...)
-	return errors.Join(errs...)
+	errs = append(errs, auditCommandsLayout(app, app.Commands, nil, opts)...)
+	errs = append(errs, auditCommandsLayout(app, app.Shortcuts, nil, opts)...)
+	return errors.Join(dedupe(errs)...)
+}
+
+// dedupe drops repeated messages. The inherited flags are listed on every
+// command page, so one over-long global description would otherwise be reported
+// once per command.
+func dedupe(errs []error) []error {
+	seen := make(map[string]bool, len(errs))
+	out := errs[:0:0]
+	for _, err := range errs {
+		if !seen[err.Error()] {
+			seen[err.Error()] = true
+			out = append(out, err)
+		}
+	}
+	return out
 }
 
 // auditCommandsLayout checks what each command contributes to its own help: a
 // one-line Description, its subcommand listing and its flag lists. A command's
 // own row belongs to its parent's listing and is checked there.
-func auditCommandsLayout(cmds []Command, parent []string, opts AuditOptions) []error {
+func auditCommandsLayout(app *App, cmds []Command, parent []string, opts AuditOptions) []error {
 	var errs []error
 	for _, cmd := range cmds {
 		path := append(append([]string(nil), parent...), cmd.Name)
@@ -94,9 +112,12 @@ func auditCommandsLayout(cmds []Command, parent []string, opts AuditOptions) []e
 			errs = append(errs, fmt.Errorf("%s: Description must be one line; put the rest in LongDescription", scope))
 		}
 		errs = append(errs, auditRows(scope+" subcommands", commandParams(cmd.Subcommands), opts)...)
-		errs = append(errs, auditRows(scope+" flags", visibleOptionParams(cmd.PersistentOptions, cmd.Options), opts)...)
+		errs = append(errs, auditRows(scope+" flags", optionParams(app.collectLocalOptions(&cmd)), opts)...)
+		if !app.OmitGlobalFlagsInCommands {
+			errs = append(errs, auditRows("global flags on command pages", optionParams(app.collectGlobalOptions(path, &cmd)), opts)...)
+		}
 		warnLongText(scope, cmd.Examples, cmd.Notes, opts)
-		errs = append(errs, auditCommandsLayout(cmd.Subcommands, path, opts)...)
+		errs = append(errs, auditCommandsLayout(app, cmd.Subcommands, path, opts)...)
 	}
 	return errs
 }

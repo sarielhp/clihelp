@@ -411,7 +411,13 @@ func (a *App) renderGlobalShortcuts(w io.Writer, th Theme, o Options, termWidth 
 	fmt.Fprintln(w)
 }
 
-func (a *App) renderGlobalFlagsSection(w io.Writer, th Theme, o Options, termWidth int) {
+// examplesFlagSpec is the built-in flag EnableExamplesFlag adds to the root page.
+const examplesFlagSpec = "-E, --examples"
+
+// rootFlags is the list the root page's "Global Flags" section shows: the
+// persistent and global options, the application's own options, and the built-in
+// examples flag when enabled. Audit measures the same list.
+func (a *App) rootFlags() []Option {
 	var globalFlags []Option
 	for _, f := range a.PersistentOptions {
 		if !f.Hidden {
@@ -432,10 +438,15 @@ func (a *App) renderGlobalFlagsSection(w io.Writer, th Theme, o Options, termWid
 	}
 	if a.EnableExamplesFlag {
 		globalFlags = append(globalFlags, Option{
-			Flags:       "-E, --examples",
+			Flags:       examplesFlagSpec,
 			Description: "Show every example in one place; add a command to narrow it",
 		})
 	}
+	return globalFlags
+}
+
+func (a *App) renderGlobalFlagsSection(w io.Writer, th Theme, o Options, termWidth int) {
+	globalFlags := a.rootFlags()
 	if len(globalFlags) == 0 {
 		return
 	}

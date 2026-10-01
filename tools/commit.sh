@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Quality gate, then stage and commit. Silent on success; on failure it prints
 # the output of the step that failed to stderr and exits non-zero.
+#
+# COMMIT_TRAILER, when set, is appended to the message as its own paragraph, e.g.
+#   COMMIT_TRAILER="Co-Authored-By: Name <name@example.com>" make commit ARGS="..."
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -24,6 +27,10 @@ run() {
 
 run bash tools/check.sh
 run git add -A
-run git commit -m "$msg"
+if [ -n "${COMMIT_TRAILER:-}" ]; then
+  run git commit -m "$msg" -m "$COMMIT_TRAILER"
+else
+  run git commit -m "$msg"
+fi
 
 echo "Success $msg"
