@@ -410,9 +410,10 @@ func CompletionPath(app *App, shell string) (string, error) {
 	return filepath.Join(targetDir, fileName), nil
 }
 
-// IsCompletionInstalled checks if the shell completion script is already installed
+// CompletionScriptExists reports whether a completion script file is present
 // in the user's standard XDG directory for the given shell (or detected active shell).
-func IsCompletionInstalled(app *App, shell string) bool {
+// It says nothing about the startup-file line or whether completion works.
+func CompletionScriptExists(app *App, shell string) bool {
 	if app == nil {
 		return false
 	}

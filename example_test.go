@@ -91,7 +91,7 @@ func ExampleExactArgs() {
 	// tagging file.txt with v1.0
 }
 
-func ExampleApp_Render() {
+func ExampleApp_RenderGlobal() {
 	var buf strings.Builder
 
 	app := &clihelp.App{

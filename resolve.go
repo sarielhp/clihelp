@@ -731,11 +731,6 @@ func min3(a, b, c int) int {
 	return c
 }
 
-// SuggestCommand finds the closest matching command name from candidates for the input word.
-func SuggestCommand(input string, candidates []Command) string {
-	return suggestCommand(input, candidates)
-}
-
 // FindNearestCommands searches the entire command hierarchy for closest matching command paths.
 func (a *App) FindNearestCommands(input string) []string {
 	if a == nil || input == "" {

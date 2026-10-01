@@ -361,8 +361,8 @@ func TestCompletionPathAndIsInstalled(t *testing.T) {
 		t.Errorf("got %q, want %q", bashPath, expectedBash)
 	}
 
-	if IsCompletionInstalled(app, "zsh") {
-		t.Errorf("expected IsCompletionInstalled to be false before install")
+	if CompletionScriptExists(app, "zsh") {
+		t.Errorf("expected CompletionScriptExists to be false before install")
 	}
 
 	installedPath, err := installCompletion(app, "zsh")
@@ -373,8 +373,8 @@ func TestCompletionPathAndIsInstalled(t *testing.T) {
 		t.Errorf("installCompletion path = %q, want %q", installedPath, expectedZsh)
 	}
 
-	if !IsCompletionInstalled(app, "zsh") {
-		t.Errorf("expected IsCompletionInstalled to be true after install")
+	if !CompletionScriptExists(app, "zsh") {
+		t.Errorf("expected CompletionScriptExists to be true after install")
 	}
 }
 
@@ -431,8 +431,8 @@ func TestAutoInstallCompletionOnExecute(t *testing.T) {
 		t.Fatalf("a stale script was not refreshed at %q:\n%s", expectedPath, body)
 	}
 
-	if !IsCompletionInstalled(app, "zsh") {
-		t.Errorf("expected IsCompletionInstalled to be true")
+	if !CompletionScriptExists(app, "zsh") {
+		t.Errorf("expected CompletionScriptExists to be true")
 	}
 }
 

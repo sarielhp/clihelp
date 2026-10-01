@@ -188,19 +188,6 @@ func TestRenderCommandNotFound(t *testing.T) {
 	}
 }
 
-func TestRenderDispatch(t *testing.T) {
-	app := testApp()
-	_, gbuf := captureOptions(80)
-	o := Options{Writer: gbuf, Width: 80}
-	app.Render(o)
-
-	o2, cbuf := captureOptions(80)
-	app.Render(o2, "build")
-	if !strings.Contains(strip(cbuf.String()), "podctl build") {
-		t.Errorf("Render with path should render the command page")
-	}
-}
-
 func TestRenderGlobalDescriptionAndNote(t *testing.T) {
 	app := testApp()
 	app.Description = "A podcast distribution toolkit."

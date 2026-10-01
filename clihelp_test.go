@@ -85,7 +85,11 @@ func TestExampleAppNoBareMarkdownAndNoVisibleURLs(t *testing.T) {
 	// Render every help page with default options (ShowURLs=false)
 	for _, path := range paths {
 		o, buf := captureOptions(80)
-		app.Render(o, path...)
+		if len(path) == 0 {
+			app.RenderGlobal(o)
+		} else {
+			app.RenderCommand(o, path...)
+		}
 		out := stripANSI(buf.String())
 
 		if strings.Contains(out, "**") {

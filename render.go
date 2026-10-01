@@ -817,12 +817,3 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 	})
 	return true
 }
-
-// Render writes global help when path is empty, or command help for a path.
-func (a *App) Render(o Options, path ...string) bool {
-	if len(path) == 0 {
-		a.RenderGlobal(o)
-		return true
-	}
-	return a.RenderCommand(o, path...)
-}

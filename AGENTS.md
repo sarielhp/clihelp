@@ -84,7 +84,7 @@ make run
 ## API Stability & Backward Compatibility
 
 - **Before 1.0, the surface is not frozen.** The library is pre-1.0 and backward compatibility is not yet a promise: a name, field, or function that is wrong should be changed or removed outright. Prefer that to adding a correct alternative beside it — a deprecated alias is a permanent cost paid to avoid a break that is currently free. `review/api-surface-2026-09-18.md` is the audit of what should go.
-- **After 1.0**: preserve backward compatibility for all exported types and methods (`App`, `Command`, `Option`, `Example`, `Param`, `Note`, `Theme`, `Options`, `App.Render`, `App.RenderGlobal`, `App.RenderCommand`, `App.LookupCommand`, `App.Walk`), and prefer additive changes — new fields, structs, or methods — over breaking existing signatures or struct field semantics.
+- **After 1.0**: preserve backward compatibility for all exported types and methods (`App`, `Command`, `Option`, `Example`, `Param`, `Note`, `Theme`, `Options`, `App.RenderGlobal`, `App.RenderCommand`, `App.LookupCommand`, `App.Walk`), and prefer additive changes — new fields, structs, or methods — over breaking existing signatures or struct field semantics.
 
 ## Sizing
 

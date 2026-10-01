@@ -308,7 +308,7 @@ In `v0.2.0+`, `clihelp` transitioned from a standalone help formatter to a full 
 |---|---|
 | `app.PrintGlobalUsage()` | `app.RenderGlobal(clihelp.Options{})` |
 | `app.PrintCommandUsage("config", "set")` | `app.RenderCommand(clihelp.Options{}, "config", "set")` |
-| `app.PrintUsage(args...)` | `app.Render(clihelp.Options{}, args...)` |
+| `app.PrintUsage(args...)` | `app.RenderGlobal(clihelp.Options{})` or `app.RenderCommand(clihelp.Options{}, args...)` |
 | Manual flag parsing via `flag` | `app.Execute(os.Args[1:])` with declarative `clihelp.Option` |
 
 ---

@@ -140,9 +140,9 @@ func TestSuggestCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			got := SuggestCommand(tt.input, candidates)
+			got := suggestCommand(tt.input, candidates)
 			if got != tt.want {
-				t.Errorf("SuggestCommand(%q) = %q, want %q", tt.input, got, tt.want)
+				t.Errorf("suggestCommand(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
 	}
