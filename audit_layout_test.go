@@ -154,3 +154,47 @@ func TestAuditTrailingPeriodsAreConsistent(t *testing.T) {
 		})
 	}
 }
+
+// A structural error used to end the audit before the layout pass ran, so an
+// author fixing a bad example learned about a long description only afterwards,
+// on the next run — against the audit's own promise to report everything at
+// once. And Audit(nil) dereferenced nil.
+func TestAuditReportsLayoutAlongsideStructuralErrors(t *testing.T) {
+	long := strings.Repeat("word ", 30)
+	tests := []struct {
+		name string
+		app  *App
+		want []string
+	}{
+		{"bad example and a long description",
+			&App{Name: "a", Commands: []Command{{Name: "job", Description: long, Examples: []Example{{Line: "a job --nope"}}}}},
+			[]string{"--nope", "columns"}},
+		{"duplicate flag and a long description",
+			&App{Name: "a", GlobalFlags: []Option{{Flags: "--x", Description: "one"}, {Flags: "--x", Description: long}}},
+			[]string{"duplicate option --x", "columns"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := Audit(tt.app)
+			if err == nil {
+				t.Fatal("Audit = nil, want errors")
+			}
+			for _, want := range tt.want {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("Audit error does not mention %q:\n%v", want, err)
+				}
+			}
+		})
+	}
+}
+
+func TestAuditOfANilAppIsAnErrorNotAPanic(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("Audit(nil) panicked: %v", r)
+		}
+	}()
+	if err := Audit(nil); err == nil {
+		t.Error("Audit(nil) = nil, want an error")
+	}
+}

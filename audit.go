@@ -190,28 +190,28 @@ func auditCommandParameters(cmd Command, currentPath []string) error {
 }
 
 func audit(app *App, opts AuditOptions) error {
+	if app == nil {
+		return errors.New("clihelp: cannot audit a nil App")
+	}
+	// Every check runs, and what they find is reported together: an author who
+	// fixes a bad example should not then discover, on the next run, the long
+	// description the audit could already have named. errors.Join drops nils.
+	var errs []error
 	if !opts.SkipExampleValidation {
-		if err := app.ValidateAllExamples(); err != nil {
-			return err
-		}
+		errs = append(errs, app.ValidateAllExamples())
 	}
 
 	owners := make(flagOwners)
-	if err := checkOptionScope(owners, "the app's persistent options", app.PersistentOptions); err != nil {
-		return err
-	}
-	if err := checkOptionScope(owners, "the app's global flags", app.GlobalFlags); err != nil {
-		return err
-	}
+	errs = append(errs, checkOptionScope(owners, "the app's persistent options", app.PersistentOptions))
+	errs = append(errs, checkOptionScope(owners, "the app's global flags", app.GlobalFlags))
 	// The application's own options share the root's scope with the two above —
 	// a name cannot be declared twice there — but they are not inherited, so the
 	// command tree below is audited without them.
 	rootOwners := owners.clone()
-	if err := checkOptionScope(rootOwners, "the app's own options", app.Options); err != nil {
-		return err
-	}
+	errs = append(errs, checkOptionScope(rootOwners, "the app's own options", app.Options))
 
 	var allPaths []commandPathInfo
-	structural := auditCommandTree(app.Commands, nil, &allPaths, owners, opts)
-	return errors.Join(structural, auditLayout(app, opts))
+	errs = append(errs, auditCommandTree(app.Commands, nil, &allPaths, owners, opts))
+	errs = append(errs, auditLayout(app, opts))
+	return errors.Join(errs...)
 }
