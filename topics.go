@@ -262,7 +262,7 @@ func (a *App) renderManTopics(w io.Writer, th Theme, o Options, termWidth int) {
 	fmt.Fprintln(w)
 	topics := []Param{
 		{Name: "flags", Description: "Show all global flags and persistent options"},
-		{Name: "man", Description: "Display this complete reference manual (paged)"},
+		{Name: "man", Description: "Display this complete reference manual"},
 	}
 	// margin 4: the topic list sits under the sentence introducing it.
 	indent := clampIndent(colIndent(topics)+2, termWidth, minTextColumns)
@@ -364,7 +364,7 @@ func (a *App) renderTopicsPage(o Options) {
 		{Name: "help <command>", Description: fmt.Sprintf("Show help for a specific command (or '%s <command> -h')", appName(a))},
 		{Name: "help flags", Description: "Show all global flags and persistent options"},
 		{Name: "help examples", Description: "Show every example in one place; add a command to narrow it"},
-		{Name: "help man", Description: "Display the complete reference manual (paged)"},
+		{Name: "help man", Description: "Display the complete reference manual"},
 	}
 	indent := colIndentFor(topics, termWidth, minTextColumns)
 	for _, t := range topics {

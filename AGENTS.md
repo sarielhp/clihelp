@@ -139,9 +139,9 @@ a redirecting caller sees it, and that caller wants it.
 
 ## Code Style
 
-- Go 1.26+ with minimal dependencies (`github.com/fatih/color`, `github.com/acarl005/stripansi`, `golang.org/x/term`)
+- Go 1.26+ with minimal dependencies (`github.com/fatih/color`, `github.com/mattn/go-runewidth`, `github.com/spf13/pflag`, `golang.org/x/term`)
 - Self-documenting, clean, formatted Go code (`gofmt -s -w .`)
-- **No direct ANSI escape codes** in code or tests (`\033`, `\x1b`) — always use external packages (`github.com/fatih/color`, `github.com/acarl005/stripansi`). **Sole exception:** the SGR/OSC8 constants in `inline.go` (neither dependency can emit OSC8 link sequences). Do not add ANSI escapes anywhere else.
+- **No direct ANSI escape codes** in code or tests (`\033`, `\x1b`) — always use `github.com/fatih/color` and the helpers in `internal/text`. **Sole exceptions:** the SGR/OSC8 constants in `inline.go` (neither dependency can emit OSC8 link sequences) and the one regular expression in `internal/text` that recognises them. Do not add ANSI escapes anywhere else.
 - ANSI color formatting for terminal headers and labels
 - Terminal width auto-detection with fallback to 80 characters for non-TTY environments
 - All functions return clean outputs; no `os.Exit` inside library code
@@ -164,7 +164,7 @@ a redirecting caller sees it, and that caller wants it.
 - **Command Tree Traversal (`App.Walk`)**: Programmatic depth-first traversal of all commands and nested subcommands with path slice isolation and early error-exit for testing and interface coverage.
 - **Global Flag De-Cluttering & Topic Routing**: Added `Option.Group` and `Group()` helper to organize options by category, `App.OmitGlobalFlagsInCommands` to suppress verbose global flags in subcommands, and dedicated help topic routing (`help flags`, `help man`, `help topics`).
 - **Comprehensive Manual (`help man`)**: Built-in `RenderMan()` renders an exhaustive Unix man page with all commands, subcommands, arguments, flags, and notes.
-- **GNU-Standard Column Formatting**: Two-column command/option listings cap the description column at `DefaultMaxColIndent = 24`, and reduce it further when the terminal is too narrow to leave a usable text column. Long command or flag signatures automatically place description text on the next line, indented to the shared description column — the widest name that fits within `DefaultMaxColIndent`, plus four; `DefaultMaxColIndent` itself when no name fits.
+- **GNU-Standard Column Formatting**: Two-column command/option listings cap the description column at 24 columns, and reduce it further when the terminal is too narrow to leave a usable text column. Long command or flag signatures automatically place description text on the next line, indented to the shared description column — the widest name that fits within that cap, plus four; the cap itself when no name fits.
 - **Modular Subpackages**: `github.com/sarielhp/clihelp/doc` for GitHub Markdown documentation site generation and `github.com/sarielhp/clihelp/tree` for command hierarchy visualization.
 - **Prefix Command Matching**: Added `App.AbbrevCommands` field to enable abbreviated command names (e.g. `podctl b` instead of `podctl build`).
 - **Self-Installing Shell Autocompletion**: Added `CompletionCommand()` supporting Bash, Zsh, and Fish with one-command user XDG self-installation. The installer functions themselves are unexported: setup goes through the command, so that the "refresh only, never create" rule has one place to live.
@@ -174,6 +174,7 @@ a redirecting caller sees it, and that caller wants it.
 | File / Package | Purpose |
 |------|---------|
 | `clihelp.go` | Core data types (`App`, `Command`, `Option`, `Param`, `Example`, `Note`, `Context`) and `App.Walk` |
+| `doc.go` | The package comment rendered by `go doc` |
 | `topics.go` | Specialized help topic renderers (`RenderFlags`, `RenderMan`, `RenderHelpTopics`, grouped option reflow) |
 | `topics_test.go` | Unit tests for topic routing, manual pages, and help flags |
 | `render.go` | Terminal help rendering for global app, individual commands, and grouped commands |
@@ -186,16 +187,19 @@ a redirecting caller sees it, and that caller wants it.
 | `args.go` | Positional argument validators (`ExactArgs`, `RangeArgs`, `MinimumNArgs`, `NoArgs`) |
 | `interactive.go` | Interactive prompt fallback for missing required options in TTY environments |
 | `validation.go` | Declarative option constraint validation (`MutuallyExclusive`, `RequiredTogether`, etc.) |
-| `testing.go` | Testing harnesses (`TestExecute`, `Audit`) for simulating execution and verifying command trees |
+| `clihelptest/` | Subpackage with the testing harness (`TestExecute`, `TestExecuteWithStdin`, assertions) for simulating execution; kept out of the main package so consumers do not link `testing` |
+| `errors.go` | `ErrUsage` and `IsUsageError`: telling a usage mistake from a failed command |
 | `inline.go` | Inline markdown parsing and ANSI/OSC8 terminal formatting (bold, italic, code, hyperlinks) |
 | `completion.go` | The `__complete` protocol, dynamic completion, and the three script generators |
 | `completion_templates.go` | The generated bash, zsh and fish completion scripts, as shell source |
 | `completion_command.go` | The optional `completion` command and the install/uninstall report |
 | `autorefresh.go` | `AutoRefreshIntegration`: the only unattended writer, allowed to refresh and never to create |
+| `preserve_unix.go`, `preserve_other.go` | Ownership preservation for the atomic replace (POSIX), and its no-op elsewhere |
+| `wrapper_parse.go` | Read-only parser that extracts the preset arguments from an existing wrapper script (`__clihelp wrapper --from`) |
 | `atomicwrite.go` | `writeFileAtomically` — symlink-resolving, fsynced, owner-preserving replace |
 | `shell.go` | `resolveShell` — the one answer to "which shell, and can we write for it?" |
 | `versions.go` | Every version number stamped into a generated artifact, in one place |
-| `explain.go` | Command-line expansion and the height-capped explanation behind Alt-H (`__explain`, `App.Explain`, `GenKeyBindings`) |
+| `explain.go` | Command-line expansion and the height-capped explanation behind Alt-H (`__explain`, `GenKeyBindings`) |
 | `protocol.go` | The reserved `__clihelp` setup verbs (version, install, uninstall, keys, wrapper, manpage), their shared argument parser, and wrapper-script generation |
 | `names.go` | `safeAppName` — the one gate for any name that becomes a file path, a shell symbol or an rc-file marker — plus the shell quoters |
 | `lock_unix.go`, `lock_other.go` | Advisory locking for the startup-file read-modify-write |
@@ -224,8 +228,9 @@ a redirecting caller sees it, and that caller wants it.
 | `docs/` | User and developer documentation guides, site index, and generated markdown reference sites |
 | `docs_drift_test.go` | Guard verifying that documentation prose only names real exported symbols and members |
 | `tree/` | Subpackage for command hierarchy tree visualization (`tree.Render`) |
-| `audit.go` | Static analysis audit (`Audit`) verifying command uniqueness, flag collision, parameter invariants, and one-row short descriptions (`audit_layout.go`) |
-| `examples.go` | Example command syntax colorizer, shell tokenizer, and static example validator (`ValidateExample`, `ValidateAllExamples`) |
+| `audit.go` | Static analysis audit (`Audit`) verifying command uniqueness, flag collision, and parameter invariants |
+| `audit_layout.go` | The visual standard `Audit` enforces: one-row short descriptions at `AuditOptions.Width`, one trailing-period style per listing, warnings for unwrappable long text |
+| `examples.go` | Example command syntax colorizer, shell tokenizer, and static example validator (`App.ValidateAllExamples`) |
 | `examples_test.go` | Unit tests for example shell splitting, ANSI syntax colorization, and CLI constraint validation |
 | `clihelp_test.go` | Unit tests for help formatting, command dispatch, ANSI stripping, and usage output |
 | `walk_test.go` | Unit tests for `App.Walk` depth-first traversal, path isolation, and error propagation |
@@ -260,9 +265,11 @@ dependency cycle across five files until it was untangled; keep it acyclic:
 
 1. **Leaves** — `shell.go`, `names.go`, `versions.go`, `atomicwrite.go`,
    `completion_templates.go`. They depend on nothing above them.
-2. **Generators** — `completion.go`, `explain.go`, `man.go`. They produce text and touch no
-   files.
-3. **Installers** — `install.go`, `autoinstall.go`. They write files, using layer 2.
+2. **Generators** — `completion.go`, `explain.go`, `man.go`. They produce text. The only
+   files they touch are their own artifact (the completion script, the manual page),
+   written and removed through `atomicwrite.go`; setup of the user's shell and startup
+   files is layer 3.
+3. **Installers** — `install.go`, `autorefresh.go`. They write files, using layer 2.
 4. **Commands** — `protocol.go`, `completion_command.go`. Presentation over layer 3.
 
 A reference from a lower layer to a higher one is the cycle coming back. If a constant is
@@ -282,7 +289,7 @@ what you need from above, move the constant down — that is why the `__complete
 2. **Error Resolution**: If `make check` fails, focus on fixing the first reported error before making additional changes.
 3. **Exploration**: Run `make map` before introducing new types or functions to inspect existing API signatures.
 4. **Checkpointing**: Run `make checkpoint` after passing checks to preserve working states during long sessions.
-5. **No Direct ANSI Codes**: Do not hardcode ANSI escape sequences (`\033`, `\x1b`) in source or test files — use `fatih/color` or `stripansi`.
+5. **No Direct ANSI Codes**: Do not hardcode ANSI escape sequences (`\033`, `\x1b`) in source or test files — use `fatih/color` or the helpers in `internal/text`.
 6. **Backward Compatibility**: After 1.0, maintain strict backward compatibility for exported APIs and prefer additive fields or methods to modified public signatures. Before 1.0 — where the library is now — a wrong name or a redundant entry point should be removed rather than aliased.
 7. **Commit Messages**: Use conventional commits format (`feat:`, `fix:`, `chore:`, `docs:`, `test:`).
 

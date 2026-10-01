@@ -76,7 +76,11 @@ func TestDocumentationNamesThingsThatExist(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files = append(files, "README.md", "llms.txt")
+	files = append(files, "README.md", "llms.txt", "AGENTS.md", "doc.go")
+	// The rules agents read before writing code against the library. The
+	// directory is untracked in some checkouts, so its absence is not a failure.
+	agentRules, _ := filepath.Glob(filepath.Join(".agents", "rules", "*.md"))
+	files = append(files, agentRules...)
 
 	pkgRef := regexp.MustCompile(`\bclihelp\.([A-Z]\w*)`)
 	typeRefs := map[string]*regexp.Regexp{}
@@ -181,4 +185,53 @@ func exportedSurface(t *testing.T) (pkgLevel, methods map[string]bool, fields ma
 		}
 	}
 	return pkgLevel, methods, fields
+}
+
+// AGENTS.md carries a table of what each file is for, and agents plan their
+// reading from it. It once named testing.go and autoinstall.go, neither of which
+// existed, and omitted six files that did — so the first thing an agent learned
+// about the layout was wrong. Every file the table names must exist, and every
+// non-test source file in the root package must be named.
+func TestAgentsFileTableMatchesTheTree(t *testing.T) {
+	body, err := os.ReadFile("AGENTS.md")
+	if err != nil {
+		t.Skip("AGENTS.md is not in this checkout")
+	}
+	text := string(body)
+	start := strings.Index(text, "## File Organization")
+	end := strings.Index(text, "### Documentation Guides")
+	if start < 0 || end < start {
+		t.Fatal("AGENTS.md no longer has a File Organization section followed by Documentation Guides")
+	}
+
+	cell := regexp.MustCompile(`^\|\s*([^|]+?)\s*\|`)
+	name := regexp.MustCompile("`([^`]+)`")
+	listed := map[string]bool{}
+	for _, line := range strings.Split(text[start:end], "\n") {
+		m := cell.FindStringSubmatch(line)
+		if m == nil {
+			continue
+		}
+		for _, n := range name.FindAllStringSubmatch(m[1], -1) {
+			path := n[1]
+			if !strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "/") {
+				continue
+			}
+			listed[path] = true
+			if _, statErr := os.Stat(path); statErr != nil {
+				t.Errorf("AGENTS.md lists %s, which does not exist", path)
+			}
+		}
+	}
+
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, f := range files {
+		if strings.HasSuffix(f, "_test.go") || listed[f] {
+			continue
+		}
+		t.Errorf("AGENTS.md's file table does not mention %s", f)
+	}
 }

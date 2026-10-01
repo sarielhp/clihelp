@@ -405,3 +405,23 @@ func TestHelpExamplesForOneCommand(t *testing.T) {
 		}
 	})
 }
+
+// Automatic paging was removed in 0.3.48, but two help rows kept saying the
+// manual is "(paged)". A help page that describes behaviour the program no
+// longer has is worse than silence.
+func TestHelpPagesDoNotPromisePaging(t *testing.T) {
+	app := &App{Name: "demo", Version: "1", Commands: []Command{{Name: "build", Description: "Build it"}}}
+	pages := map[string]func(*bytes.Buffer){
+		"help topics": func(b *bytes.Buffer) { app.renderTopicsPage(Options{Writer: b, Width: 80, NoColor: true}) },
+		"help man":    func(b *bytes.Buffer) { app.renderManPage(Options{Writer: b, Width: 80, NoColor: true}) },
+	}
+	for name, render := range pages {
+		t.Run(name, func(t *testing.T) {
+			var buf bytes.Buffer
+			render(&buf)
+			if strings.Contains(strings.ToLower(buf.String()), "paged") {
+				t.Errorf("%s still promises paging:\n%s", name, buf.String())
+			}
+		})
+	}
+}

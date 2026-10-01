@@ -58,7 +58,7 @@
 //		}
 //
 //		if err := app.Execute(os.Args[1:]); err != nil {
-//			clihelp.PrintError(err)
+//			app.PrintError(err)
 //			os.Exit(1)
 //		}
 //	}
