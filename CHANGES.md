@@ -4,6 +4,8 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.51] - 2026-10-01
+
 ### Changed
 - **`tools/commit.sh` checks the message first and no longer sweeps up untracked files.** The message must be a conventional commit (`feat:`, `fix:`, `docs:`, `test:`, `chore:`, `refactor:` …) and is checked before the 30-second gate; an empty `ARGS=` used to run the whole gate and then fail inside git. Only tracked files are staged; a new file has to be staged with `git add` or admitted with `COMMIT_ADD_UNTRACKED=1`, and a refusal names the files. `.gitignore` now keeps `.env*`, `*.pem`, `*.key`, `id_rsa*`, `*.orig` and `*.rej` out of the tree. `tools/checkpoint.sh` no longer hides its errors.
 
