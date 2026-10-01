@@ -4,6 +4,9 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **`make commit ARGS="…"` no longer alters a message containing `$`.** make expanded `$` in the variable when it exported it, so `cost $5 $HOME` was committed as `cost  OME`, `$$` collapsed to `$`, and `$(x)` vanished — silently. The message now reaches `tools/commit.sh` exactly as typed, newlines included, whether it is given as `ARGS=` or in the environment.
+
 ## [0.3.50] - 2026-10-01
 
 ### Changed
