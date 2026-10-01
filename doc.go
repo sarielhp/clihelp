@@ -121,7 +121,7 @@
 //
 // Dynamic completion is supported by setting the Option.Complete callback.
 //
-// # Help Topics & Paged Manual
+// # Help Topics & Manual
 //
 // In addition to subcommand help (<command> -h), clihelp automatically routes specialized help topics:
 //   - the renderFlagsPage page (app help flags): Displays categorized global options.
@@ -129,6 +129,21 @@
 //   - the renderTopicsPage page (app help topics): Lists available help topics.
 //
 // Set [App.OmitGlobalFlagsInCommands] to true to omit verbose global flag tables from individual subcommand screens.
+//
+// # Colour
+//
+// Colour is off when any one of three switches says so, and nothing in the
+// library turns it on over their objection:
+//   - fatih/color's process-wide switch, which is set at start-up when stdout is
+//     not a terminal or NO_COLOR is set. It is global and is never mutated per
+//     render, because doing so raced.
+//   - [App.NoColor], for every render the application performs. It is the field a
+//     --no-color flag should write to.
+//   - [Options.NoColor], for a single render call.
+//
+// With colour off, every escape is dropped, including OSC 8 hyperlinks: a link is
+// spelled as its label alone, so redirected help is plain text that grep can
+// match.
 //
 // # Subpackages
 //
