@@ -4,6 +4,8 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.52] - 2026-10-01
+
 ### Changed
 - **Concise help (`-h`) spends its lines on content.** A blank line used to go between every command row as soon as one row wrapped, so at 40 to 60 columns the root page listed four to six of seven commands. The concise page now relies on the hanging indent; the extended page keeps its blank lines.
 - **The `mail_cli_fake` demonstration passes the audit it demonstrates.** It reproduces a real application's help and failed `Audit` with eighteen examples naming flags and subcommands the tree never declared (its flags were unbound, so nothing could resolve them), two invalid flag specs (`-1, -2, -3...`, `-export <file>`), and forty-four descriptions too long for their row. Flags are now declared with real binders, the documented-only `list` subcommands exist, `--export`/`--import`/`--sieve`/`--folder` are spelled as the parser requires, and the long wording moved to `LongDescription` (and, for the political-mail caveat, a note). The generated `docs/mail_cli_fake/` site is regenerated, and `TestMailCLIPassesAudit` keeps it that way.
