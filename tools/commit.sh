@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Check the message, run the quality gate, then stage and commit. Silent on
+# Check the message, repair formatting, run the quality gate, then stage and commit. Silent on
 # success; on failure it prints the output of the step that failed to stderr and
 # exits non-zero.
 #
@@ -53,6 +53,7 @@ run() {
   fi
 }
 
+run bash tools/fix.sh
 run bash tools/check.sh
 if [ "${COMMIT_ADD_UNTRACKED:-}" = 1 ]; then
   run git add -A

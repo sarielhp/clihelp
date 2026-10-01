@@ -1,12 +1,15 @@
-.PHONY: all check lint test build format tidy vet staticcheck map version bump commit push ci checkpoint clean run audit
+.PHONY: all check fix lint test build format tidy vet staticcheck map version bump commit push ci checkpoint clean run audit
 
 all: check
 
 audit:
-	@./tools/audit_lines.rb
+	@./tools/audit.sh
 
 check:
 	@./tools/check.sh
+
+fix:
+	@./tools/fix.sh
 
 lint:
 	@./tools/lint.sh

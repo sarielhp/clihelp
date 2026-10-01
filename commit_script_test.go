@@ -31,8 +31,9 @@ func commitFixture(t *testing.T) string {
 	}
 	files := map[string]string{
 		"tools/commit.sh": string(script),
-		"tools/check.sh":  "#!/bin/sh\ntouch .gate-ran\n",
-		".gitignore":      string(ignore) + ".gate-ran\n",
+		"tools/check.sh":  "#!/bin/sh\ntouch .gate-ran\necho check >> .order\n",
+		"tools/fix.sh":    "#!/bin/sh\necho fix >> .order\n",
+		".gitignore":      string(ignore) + ".gate-ran\n.order\n",
 		"tracked.txt":     "one\n",
 	}
 	for name, body := range files {
@@ -236,5 +237,24 @@ func TestGitignoreKeepsCredentialShapedFilesOut(t *testing.T) {
 		if strings.Contains(files, name+"\n") {
 			t.Errorf("%s was committed", name)
 		}
+	}
+}
+
+// commit.sh used to rely on check.sh to reformat the tree as a side effect.
+// The check is read-only now, so the script repairs first (tools/fix.sh) and only
+// then checks; otherwise a mis-formatted edit would fail the commit it should
+// have quietly cleaned up.
+func TestCommitRepairsBeforeItChecks(t *testing.T) {
+	root := commitFixture(t)
+	write(t, root, "tracked.txt", "two\n")
+	if failed, _, stderr := runCommit(root, nil, "fix: change tracked"); failed {
+		t.Fatalf("commit.sh failed:\n%s", stderr)
+	}
+	order, err := os.ReadFile(filepath.Join(root, ".order"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(order) != "fix\ncheck\n" {
+		t.Errorf("order of the repair and the check = %q, want fix then check", order)
 	}
 }

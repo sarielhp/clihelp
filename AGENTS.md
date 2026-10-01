@@ -19,8 +19,10 @@
 
 | Script | Purpose |
 |--------|---------|
-| `tools/audit_lines.rb` | Audit Go source files for function length and file sizing |
-| `tools/check.sh` | Full quality gate: format → tidy → vet → staticcheck → test → build example |
+| `tools/audit.sh` | Size, nesting-depth and branch-count limits via `go-audit --strict`; falls back to `tools/audit_lines.rb` when it is not installed |
+| `tools/audit_lines.rb` | Length-only fallback for `tools/audit.sh` (function and file lines; no nesting or complexity) |
+| `tools/check.sh` | Full quality gate, read-only: gofmt check → tidy check → vet → staticcheck → size and complexity → version drift → tests (race, then East Asian widths) → build example. Reports and never rewrites; repair with `tools/fix.sh` |
+| `tools/fix.sh` | Repair what `check.sh` reports: `gofmt -s -w .` and `go mod tidy` |
 | `tools/format.sh` | Run `gofmt -s -w .` only |
 | `tools/lint.sh` | Static analysis: `go vet` + `staticcheck` |
 | `tools/map.sh` | Print package structure, key types, and exported functions |
@@ -38,8 +40,9 @@ A `Makefile` at the project root delegates to all scripts:
 
 | Target | Action |
 |--------|--------|
-| `make audit` | Check function and file line limits |
-| `make check` | Full quality gate |
+| `make audit` | Size, nesting and complexity limits (`go-audit`; length-only fallback) |
+| `make check` | Full quality gate (read-only) |
+| `make fix` | Format the sources and tidy the module |
 | `make lint` | Static analysis (vet + staticcheck) |
 | `make test` | Run tests |
 | `make build` | Build example binary |
@@ -108,7 +111,7 @@ File length is a *comfort* metric, not a correctness one. Keep functions under t
 ### Never split a file through a function body
 
 When a file grows past the warning threshold, **decompose its long functions in place** into named helpers rather than cutting the file underneath an oversized function. Never split a file across a function body.
-Enforce sizing via `tools/audit_lines.rb` (`make audit`).
+Enforce sizing via `make audit`: `go-audit --strict` measures function length, nesting depth and branch count and file length, and `go test` runs it (`TestGuidelinesAreEnforced`) wherever it is installed. The Ruby script is a length-only fallback.
 
 ## Output Streams
 
@@ -288,7 +291,7 @@ what you need from above, move the constant down — that is why the `__complete
 
 ## Agent Development Rules
 
-1. **Verification**: After modifying any Go file, run `make check` to verify formatting, vet, lint, tests, and build.
+1. **Verification**: After modifying any Go file, run `make fix` (formatting and tidy) and then `make check` to verify vet, lint, size, tests, and build. `make check` only reports; it never rewrites files.
 2. **Error Resolution**: If `make check` fails, focus on fixing the first reported error before making additional changes.
 3. **Exploration**: Run `make map` before introducing new types or functions to inspect existing API signatures.
 4. **Checkpointing**: Run `make checkpoint` after passing checks to preserve working states during long sessions.

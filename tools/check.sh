@@ -4,17 +4,32 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.go/bin:$HOME/go/bin:$PATH"
 
+# The check reports and never rewrites: it used to run `gofmt -w` and `go mod
+# tidy`, so a gate run to learn the state of the tree changed it, and a release
+# left those rewrites uncommitted after the tag. Repair with `make fix`.
 echo "=== Formatting ==="
-gofmt -s -w .
+unformatted="$(gofmt -s -l .)"
+if [ -n "$unformatted" ]; then
+    echo "ERROR: these files are not gofmt-clean (run 'make fix'):" >&2
+    echo "$unformatted" >&2
+    exit 1
+fi
 
 echo "=== Tidy ==="
-go mod tidy
+if ! tidy_diff="$(go mod tidy -diff 2>&1)"; then
+    echo "ERROR: go.mod or go.sum is not tidy (run 'make fix'):" >&2
+    echo "$tidy_diff" >&2
+    exit 1
+fi
 
 echo "=== Vet ==="
 go vet ./...
 
 echo "=== Staticcheck ==="
 staticcheck ./...
+
+echo "=== Size and complexity ==="
+bash tools/audit.sh
 
 echo "=== Version Drift ==="
 want=$(cat VERSION)
