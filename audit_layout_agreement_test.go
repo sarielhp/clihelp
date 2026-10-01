@@ -107,6 +107,22 @@ func TestAuditAgreesWithTheRenderer(t *testing.T) {
 				SubcommandEntries: []Param{{Name: "sub", Description: d}},
 				Subcommands:       []Command{{Name: "sub", Description: strings.Repeat("word ", 40)}}}}}
 		}, []string{"job"}},
+		{"short flag beside the library's -h and -v rows", "-x", func(d string) *App {
+			return &App{Name: "a", Version: "1", GlobalFlags: []Option{{Flags: "-x", Description: d}},
+				Commands: []Command{{Name: "job", Description: "Jobs"}}}
+		}, nil},
+		{"flag beside the extended-help row", "--xx", func(d string) *App {
+			return &App{Name: "a", Version: "1", ExtendedHelpFlag: true, GlobalFlags: []Option{{Flags: "--xx", Description: d}},
+				Commands: []Command{{Name: "job", Description: "Jobs"}}}
+		}, nil},
+		{"persistent flag beside a version row", "-p", func(d string) *App {
+			return &App{Name: "a", Version: "1", PersistentOptions: []Option{{Flags: "-p", Description: d}},
+				Commands: []Command{{Name: "job", Description: "Jobs"}}}
+		}, nil},
+		{"the app's own option, absent from help flags", "-o", func(d string) *App {
+			return &App{Name: "a", Version: "1", Options: []Option{{Flags: "-o", Description: d}},
+				GlobalFlags: []Option{{Flags: "--a-wider-global-flag", Description: "short"}}}
+		}, nil},
 		{"flag beside the built-in examples flag", "--gx", func(d string) *App {
 			return &App{Name: "a", EnableExamplesFlag: true, GlobalFlags: []Option{{Flags: "--gx", Description: d}},
 				Commands: []Command{{Name: "job", Description: "Jobs", Examples: []Example{{Line: "a job"}}}}}
@@ -137,11 +153,21 @@ func TestAuditAgreesWithTheRenderer(t *testing.T) {
 						if lines < 0 {
 							t.Fatalf("label %q not found in:\n%s", tc.label, buf.String())
 						}
+						page := buf.String()
+						// `help flags` is a listing page too, with its own column (it
+						// carries the library's -h/-v rows and lacks the root's own
+						// Options), so a description has to fit there as well wherever
+						// the page draws it. Pages that do not draw the row say nothing.
+						var flagsPage bytes.Buffer
+						app.renderFlagsPage(Options{Writer: &flagsPage, Width: width})
+						if n := descriptionLines(flagsPage.String(), tc.label); n > lines {
+							lines, page = n, page+"\n--- help flags\n"+flagsPage.String()
+						}
 						oneRow := lines == 1
 						err := Audit(app, AuditOptions{SkipExampleValidation: true, Width: width})
 						if oneRow != (err == nil) {
 							t.Errorf("description of %d columns: rendered on %d line(s), Audit = %v\n%s",
-								len(desc), lines, err, buf.String())
+								len(desc), lines, err, page)
 						}
 					})
 				}
@@ -164,8 +190,9 @@ func TestAuditReportsAnInheritedFlagOnce(t *testing.T) {
 	if err == nil {
 		t.Fatal("Audit = nil, want an error")
 	}
-	// Once for the root page and once for the command pages, which share one column.
-	if n := strings.Count(err.Error(), `description of "--g"`); n != 2 {
-		t.Errorf("--g reported %d times, want 2:\n%v", n, err)
+	// Once per listing that draws it — the root page, `help flags`, and the
+	// command pages, which share one column — and not once per command.
+	if n := strings.Count(err.Error(), `description of "--g"`); n != 3 {
+		t.Errorf("--g reported %d times, want 3:\n%v", n, err)
 	}
 }

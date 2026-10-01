@@ -64,7 +64,7 @@ func auditRowsScoped(scopeOf, noteOf func(int) string, params []Param, opts Audi
 	indent := colIndentFor(params, width, minTextColumns)
 	textWidth := wrapWidth(width, indent, Options{}.maxContent()) - indent
 	for i, p := range params {
-		if p.Name == examplesFlagSpec {
+		if p.Name == examplesFlagSpec || scopeOf(i) == "" {
 			continue // the library's own row: it shapes the column but is not the author's to shorten
 		}
 		rendered := renderInlineTo(p.Description, true)
@@ -119,6 +119,7 @@ func auditLayout(app *App, opts AuditOptions) error {
 	errs := auditListing("the app's commands", commandParams(app.Commands), styleParams(app.Commands), opts)
 	errs = append(errs, auditListing("the app's shortcuts", commandParams(app.Shortcuts), styleParams(app.Shortcuts), opts)...)
 	errs = append(errs, auditOptionListing("the app's flags", app.rootFlags(), opts)...)
+	errs = append(errs, auditHelpFlagsPage(app, opts)...)
 	warnLongText("the app", app.Examples, nil, opts)
 	errs = append(errs, auditCommandsLayout(app, app.Commands, nil, opts)...)
 	errs = append(errs, auditCommandsLayout(app, app.Shortcuts, nil, opts)...)
@@ -269,17 +270,41 @@ func auditOwnedOptionListing(scopeOf func(int) string, styleScope string, option
 		}
 	}
 	decorated := optionParams(options)
-	// Say that suffixes are counted only on a row that has one; an author whose
-	// 24-character description is 66 columns needs telling, one whose is not does not.
-	noteOf := func(i int) string {
-		if decorated[i].Description != options[i].Description {
-			return suffixNote
-		}
-		return ""
-	}
+	noteOf := suffixNotes(decorated, options)
 	errs := auditRowsScoped(scopeOf, noteOf, decorated, opts)
 	if err := auditPeriods(styleScope, raw); err != nil {
 		errs = append(errs, err)
 	}
 	return errs
+}
+
+// suffixNotes says, for each flag row that carries a suffix, that the suffix is
+// counted. An author whose 24-character description is 66 columns needs telling;
+// one whose row has no suffix does not.
+func suffixNotes(decorated []Param, options []Option) func(int) string {
+	return func(i int) string {
+		if decorated[i].Description != options[i].Description {
+			return suffixNote
+		}
+		return ""
+	}
+}
+
+// auditHelpFlagsPage checks the listing `help flags` draws. It is a scannable
+// table like the -h pages, but not the same one: it carries the library's own
+// -h/--help and -v/--version rows, which share the description column, and it
+// leaves out the application's own Options and the -E row that the root page
+// has. So a description that fits the root page can still wrap here. The
+// library's rows shape the column and are never reported.
+func auditHelpFlagsPage(app *App, opts AuditOptions) []error {
+	visible := app.collectVisibleFlags()
+	all := append(append([]Option{}, visible...), app.synthesizeStandardFlags(visible)...)
+	decorated := optionParams(all)
+	own := len(visible)
+	return auditRowsScoped(func(i int) string {
+		if i >= own {
+			return ""
+		}
+		return "help flags"
+	}, suffixNotes(decorated, all), decorated, opts)
 }

@@ -4,6 +4,10 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+### Changed — may fail an existing audit
+- **`Audit` checks the `help flags` page.** It is a listing like `-h` but with its own column: it carries the library's `-h, --help` and `-v, --version` rows (and `-H` when enabled), and leaves out the application's own `Options` and the `-E` row. A flag description that fit the root page could therefore wrap there, and `Audit` could not see it. It now measures that listing and names it (`help flags: description of "-x" …`); the library's own rows shape the column and are never reported. The rule is now stated as covering the listing pages (`-h`, `--help`, `help flags`, `help topics`); `help man` is a manual and may wrap.
+  - **If your CI now fails:** run `Audit` with `Warn: t.Log`; the message names the page. Shorten the description, or detail it in `LongDescription`.
+
 ## [0.3.51] - 2026-10-01
 
 ### Changed

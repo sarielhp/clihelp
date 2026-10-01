@@ -169,3 +169,33 @@ func TestAuditNamesTheCommandThatOwnsAnInheritedFlag(t *testing.T) {
 		t.Errorf("expected both flags to be reported with their text, saw %d:\n%s", n, msg)
 	}
 }
+
+// `help flags` is a listing like -h, with its own column: it carries the
+// library's -h/--help and -v/--version rows and leaves out the root page's own
+// Options. A description can fit the root page and wrap here, and the audit has to
+// say so, naming the page.
+func TestAuditChecksTheHelpFlagsPage(t *testing.T) {
+	desc := strings.Repeat("x", 64)
+	app := &App{Name: "a", Version: "1", GlobalFlags: []Option{{Flags: "-x", Description: desc}},
+		Commands: []Command{{Name: "job", Description: "Jobs"}}}
+	err := Audit(app, AuditOptions{SkipExampleValidation: true})
+	if err == nil || !strings.Contains(err.Error(), `help flags: description of "-x"`) {
+		t.Errorf("Audit = %v, want the help flags page named", err)
+	}
+	// Without a version row the column is narrower and the same text fits.
+	app.Version = ""
+	if err := Audit(app, AuditOptions{SkipExampleValidation: true}); err != nil {
+		t.Errorf("Audit = %v, want nil when there is no -v row to widen the column", err)
+	}
+}
+
+// The library's own rows on that page shape the column but are not the author's
+// to shorten, so even at the narrowest supported width they are never reported.
+func TestAuditNeverReportsTheLibrarysFlagRows(t *testing.T) {
+	app := &App{Name: "a", Version: "1", ExtendedHelpFlag: true, EnableExamplesFlag: true,
+		GlobalFlags: []Option{{Flags: "-x", Description: "short"}},
+		Commands:    []Command{{Name: "job", Description: "Jobs", Examples: []Example{{Line: "a job"}}}}}
+	if err := Audit(app, AuditOptions{SkipExampleValidation: true, Width: minAuditWidth}); err != nil {
+		t.Errorf("Audit = %v, want nil: only the author's rows are reported", err)
+	}
+}

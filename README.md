@@ -208,7 +208,7 @@ An unrecognized flag and `--` both end command resolution, so unknown flags are 
 >
 > If a green build starts failing after an upgrade, run `clihelp.Audit(app, clihelp.AuditOptions{Warn: t.Log})` once: every message names the command, the row and how many columns it is over, and `Warn` also surfaces the wide-example and wide-note warnings that a nil `Warn` discards.
 >
-> The audit also holds help text to a visual standard: every short `Description` must fit on one row of its listing at 80 columns (`AuditOptions.Width` changes the width), all violations are reported at once, and the descriptions in one listing must agree on whether they end with a full stop (either style is fine). Detail belongs in `LongDescription` and `Notes`, which are unlimited. Verbatim notes and example lines wider than the width are reported through `AuditOptions.Warn` and do not fail.
+> The audit also holds help text to a visual standard: every short `Description` must fit on one row of each listing page that draws it (`-h`, `--help`, `help flags`, `help topics`) at 80 columns; the manual (`help man`) is reference prose and may wrap (`AuditOptions.Width` changes the width), all violations are reported at once, and the descriptions in one listing must agree on whether they end with a full stop (either style is fine). Detail belongs in `LongDescription` and `Notes`, which are unlimited. Verbatim notes and example lines wider than the width are reported through `AuditOptions.Warn` and do not fail.
 
 ---
 
