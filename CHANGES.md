@@ -4,6 +4,8 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.50] - 2026-10-01
+
 ### Changed
 - **`bump-version.sh` promotes the changelog.** What has accumulated under `[Unreleased]` becomes the new version's section, dated today, with an empty `[Unreleased]` above it, and the change rides in the version commit. A bump with nothing under `[Unreleased]` is refused and every file is restored. Releases 0.3.45 to 0.3.49 had no headings because nothing in the release path touched this file; they are back-filled below.
 
