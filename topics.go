@@ -165,8 +165,7 @@ func (a *App) renderFlagsPage(o Options) {
 	th := o.theme(a)
 	termWidth := o.width()
 
-	reflowMargin(w, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 0, 8,
-		"Usage:", o.inline(a.usageLine()), th.Hdr) // see RenderGlobal
+	writeUsage(w, th, o, termWidth, a.usageLine())
 
 	fmt.Fprintln(w)
 	reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", "Global flags available to all commands:")

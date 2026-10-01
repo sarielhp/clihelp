@@ -418,6 +418,57 @@ func (a *App) renderGlobalShortcuts(w io.Writer, th Theme, o Options, termWidth 
 // examplesFlagSpec is the built-in flag EnableExamplesFlag adds to the root page.
 const examplesFlagSpec = "-E, --examples"
 
+// writeUsage writes the "Usage:" line, wrapped under itself. A bracketed group
+// such as "[--tags TAGS]" is one unit: breaking it between the flag and its
+// value leaves "[--tags" at the end of one row and "TAGS]" at the start of the
+// next, which reads as two different things.
+func writeUsage(w io.Writer, th Theme, o Options, termWidth int, usage string) {
+	var buf bytes.Buffer
+	reflowMargin(&buf, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 0, 8,
+		"Usage:", o.inline(glueGroups(usage)), th.Hdr)
+	_, _ = io.WriteString(w, strings.ReplaceAll(buf.String(), groupSpace, " "))
+}
+
+// groupSpace stands in for a space that must not be a line break. It is a
+// private-use rune: unlike U+00A0 it is not white space to strings.Fields, so
+// the reflow keeps it inside its word, and it measures one column like the
+// space it replaces.
+const groupSpace = "\ue000"
+
+// maxGluedGroup bounds the groups kept whole; a longer one is prose that
+// happens to sit in brackets, and holding it together would overflow the line.
+const maxGluedGroup = 40
+
+// glueGroups replaces the spaces inside each balanced [..] or <..> group of s
+// with groupSpace. An unbalanced opener is left alone.
+func glueGroups(s string) string {
+	runes := []rune(s)
+	glued := make([]bool, len(runes))
+	for _, pair := range [][2]rune{{'[', ']'}, {'<', '>'}} {
+		var open []int
+		for i, r := range runes {
+			switch {
+			case r == pair[0]:
+				open = append(open, i)
+			case r == pair[1] && len(open) > 0:
+				start := open[len(open)-1]
+				open = open[:len(open)-1]
+				if i-start <= maxGluedGroup {
+					for j := start; j <= i; j++ {
+						glued[j] = true
+					}
+				}
+			}
+		}
+	}
+	for i, r := range runes {
+		if r == ' ' && glued[i] {
+			runes[i] = []rune(groupSpace)[0]
+		}
+	}
+	return string(runes)
+}
+
 // rootFlags is the list the root page's "Global Flags" section shows: the
 // persistent and global options, the application's own options, and the built-in
 // examples flag when enabled. Audit measures the same list.
@@ -476,8 +527,7 @@ func (a *App) RenderGlobal(o Options) {
 		// inline(), as RenderCommand and RenderMan already do: App.UsageLine
 		// was rendered on two of the four paths, so the same app showed raw
 		// ** here and a URL the author had written as a link.
-		reflowMargin(w, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 0, 8,
-			"Usage:", o.inline(a.usageLine()), th.Hdr)
+		writeUsage(w, th, o, termWidth, a.usageLine())
 
 		if a.Description != "" {
 			fmt.Fprintln(w)
@@ -798,8 +848,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 		renderCommandTitle(w, th, o, cmd, termWidth, sepW)
 
 		usage := a.buildDefaultUsage(cmd, path)
-		reflowMargin(w, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 0, 8,
-			"Usage:", o.inline(usage), th.Hdr) // see RenderGlobal
+		writeUsage(w, th, o, termWidth, usage)
 
 		desc := cmd.Description
 		if !o.Concise && cmd.LongDescription != "" {

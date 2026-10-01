@@ -11,6 +11,8 @@ All notable changes to `clihelp` will be documented in this file.
 - **Redirected help is laid out at 80 columns, not 70.** The fallback when stdout is not a terminal and `COLUMNS` is unset now equals the width `Audit` holds short descriptions to, so help that passes the audit is not re-wrapped when written to a file or pipe.
 - **Concise help no longer ends on a bare section heading.** When the line budget cuts a page directly under a heading such as `Examples:`, the heading is dropped and counted in the "more lines" note.
 
+- **Usage lines keep bracketed groups whole.** A long `Usage:` line wrapped between a flag and its value, leaving `[--tags` at the end of one row and `TAGS]` at the start of the next. `[...]` and `<...>` groups now wrap as one unit.
+
 ### Removed
 - **`StripANSI`, `VisualWidth` and `FirstSentence`** moved to `internal/text`. They were exported only so `tree/` could share them; one copy now serves this package, `doc/` and `tree/`.
 - **`App.Render`** (use `RenderGlobal` or `RenderCommand`), **`SuggestCommand`** and **`ColorizeExampleLineWithApp`**: no caller outside the package.
