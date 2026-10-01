@@ -20,8 +20,8 @@ completion <subcommand>
 | [bash](completion-bash.md) | Generate Bash tab-completion script |
 | [zsh](completion-zsh.md) | Generate Zsh tab-completion script |
 | [fish](completion-fish.md) | Generate Fish tab-completion script |
-| [keys](completion-keys.md) | Print shell key bindings (Alt-H expands the command line and explains it) |
-| [install](completion-install.md) | Set this program up: tab completion, the Alt-H key binding and the manual page |
+| [keys](completion-keys.md) | Print shell key bindings (Alt-H explains the command line) |
+| [install](completion-install.md) | Set up tab completion, the Alt-H key binding and the man page |
 | [uninstall](completion-uninstall.md) | Remove the installed tab completion and key binding |
 | [wrap](completion-wrap.md) | Generate a wrapper script with preset arguments |
 

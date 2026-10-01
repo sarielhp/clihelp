@@ -5,7 +5,7 @@ parent: 'podctl completion'
 
 # podctl completion keys
 
-Print shell key bindings (Alt-H expands the command line and explains it)
+Print shell key bindings (Alt-H explains the command line)
 
 ## Usage
 

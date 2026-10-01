@@ -5,7 +5,7 @@ parent: 'podctl completion'
 
 # podctl completion install
 
-Set this program up: tab completion, the Alt-H key binding and the manual page
+Set up tab completion, the Alt-H key binding and the man page
 
 ## Usage
 
