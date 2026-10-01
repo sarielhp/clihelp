@@ -345,3 +345,41 @@ func TestAuditPeriodRuleEdges(t *testing.T) {
 		})
 	}
 }
+
+func TestAuditCoversParametersAndExplicitSubcommandEntries(t *testing.T) {
+	long := strings.Repeat("word ", 30)
+	tests := []struct {
+		name    string
+		app     *App
+		wantErr string
+	}{
+		{"long parameter",
+			&App{Name: "a", Commands: []Command{{Name: "job", Description: "Jobs", Parameters: []Param{{Name: "file", Description: long}}}}},
+			"command job parameters"},
+		{"mixed periods among parameters",
+			&App{Name: "a", Commands: []Command{{Name: "job", Description: "Jobs", Parameters: []Param{{Name: "a", Description: "One."}, {Name: "b", Description: "Two"}}}}},
+			"command job parameters: descriptions disagree"},
+		{"long explicit entry",
+			&App{Name: "a", Commands: []Command{{Name: "job", Description: "Jobs", SubcommandEntries: []Param{{Name: "sub", Description: long}}}}},
+			"command job subcommands"},
+		{"the tree's long row is not drawn when entries replace it",
+			&App{Name: "a", Commands: []Command{{Name: "job", Description: "Jobs",
+				SubcommandEntries: []Param{{Name: "sub", Description: "Short"}},
+				Subcommands:       []Command{{Name: "sub", Description: long}}}}},
+			""},
+		{"parameters that fit",
+			&App{Name: "a", Commands: []Command{{Name: "job", Description: "Jobs", Parameters: []Param{{Name: "file", Description: "The input file"}}}}},
+			""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := Audit(tt.app, AuditOptions{SkipExampleValidation: true})
+			switch {
+			case tt.wantErr == "" && err != nil:
+				t.Errorf("Audit = %v, want nil", err)
+			case tt.wantErr != "" && (err == nil || !strings.Contains(err.Error(), tt.wantErr)):
+				t.Errorf("Audit = %v, want an error containing %q", err, tt.wantErr)
+			}
+		})
+	}
+}

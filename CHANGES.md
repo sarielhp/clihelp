@@ -7,6 +7,10 @@ All notable changes to `clihelp` will be documented in this file.
 ### Changed
 - **`bump-version.sh` promotes the changelog.** What has accumulated under `[Unreleased]` becomes the new version's section, dated today, with an empty `[Unreleased]` above it, and the change rides in the version commit. A bump with nothing under `[Unreleased]` is refused and every file is restored. Releases 0.3.45 to 0.3.49 had no headings because nothing in the release path touched this file; they are back-filled below.
 
+### Changed — may fail an existing audit
+- **`Audit` now checks `Command.Parameters` and `Command.SubcommandEntries`.** Both are drawn in the same two-column layout as every other listing, but were never measured, so a long parameter description passed `Audit` and wrapped on the page. A listing of parameters or of explicit subcommand entries must now fit one row at `AuditOptions.Width` (default 80) and use one trailing-period style. When `SubcommandEntries` is set the page draws it *instead of* the real `Subcommands`, so the entries are measured and the tree's own rows are not.
+  - **If your CI now fails:** run the audit once with `Warn: t.Log` and read the errors — each names the command, the row and how wide it is. Shorten the description (the detail belongs in `LongDescription` or `Notes`), or give the listing one punctuation style. `AuditOptions{Width: …}` audits against a different terminal width.
+
 ## [0.3.49] - 2026-10-01
 
 ### Fixed

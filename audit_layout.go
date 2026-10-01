@@ -123,7 +123,15 @@ func auditCommandsLayout(app *App, cmds []Command, parent []string, opts AuditOp
 		if strings.Contains(strings.TrimSpace(cmd.Description), "\n") {
 			errs = append(errs, fmt.Errorf("%s: Description must be one line; put the rest in LongDescription", scope))
 		}
-		errs = append(errs, auditListing(scope+" subcommands", commandParams(cmd.Subcommands), styleParams(cmd.Subcommands), opts)...)
+		// The page draws explicit SubcommandEntries instead of the real tree when
+		// the author supplied any (see SubcommandList), and draws their full text;
+		// auditing the tree's rows then would measure something nobody sees.
+		subs, subStyle := commandParams(cmd.Subcommands), styleParams(cmd.Subcommands)
+		if len(cmd.SubcommandEntries) > 0 {
+			subs, subStyle = cmd.SubcommandEntries, cmd.SubcommandEntries
+		}
+		errs = append(errs, auditListing(scope+" subcommands", subs, subStyle, opts)...)
+		errs = append(errs, auditListing(scope+" parameters", cmd.Parameters, cmd.Parameters, opts)...)
 		errs = append(errs, auditOptionListing(scope+" flags", app.collectLocalOptions(&cmd), opts)...)
 		if !app.OmitGlobalFlagsInCommands {
 			errs = append(errs, auditOptionListing("global flags on command pages", app.collectGlobalOptions(path, &cmd), opts)...)

@@ -92,6 +92,21 @@ func TestAuditAgreesWithTheRenderer(t *testing.T) {
 				{Flags: "--grouped", Description: d, Group: "One"},
 				{Flags: "--other-wide-flag-x", Description: "short", Group: "Two"}}}
 		}, nil},
+		{"command parameter", "file", func(d string) *App {
+			return &App{Name: "a", Commands: []Command{{Name: "job", Description: "Jobs", Parameters: []Param{{Name: "file", Description: d}}}}}
+		}, []string{"job"}},
+		{"parameter beside a wide parameter name", "file", func(d string) *App {
+			return &App{Name: "a", Commands: []Command{{Name: "job", Description: "Jobs", Parameters: []Param{{Name: "file", Description: d}, {Name: "<a-wide-name-here>", Description: "short"}}}}}
+		}, []string{"job"}},
+		{"explicit subcommand entry", "sub", func(d string) *App {
+			return &App{Name: "a", Commands: []Command{{Name: "job", Description: "Jobs", SubcommandEntries: []Param{{Name: "sub", Description: d}}}}}
+		}, []string{"job"}},
+		{"entries replace the real subcommands", "sub", func(d string) *App {
+			// The tree's own row is long, but the page draws the entries instead.
+			return &App{Name: "a", Commands: []Command{{Name: "job", Description: "Jobs",
+				SubcommandEntries: []Param{{Name: "sub", Description: d}},
+				Subcommands:       []Command{{Name: "sub", Description: strings.Repeat("word ", 40)}}}}}
+		}, []string{"job"}},
 		{"flag beside the built-in examples flag", "--gx", func(d string) *App {
 			return &App{Name: "a", EnableExamplesFlag: true, GlobalFlags: []Option{{Flags: "--gx", Description: d}},
 				Commands: []Command{{Name: "job", Description: "Jobs", Examples: []Example{{Line: "a job"}}}}}
