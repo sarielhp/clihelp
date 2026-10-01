@@ -235,3 +235,22 @@ func TestAgentsFileTableMatchesTheTree(t *testing.T) {
 		t.Errorf("AGENTS.md's file table does not mention %s", f)
 	}
 }
+
+// Every release gets a heading in CHANGES.md; `make bump` writes it. This is
+// the check that the heading for the version in VERSION is really there, so a
+// version bumped by hand, or a changelog edited into the wrong shape, cannot
+// reach a commit looking finished.
+func TestChangelogHasTheCurrentVersion(t *testing.T) {
+	version, err := os.ReadFile("VERSION")
+	if err != nil {
+		t.Skip("VERSION is not in this checkout")
+	}
+	changes, err := os.ReadFile("CHANGES.md")
+	if err != nil {
+		t.Skip("CHANGES.md is not in this checkout")
+	}
+	heading := regexp.MustCompile(`(?m)^## \[` + regexp.QuoteMeta(strings.TrimSpace(string(version))) + `\] - \d{4}-\d{2}-\d{2}$`)
+	if !heading.Match(changes) {
+		t.Errorf("CHANGES.md has no '## [%s] - YYYY-MM-DD' heading for the version in VERSION", strings.TrimSpace(string(version)))
+	}
+}

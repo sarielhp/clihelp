@@ -4,13 +4,10 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
-### Added
-- **Layout checks in `Audit`**: every short description (command, subcommand, shortcut and flag listings) must render on one row at `AuditOptions.Width` (default 80), measured with the renderer's own column layout; a multi-line `Command.Description` is an error. `LongDescription`, `Notes` and extended help are unlimited. Verbatim notes and example lines wider than `Width` go to the new `AuditOptions.Warn` callback instead of failing. All violations are reported together, and flag rows are measured with their `(default: …)`, `(required)` and `(deprecated: …)` suffixes. Within one listing, descriptions must also agree on a trailing full stop — all or none, the author's choice; `CompletionCommand` and `ManPageCommand` are exempt.
-
 ### Changed
-- **Redirected help is laid out at 80 columns, not 70.** The fallback when stdout is not a terminal and `COLUMNS` is unset now equals the width `Audit` holds short descriptions to, so help that passes the audit is not re-wrapped when written to a file or pipe.
-- **Concise help no longer ends on a bare section heading.** When the line budget cuts a page directly under a heading such as `Examples:`, the heading is dropped and counted in the "more lines" note.
-- **Usage lines keep bracketed groups whole.** A long `Usage:` line wrapped between a flag and its value, leaving `[--tags` at the end of one row and `TAGS]` at the start of the next. `[...]` and `<...>` groups now wrap as one unit.
+- **`bump-version.sh` promotes the changelog.** What has accumulated under `[Unreleased]` becomes the new version's section, dated today, with an empty `[Unreleased]` above it, and the change rides in the version commit. A bump with nothing under `[Unreleased]` is refused and every file is restored. Releases 0.3.45 to 0.3.49 had no headings because nothing in the release path touched this file; they are back-filled below.
+
+## [0.3.49] - 2026-10-01
 
 ### Fixed
 - **`completion` and `manpage` name the program.** Their `Usage:` and example lines were relative to their own root (`completion zsh`, `manpage > myapp.1`), so copying one failed, and mounted below the root the page contradicted its own heading. They now start with the program name and the real mount point on `-h`, `--help`, `-E`, `help man` and the manual page. The generated Markdown site (`doc/`) still shows the relative form.
@@ -18,12 +15,43 @@ All notable changes to `clihelp` will be documented in this file.
 - **`Audit` runs every check and reports them together**, and `Audit(nil)` is an error. A bad example used to hide the layout findings until the next run.
 - **Usage-line wrapping no longer depends on the locale** (the stand-in rune was two columns under East Asian width rules), and truncated concise help no longer leaves a dangling colour code on coloured output.
 - **`help topics`** no longer wraps for application names over eight characters, and `help man`/`help topics` no longer say "(paged)".
+- **Documentation:** the package comment's `PrintError` example now compiles, `AGENTS.md` describes the files that exist, and the drift guard covers `doc.go`, `AGENTS.md` and `.agents/`.
+
+## [0.3.48] - 2026-10-01
+
+### Added
+- **One trailing-period style per listing.** `Audit` requires the short descriptions in a listing to either all end with a full stop or none to; which is the author's choice. `CompletionCommand` and `ManPageCommand` are exempt.
+
+### Changed
+- **Redirected help is laid out at 80 columns, not 70.** The fallback when stdout is not a terminal and `COLUMNS` is unset now equals the width `Audit` holds short descriptions to, so help that passes the audit is not re-wrapped when written to a file or pipe.
+- **Concise help no longer ends on a bare section heading.** When the line budget cuts a page directly under a heading such as `Examples:`, the heading is dropped and counted in the "more lines" note.
+- **Usage lines keep bracketed groups whole.** A long `Usage:` line wrapped between a flag and its value, leaving `[--tags` at the end of one row and `TAGS]` at the start of the next. `[...]` and `<...>` groups now wrap as one unit.
+
+## [0.3.47] - 2026-10-01
+
+### Changed
+- **`Audit` measures flag rows in the renderer's own lists** (local flags and inherited global flags are separate columns), and the demonstration `podctl` app is held to the same standard in its tests.
+- **`tools/commit.sh`** accepts a `COMMIT_TRAILER` environment variable.
 
 ### Removed
 - **`StripANSI`, `VisualWidth` and `FirstSentence`** moved to `internal/text`. They were exported only so `tree/` could share them; one copy now serves this package, `doc/` and `tree/`.
 - **`App.Render`** (use `RenderGlobal` or `RenderCommand`), **`SuggestCommand`** and **`ColorizeExampleLineWithApp`**: no caller outside the package.
 - **Renamed `IsCompletionInstalled` to `CompletionScriptExists`**, which is all it ever reported.
+
+## [0.3.46] - 2026-10-01
+
+### Added
+- **Layout checks in `Audit`**: every short description (command, subcommand, shortcut and flag listings) must render on one row at `AuditOptions.Width` (default 80), measured with the renderer's own column layout; a multi-line `Command.Description` is an error. `LongDescription`, `Notes` and extended help are unlimited. Verbatim notes and example lines wider than `Width` go to the new `AuditOptions.Warn` callback instead of failing. All violations are reported together, and flag rows are measured with their `(default: …)`, `(required)` and `(deprecated: …)` suffixes.
+
+### Removed
 - **Automatic paging**: `App.Pager`, `Options.Pager` and the `$PAGER` subprocess are gone. Help is always written straight to the output; pipe it through a pager yourself.
+
+### Fixed
+- **`make commit`** quotes its message and shows the failing step's output instead of hiding it.
+
+## [0.3.45] - 2026-09-23
+
+No changelog entry was kept for this release, which landed as a squash of the `bws-agent-clihelp-features` work. See `git log v0.3.44..v0.3.45`.
 
 ## [0.3.44] - 2026-09-23
 

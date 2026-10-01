@@ -25,7 +25,7 @@
 | `tools/lint.sh` | Static analysis: `go vet` + `staticcheck` |
 | `tools/map.sh` | Print package structure, key types, and exported functions |
 | `tools/version.sh` | Print current version from `VERSION` file |
-| `tools/bump-version.sh` | Bump patch version in `VERSION`, git add/commit/push |
+| `tools/bump-version.sh` | Refuse a dirty tree, bump the patch version, promote `[Unreleased]` in `CHANGES.md`, regenerate docs, run the gate, then commit, tag and push |
 | `tools/commit.sh <msg>` | Quality gate + stage + commit; silent on success, prints the failing step's output on failure. `COMMIT_TRAILER` adds a trailer paragraph |
 | `tools/checkpoint.sh` | Auto micro-commit of all changes (saves work state) |
 | `tools/ex_podcl [args]` | Incrementally build and execute `podctl` example with CLI arguments |

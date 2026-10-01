@@ -20,9 +20,9 @@ patch=$((patch + 1))
 new="$major.$minor.$patch"
 tag="v$new"
 
-# The three files that carry the version. They are written before the check
+# The files that carry the version, and the changelog that records it. They are written before the check
 # runs, because the check verifies they agree with VERSION.
-versioned=(VERSION example/main.go clihelp.go)
+versioned=(VERSION example/main.go clihelp.go CHANGES.md)
 
 # A failed bump used to leave the new version written into all three with
 # nothing committed. The next run then bumped again from there and skipped a
@@ -51,6 +51,26 @@ log=$(mktemp -t clihelp-bump-XXXXXX)
 echo "$new" > VERSION
 ruby -pi -e "sub(/Version:\s+\"[^\"]+\"/, %Q{Version:        \"$new\"})" example/main.go
 ruby -pi -e "sub(/const Version = \"[^\"]+\"/, %Q{const Version = \"$new\"})" clihelp.go
+
+# Promote the changelog: what has accumulated under [Unreleased] becomes this
+# release's section, dated today, and [Unreleased] starts empty again. Nothing in
+# the release path used to touch CHANGES.md, so five tagged releases had no
+# heading at all. A release with nothing to record is refused, and the files go
+# back as they were.
+if ! NEW="$new" DAY="$(date +%F)" ruby -e '
+  text = File.read("CHANGES.md")
+  head = /^## \[Unreleased\]\n/
+  m = head.match(text) or exit 2
+  rest = m.post_match
+  body = rest.split(/^## \[/, 2).first
+  exit 3 if body.strip.empty?
+  File.write("CHANGES.md", m.pre_match + m[0] + "\n## [#{ENV["NEW"]}] - #{ENV["DAY"]}\n" + rest)
+'; then
+    restore
+    trap - ERR INT TERM HUP
+    echo "bump aborted at $new: CHANGES.md needs a non-empty '## [Unreleased]' section to promote. Version files restored." >&2
+    exit 1
+fi
 
 # The generated documentation embeds App.Version, so it is stale the moment the
 # version changes. Nothing used to regenerate it at release, which left the docs

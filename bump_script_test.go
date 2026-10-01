@@ -11,11 +11,13 @@ import (
 	"time"
 )
 
+const defaultChangelog = "# Changelog\n\n## [Unreleased]\n\n### Added\n- a thing\n\n## [0.0.1] - 2026-01-01\n\n### Added\n- an older thing\n"
+
 // bumpFixture is a throwaway repository holding tools/bump-version.sh and the
 // three files it rewrites, with a stub `go` first on PATH so the script can
 // never build, push or tag anything real. It returns the repository root and
 // the PATH to run the script with.
-func bumpFixture(t *testing.T, goStub string) (root, path string) {
+func bumpFixture(t *testing.T, goStub, changelog string) (root, path string) {
 	t.Helper()
 	for _, tool := range []string{"git", "bash", "ruby"} {
 		if _, err := exec.LookPath(tool); err != nil {
@@ -28,11 +30,14 @@ func bumpFixture(t *testing.T, goStub string) (root, path string) {
 		t.Fatal(err)
 	}
 	files := map[string]string{
-		"tools/bump-version.sh": string(script),
-		"VERSION":               "0.0.1\n",
-		"example/main.go":       "package main\n\nvar app = App{\n\tVersion:        \"0.0.1\",\n}\n",
-		"clihelp.go":            "package clihelp\n\nconst Version = \"0.0.1\"\n",
-		"docs/clihelp/index.md": "docs\n",
+		"tools/bump-version.sh":       string(script),
+		"VERSION":                     "0.0.1\n",
+		"example/main.go":             "package main\n\nvar app = App{\n\tVersion:        \"0.0.1\",\n}\n",
+		"clihelp.go":                  "package clihelp\n\nconst Version = \"0.0.1\"\n",
+		"docs/clihelp/index.md":       "docs\n",
+		"docs/mail_cli_fake/index.md": "docs\n",
+		"CHANGES.md":                  changelog,
+		"tools/check.sh":              "#!/bin/sh\nexit 0\n",
 	}
 	for name, body := range files {
 		full := filepath.Join(root, name)
@@ -43,6 +48,7 @@ func bumpFixture(t *testing.T, goStub string) (root, path string) {
 			t.Fatal(err)
 		}
 	}
+	remote := filepath.Join(t.TempDir(), "remote.git")
 	bin := filepath.Join(root, ".stubs")
 	if err := os.MkdirAll(bin, 0o755); err != nil {
 		t.Fatal(err)
@@ -55,8 +61,12 @@ func bumpFixture(t *testing.T, goStub string) (root, path string) {
 		{"config", "user.email", "t@example.com"},
 		{"config", "user.name", "t"},
 		{"config", "core.excludesFile", "/dev/null"},
-		{"add", "tools", "VERSION", "example", "clihelp.go", "docs"},
+		{"add", "tools", "VERSION", "example", "clihelp.go", "docs", "CHANGES.md"},
 		{"commit", "-q", "-m", "init"},
+		{"branch", "-M", "master"},
+		{"init", "-q", "--bare", remote},
+		{"remote", "add", "origin", remote},
+		{"push", "-q", "-u", "origin", "master"},
 	} {
 		cmd := exec.Command("git", args...)
 		cmd.Dir = root
@@ -88,7 +98,7 @@ func fileHas(t *testing.T, root, name, want string) bool {
 // successful one committed it into the tagged release. Either way the author
 // lost control of what shipped. The script has to refuse to start instead.
 func TestBumpRefusesATreeWithUncommittedChanges(t *testing.T) {
-	root, path := bumpFixture(t, "exit 1")
+	root, path := bumpFixture(t, "exit 1", defaultChangelog)
 	edit := "// precious uncommitted work\n"
 	full := filepath.Join(root, "clihelp.go")
 	body, _ := os.ReadFile(full)
@@ -118,7 +128,7 @@ func TestBumpRefusesATreeWithUncommittedChanges(t *testing.T) {
 // from there and skipped a version. The script's own comment promises the
 // opposite.
 func TestBumpRestoresTheVersionFilesWhenInterrupted(t *testing.T) {
-	root, path := bumpFixture(t, "sleep 30")
+	root, path := bumpFixture(t, "sleep 30", defaultChangelog)
 	cmd := bumpCommand(root, path)
 	// Its own process group, so the signal reaches the stub as a terminal's
 	// Ctrl-C would reach a foreground job.
@@ -153,5 +163,61 @@ func TestBumpRestoresTheVersionFilesWhenInterrupted(t *testing.T) {
 	}
 	if len(bytes.TrimSpace(out)) != 0 {
 		t.Errorf("an interrupted bump left the tree modified:\n%s", out)
+	}
+}
+
+// The changelog kept its own [Unreleased] heading through every release: tags
+// v0.3.45 to v0.3.48 exist and CHANGES.md has no heading for any of them, because
+// nothing in the release path touched it. A bump now promotes the heading — the
+// new version and the day, with the old text beneath it and an empty
+// [Unreleased] above — and the commit that lands carries the change.
+func TestBumpPromotesTheChangelog(t *testing.T) {
+	root, path := bumpFixture(t, "exit 0", defaultChangelog)
+	var stderr bytes.Buffer
+	cmd := bumpCommand(root, path)
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("bump failed: %v\n%s", err, stderr.String())
+	}
+	body, err := os.ReadFile(filepath.Join(root, "CHANGES.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "## [Unreleased]\n\n## [0.0.2] - " + time.Now().Format("2006-01-02") + "\n\n### Added\n- a thing\n"
+	if !strings.Contains(string(body), want) {
+		t.Errorf("CHANGES.md was not promoted; want it to contain\n%q\ngot\n%s", want, body)
+	}
+	if !strings.Contains(string(body), "## [0.0.1] - 2026-01-01") {
+		t.Errorf("the older release heading was lost:\n%s", body)
+	}
+	show := exec.Command("git", "show", "--stat", "--format=", "HEAD")
+	show.Dir = root
+	out, _ := show.Output()
+	if !strings.Contains(string(out), "CHANGES.md") {
+		t.Errorf("the version commit does not include CHANGES.md:\n%s", out)
+	}
+}
+
+// A release with nothing under [Unreleased] has no changelog entry to promote,
+// and shipping it would put an empty section in the history. Refuse, and leave
+// every file as it was.
+func TestBumpRefusesAnEmptyChangelog(t *testing.T) {
+	empty := "# Changelog\n\n## [Unreleased]\n\n## [0.0.1] - 2026-01-01\n\n### Added\n- an older thing\n"
+	root, path := bumpFixture(t, "exit 0", empty)
+	var stderr bytes.Buffer
+	cmd := bumpCommand(root, path)
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err == nil {
+		t.Error("bump succeeded with nothing under [Unreleased]")
+	}
+	if !fileHas(t, root, "VERSION", "0.0.1") {
+		t.Error("VERSION was left rewritten after a refused bump")
+	}
+	body, _ := os.ReadFile(filepath.Join(root, "CHANGES.md"))
+	if string(body) != empty {
+		t.Errorf("CHANGES.md was modified by a refused bump:\n%s", body)
+	}
+	if !strings.Contains(stderr.String(), "Unreleased") {
+		t.Errorf("the refusal does not mention [Unreleased]:\n%s", stderr.String())
 	}
 }
