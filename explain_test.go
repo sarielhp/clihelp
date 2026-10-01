@@ -3,6 +3,7 @@ package clihelp
 import (
 	"bytes"
 	"context"
+	"github.com/fatih/color"
 	"strings"
 	"testing"
 )
@@ -211,6 +212,43 @@ func TestWriteWithinBudgetDropsAnOrphanHeading(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf strings.Builder
 			writeWithinBudget(&buf, page, tt.budget, 80, "hint")
+			if buf.String() != tt.want {
+				t.Errorf("budget %d:\n got %q\nwant %q", tt.budget, buf.String(), tt.want)
+			}
+		})
+	}
+}
+
+// A coloured page is not made of the plain lines the budget logic was first
+// written against: the blank line before a heading is "\x1b[33;1m" (the open
+// colour of the heading that follows), and a flag row is drawn with its colour
+// codes first. Both were read as plain text, which left a dangling colour line
+// bleeding into the "more lines" note, and dropped a real flag row as though it
+// were a heading.
+func TestWriteWithinBudgetUnderColour(t *testing.T) {
+	had := color.NoColor
+	color.NoColor = false
+	defer func() { color.NoColor = had }()
+
+	heading := color.New(color.FgYellow, color.Bold).Sprint("\nParameters:")
+	flagRow := color.New(color.FgCyan).Sprint("  -t, --tags <t>  ") + color.New(color.FgWhite).Sprint("tags:")
+	tests := []struct {
+		name   string
+		lines  []string
+		budget int
+		want   string
+	}{
+		{"coloured heading and its coloured blank are dropped together",
+			append(append([]string{"Usage: x"}, strings.Split(heading, "\n")...), "  a  one", "  b  two"), 4,
+			"Usage: x\n… 4 more lines — hint\n"},
+		{"an indented coloured row ending in a colon is content",
+			[]string{"Usage: x", "", flagRow, "  r2", "  r3"}, 4,
+			"Usage: x\n\n" + flagRow + "\n… 2 more lines — hint\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf strings.Builder
+			writeWithinBudget(&buf, strings.Join(tt.lines, "\n")+"\n", tt.budget, 80, "hint")
 			if buf.String() != tt.want {
 				t.Errorf("budget %d:\n got %q\nwant %q", tt.budget, buf.String(), tt.want)
 			}

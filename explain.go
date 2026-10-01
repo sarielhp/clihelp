@@ -164,21 +164,32 @@ func (a *App) explainMoreHint(path []string) string {
 // and delivers none; the dropped lines are counted in the note instead.
 func dropOrphanHeading(lines []string) []string {
 	end := len(lines)
-	for end > 0 && strings.TrimSpace(lines[end-1]) == "" {
+	for end > 0 && isBlankLine(lines[end-1]) {
 		end--
 	}
 	if end > 0 && isHeadingLine(lines[end-1]) {
 		end--
-		for end > 0 && strings.TrimSpace(lines[end-1]) == "" {
+		for end > 0 && isBlankLine(lines[end-1]) {
 			end--
 		}
 	}
 	return lines[:end]
 }
 
-// isHeadingLine reports whether line is an unindented "Name:" section heading.
+// isBlankLine reports whether line draws nothing. A coloured page puts the
+// colour that opens a heading on the line before it ("\x1b[33;1m"), so blankness
+// has to be judged on what is drawn, not on the bytes: leaving that line behind
+// kept an open colour that bled into the note after it.
+func isBlankLine(line string) bool {
+	return strings.TrimSpace(stripANSI(line)) == ""
+}
+
+// isHeadingLine reports whether line is an unindented "Name:" section heading,
+// judged on what is drawn: a coloured, indented flag row begins with an escape
+// sequence, not a space, and must not be mistaken for one.
 func isHeadingLine(line string) bool {
-	return line != "" && line[0] != ' ' && strings.HasSuffix(strings.TrimRight(stripANSI(line), " "), ":")
+	plain := stripANSI(line)
+	return plain != "" && plain[0] != ' ' && strings.HasSuffix(strings.TrimRight(plain, " "), ":")
 }
 
 // writeWithinBudget writes at most budget lines of text, replacing whatever did
