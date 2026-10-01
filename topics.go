@@ -328,7 +328,7 @@ func (a *App) renderManCommands(w io.Writer, th Theme, o Options, termWidth int,
 		if len(c.Examples) > 0 {
 			fmt.Fprintln(w)
 			th.Hdr.Fprintln(w, "      Examples:")
-			renderExamples(w, a, &c, th, o, termWidth, c.Examples, 8, 10)
+			renderExamples(w, a, &c, th, o, termWidth, a.absoluteExamples(&c, append(append([]string{}, parentPath...), c.Name), c.Examples), 8, 10)
 		}
 
 		if len(c.Notes) > 0 {
@@ -428,7 +428,7 @@ func (a *App) renderExamplesPage(o Options, path ...string) {
 			}
 			path := append(append([]string{}, prefix...), c.Name)
 			if len(c.Examples) > 0 {
-				groups = append(groups, group{path: path, cmd: c, examples: c.Examples})
+				groups = append(groups, group{path: path, cmd: c, examples: a.absoluteExamples(c, path, c.Examples)})
 			}
 			walk(c.Subcommands, path)
 		}

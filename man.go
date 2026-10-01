@@ -132,7 +132,7 @@ func writeManCommands(b *strings.Builder, app *App) {
 // may or may not repeat the command's own path, so the program name is prepended
 // only when it is not already there.
 func manUsageLine(app *App, path []string, cmd *Command) string {
-	usage := strings.TrimSpace(cmd.UsageLine)
+	usage := strings.TrimSpace(app.absoluteLibraryLine(cmd, path, cmd.UsageLine))
 	if usage == "" {
 		return ""
 	}
@@ -203,9 +203,9 @@ func writeManOptionList(b *strings.Builder, opts []Option) {
 func writeManExamples(b *strings.Builder, app *App) {
 	var body strings.Builder
 	writeExampleBlock(&body, app.Examples)
-	_ = app.Walk(func(_ []string, cmd *Command) error {
+	_ = app.Walk(func(path []string, cmd *Command) error {
 		if !cmd.Hidden {
-			writeExampleBlock(&body, cmd.Examples)
+			writeExampleBlock(&body, app.absoluteExamples(cmd, path, cmd.Examples))
 		}
 		return nil
 	})
@@ -537,7 +537,7 @@ func manPageCommand() Command {
 		Description: "Print the manual page, or install it for man(1)",
 		UsageLine:   "manpage [--install|--uninstall] [--force]",
 		Examples: []Example{
-			{Line: "manpage > myapp.1", Description: "Write the page for a package to install"},
+			{Line: "manpage > <app>.1", Description: "Write the page for a package to install"},
 			{Line: "manpage --install", Description: "Install it for this user"},
 		},
 		Options: []Option{

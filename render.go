@@ -631,7 +631,7 @@ func renderCommandTitle(w io.Writer, th Theme, o Options, cmd *Command, termWidt
 
 func (a *App) buildDefaultUsage(cmd *Command, path []string) string {
 	if cmd.UsageLine != "" {
-		return cmd.UsageLine
+		return a.absoluteLibraryLine(cmd, path, cmd.UsageLine)
 	}
 	fullPath := strings.Join(append([]string{appName(a)}, path...), " ")
 	hasFlags := len(a.collectOptions(path, cmd)) > 0
@@ -869,7 +869,7 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 
 		if len(cmd.Examples) > 0 {
 			th.Hdr.Fprintln(w, "\nExamples:")
-			renderExamples(w, a, cmd, th, o, termWidth, cmd.Examples, 2, 4)
+			renderExamples(w, a, cmd, th, o, termWidth, a.absoluteExamples(cmd, path, cmd.Examples), 2, 4)
 		}
 
 		if !o.Concise {

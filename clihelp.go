@@ -178,16 +178,28 @@ type Command struct {
 	Notes             []Note
 
 	// libraryOwned marks a command the library supplies (CompletionCommand,
-	// ManPageCommand), whose wording is not the author's to style.
+	// ManPageCommand), whose wording is not the author's to style. Its usage and
+	// example lines are written relative to libraryRoot, the name the library gave
+	// the top of its own tree, and libraryDepth is how far below that top this
+	// node sits; together they let a renderer find where the author mounted it.
 	libraryOwned bool
+	libraryRoot  string
+	libraryDepth int
 }
 
-// markLibraryOwned flags cmd and everything beneath it as library-supplied.
+// markLibraryOwned flags cmd and everything beneath it as library-supplied, and
+// records where each node sits in the library's own tree.
 func markLibraryOwned(cmd Command) Command {
+	return markLibrarySubtree(cmd, cmd.Name, 0)
+}
+
+func markLibrarySubtree(cmd Command, root string, depth int) Command {
 	cmd.libraryOwned = true
+	cmd.libraryRoot = root
+	cmd.libraryDepth = depth
 	subs := make([]Command, len(cmd.Subcommands))
 	for i, s := range cmd.Subcommands {
-		subs[i] = markLibraryOwned(s)
+		subs[i] = markLibrarySubtree(s, root, depth+1)
 	}
 	cmd.Subcommands = subs
 	return cmd

@@ -12,6 +12,13 @@ All notable changes to `clihelp` will be documented in this file.
 - **Concise help no longer ends on a bare section heading.** When the line budget cuts a page directly under a heading such as `Examples:`, the heading is dropped and counted in the "more lines" note.
 - **Usage lines keep bracketed groups whole.** A long `Usage:` line wrapped between a flag and its value, leaving `[--tags` at the end of one row and `TAGS]` at the start of the next. `[...]` and `<...>` groups now wrap as one unit.
 
+### Fixed
+- **`completion` and `manpage` name the program.** Their `Usage:` and example lines were relative to their own root (`completion zsh`, `manpage > myapp.1`), so copying one failed, and mounted below the root the page contradicted its own heading. They now start with the program name and the real mount point on `-h`, `--help`, `-E`, `help man` and the manual page. The generated Markdown site (`doc/`) still shows the relative form.
+- **`bump-version.sh` refuses a tree with uncommitted changes and restores the version files when interrupted.** A failed bump used to delete uncommitted edits to `clihelp.go` and `example/main.go`; a successful one committed them into the release.
+- **`Audit` runs every check and reports them together**, and `Audit(nil)` is an error. A bad example used to hide the layout findings until the next run.
+- **Usage-line wrapping no longer depends on the locale** (the stand-in rune was two columns under East Asian width rules), and truncated concise help no longer leaves a dangling colour code on coloured output.
+- **`help topics`** no longer wraps for application names over eight characters, and `help man`/`help topics` no longer say "(paged)".
+
 ### Removed
 - **`StripANSI`, `VisualWidth` and `FirstSentence`** moved to `internal/text`. They were exported only so `tree/` could share them; one copy now serves this package, `doc/` and `tree/`.
 - **`App.Render`** (use `RenderGlobal` or `RenderCommand`), **`SuggestCommand`** and **`ColorizeExampleLineWithApp`**: no caller outside the package.
