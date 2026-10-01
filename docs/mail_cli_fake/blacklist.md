@@ -17,9 +17,9 @@ mail_cli blacklist <subcommand> [args...]
 
 | Command | Description |
 |---------|-------------|
-| [add \<email>](blacklist-add.md) | Add an email address to the blacklist. |
-| [del \<email>](blacklist-del.md) | Remove an email address from the blacklist. |
-| list | List all blacklisted email addresses. |
+| [add \<email>](blacklist-add.md) | Add an email address to the blacklist |
+| [del \<email>](blacklist-del.md) | Remove an email address from the blacklist |
+| [list](blacklist-list.md) | List all blacklisted email addresses |
 
 ## Flags
 
@@ -27,7 +27,7 @@ mail_cli blacklist <subcommand> [args...]
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 

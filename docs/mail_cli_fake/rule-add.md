@@ -17,8 +17,8 @@ mail_cli rule add <email> <lbl>
 
 | Parameter | Description |
 |-----------|-------------|
-| `<email>` | The sender email address (e.g. newsletter@example.com). |
-| `<lbl>` | The target label hierarchy (e.g. "Sort/Newsletters"). |
+| `<email>` | The sender email address (e.g. newsletter@example.com) |
+| `<lbl>` | The target label hierarchy (e.g. "Sort/Newsletters") |
 
 ## Flags
 
@@ -26,7 +26,7 @@ mail_cli rule add <email> <lbl>
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 

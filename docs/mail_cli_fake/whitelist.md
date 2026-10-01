@@ -5,7 +5,7 @@ has_children: true
 
 # mail\_cli whitelist
 
-Manage the personal sender whitelist to bypass spam checks.
+Manage the personal sender whitelist to bypass spam checks
 
 ## Usage
 
@@ -17,9 +17,9 @@ mail_cli whitelist <subcommand> [args...]
 
 | Command | Description |
 |---------|-------------|
-| [add \<email>](whitelist-add.md) | Add an email address to the whitelist. |
-| [del \<email>](whitelist-del.md) | Remove an email address from the whitelist. |
-| list | List all whitelisted email addresses. |
+| [add \<email>](whitelist-add.md) | Add an email address to the whitelist |
+| [del \<email>](whitelist-del.md) | Remove an email address from the whitelist |
+| [list](whitelist-list.md) | List all whitelisted email addresses |
 
 ## Flags
 
@@ -27,7 +27,7 @@ mail_cli whitelist <subcommand> [args...]
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 

@@ -17,8 +17,8 @@ mail_cli rule add_domain <message_id> [lbl]
 
 | Parameter | Description |
 |-----------|-------------|
-| `<message_id>` | The message ID or short ID of the email. |
-| `[lbl]` | The target label hierarchy (optional; defaults to message folder or SpamLearn folder). |
+| `<message_id>` | The message ID or short ID of the email |
+| `[lbl]` | Target label (default: the message folder or SpamLearn) |
 
 ## Flags
 
@@ -26,7 +26,7 @@ mail_cli rule add_domain <message_id> [lbl]
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 

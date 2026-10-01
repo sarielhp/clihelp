@@ -5,7 +5,7 @@ parent: 'mail_cli labels'
 
 # mail\_cli labels del
 
-Delete an existing label by its name.
+Delete an existing label by its name
 
 ## Usage
 
@@ -17,7 +17,7 @@ mail_cli labels del <lbl_name>
 
 | Parameter | Description |
 |-----------|-------------|
-| `<lbl_name>` | The name of the label to delete (e.g. "temp-label"). |
+| `<lbl_name>` | The name of the label to delete (e.g. "temp-label") |
 
 ## Flags
 
@@ -25,7 +25,7 @@ mail_cli labels del <lbl_name>
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 

@@ -1,24 +1,17 @@
 ---
-title: 'mail_cli labels cache'
-has_children: true
+title: 'mail_cli labels list'
 parent: 'mail_cli labels'
 ---
 
-# mail\_cli labels cache
+# mail\_cli labels list
 
-Manage the labels cache used by the search subcommand
+List labels/folders
 
 ## Usage
 
 ```
-mail_cli labels cache <subcommand>
+mail_cli labels list [-a, --all]
 ```
-
-## Subcommands
-
-| Command | Description |
-|---------|-------------|
-| [update](labels-cache-update.md) | Update the labels cache from the server |
 
 ## Flags
 
@@ -27,6 +20,12 @@ mail_cli labels cache <subcommand>
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
 | `-1, -2, -3` | Shorthand flags to select configured accounts |
+| `-a, --all` | Include system and hidden labels |
+
+## Examples
+
+- `mail_cli labels list`
+- `mail_cli labels list --all`
 
 ---
 

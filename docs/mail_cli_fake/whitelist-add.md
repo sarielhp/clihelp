@@ -17,7 +17,7 @@ mail_cli whitelist add <email>
 
 | Parameter | Description |
 |-----------|-------------|
-| `<email>` | The sender email address to whitelist (e.g. mom@gmail.com). |
+| `<email>` | The sender email address to whitelist (e.g. mom@gmail.com) |
 
 ## Flags
 
@@ -25,7 +25,7 @@ mail_cli whitelist add <email>
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 

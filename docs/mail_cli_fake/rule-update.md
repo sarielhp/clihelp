@@ -5,7 +5,7 @@ parent: 'mail_cli rule'
 
 # mail\_cli rule update
 
-Ensure all blacklisted senders have a corresponding local auto-labeling rule pointing to the SpamLearn folder.
+Ensure all blacklisted senders have a corresponding local auto-labeling rule pointing to the SpamLearn folder
 
 ## Usage
 
@@ -19,7 +19,7 @@ mail_cli rule update
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 

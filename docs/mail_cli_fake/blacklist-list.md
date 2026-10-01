@@ -1,10 +1,17 @@
 ---
-title: 'mail_cli migrate'
+title: 'mail_cli blacklist list'
+parent: 'mail_cli blacklist'
 ---
 
-# mail\_cli migrate
+# mail\_cli blacklist list
 
-Copy configuration and credentials to a remote machine via SSH/SCP.
+List all blacklisted email addresses
+
+## Usage
+
+```
+mail_cli blacklist list
+```
 
 ## Flags
 
@@ -13,6 +20,10 @@ Copy configuration and credentials to a remote machine via SSH/SCP.
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
 | `-1, -2, -3` | Shorthand flags to select configured accounts |
+
+## Examples
+
+- `mail_cli blacklist list`
 
 ---
 

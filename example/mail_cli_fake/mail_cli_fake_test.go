@@ -185,3 +185,19 @@ func TestEachPageIsAboutItsOwnCommand(t *testing.T) {
 		seen[body] = strings.Join(path, " ")
 	}
 }
+
+// This tree reproduces a real application's help, and it used to fail the
+// library's own audit — eighteen examples naming flags and subcommands the tree
+// did not declare, two invalid flag specs, and forty-four descriptions too long
+// for their row. A demonstration that does not meet the standard it demonstrates
+// teaches the wrong thing. The long text lives in LongDescription now.
+func TestMailCLIPassesAudit(t *testing.T) {
+	var warnings []string
+	err := clihelp.Audit(buildApp(), clihelp.AuditOptions{Warn: func(m string) { warnings = append(warnings, m) }})
+	if err != nil {
+		t.Errorf("Audit(buildApp()) = %v", err)
+	}
+	for _, w := range warnings {
+		t.Errorf("audit warning: %s", w)
+	}
+}

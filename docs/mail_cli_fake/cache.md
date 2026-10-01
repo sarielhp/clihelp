@@ -5,7 +5,7 @@ has_children: true
 
 # mail\_cli cache
 
-Manage the local email download cache.
+Manage the local email download cache
 
 ## Usage
 
@@ -17,8 +17,8 @@ mail_cli cache <subcommand> [args...]
 
 | Command | Description |
 |---------|-------------|
-| [prune \[days\]](cache-prune.md) | Prune cached emails and scores older than [days] (default: 30). |
-| [reset](cache-reset.md) | Reset per-account cache — removes all cached emails, scores, labels, and indexes for the current account. |
+| [prune \[days\]](cache-prune.md) | Prune cached emails and scores older than [days] (default: 30) |
+| [reset](cache-reset.md) | Reset the per-account cache (emails, scores, labels, indexes) |
 
 ## Flags
 
@@ -26,8 +26,8 @@ mail_cli cache <subcommand> [args...]
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
-| `--wipe` | Wipe the entire cache (equivalent to prune with 0 days). |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
+| `--wipe` | Wipe the entire cache (equivalent to prune with 0 days) |
 
 ## Examples
 

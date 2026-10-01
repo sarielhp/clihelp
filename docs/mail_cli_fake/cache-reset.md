@@ -5,7 +5,7 @@ parent: 'mail_cli cache'
 
 # mail\_cli cache reset
 
-Reset the per-account cache directory, removing all cached data and recreating it empty.
+Reset the per-account cache directory, removing all cached data and recreating it empty
 
 ## Usage
 
@@ -19,7 +19,7 @@ mail_cli cache reset
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 

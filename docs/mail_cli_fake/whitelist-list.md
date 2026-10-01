@@ -1,23 +1,17 @@
 ---
-title: 'mail_cli whitelist del'
+title: 'mail_cli whitelist list'
 parent: 'mail_cli whitelist'
 ---
 
-# mail\_cli whitelist del
+# mail\_cli whitelist list
 
-Remove a sender email address from your personal whitelist
+List all whitelisted email addresses
 
 ## Usage
 
 ```
-mail_cli whitelist del <email>
+mail_cli whitelist list
 ```
-
-## Parameters
-
-| Parameter | Description |
-|-----------|-------------|
-| `<email>` | The whitelisted email address to remove |
 
 ## Flags
 
@@ -29,7 +23,7 @@ mail_cli whitelist del <email>
 
 ## Examples
 
-- `mail_cli whitelist del mom@gmail.com`
+- `mail_cli whitelist list`
 
 ---
 

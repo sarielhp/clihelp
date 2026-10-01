@@ -16,9 +16,9 @@ mail_cli split <source_label> <pattern> <target_label> [flags]
 
 | Parameter | Description |
 |-----------|-------------|
-| `<source_label>` | The name or prefix of the label containing messages to scan (must match a unique label). |
-| `<pattern>` | A subject match pattern supporting * (matches any characters) and ? (matches any single character). |
-| `<target_label>` | The name or prefix of the target label (must match a unique label and already exist). |
+| `<source_label>` | Label (unique name or prefix) holding the messages |
+| `<pattern>` | Subject pattern: * matches any run, ? any one character |
+| `<target_label>` | Existing target label (unique name or prefix) |
 
 ## Flags
 
@@ -26,8 +26,8 @@ mail_cli split <source_label> <pattern> <target_label> [flags]
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
-| `--do` | Perform the actual move operations on the server instead of dry-run. |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
+| `--do` | Perform the actual move operations on the server instead of dry-run |
 
 ## Examples
 

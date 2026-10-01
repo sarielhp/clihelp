@@ -16,8 +16,8 @@ mail_cli upload <label> <file_name>
 
 | Parameter | Description |
 |-----------|-------------|
-| `<label>` | The name or prefix of the target label/folder to upload emails to (must match a unique label). |
-| `<file_name>` | Path to the local mbox file containing emails to upload. |
+| `<label>` | Target label/folder (unique name or prefix) |
+| `<file_name>` | Path to the local mbox file containing emails to upload |
 
 ## Flags
 
@@ -25,7 +25,7 @@ mail_cli upload <label> <file_name>
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 

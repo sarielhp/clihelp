@@ -5,7 +5,7 @@ parent: 'mail_cli blacklist'
 
 # mail\_cli blacklist del
 
-Remove a sender email address from your personal blacklist.
+Remove a sender email address from your personal blacklist
 
 ## Usage
 
@@ -17,7 +17,7 @@ mail_cli blacklist del <email>
 
 | Parameter | Description |
 |-----------|-------------|
-| `<email>` | The blacklisted email address to remove. |
+| `<email>` | The blacklisted email address to remove |
 
 ## Flags
 
@@ -25,7 +25,7 @@ mail_cli blacklist del <email>
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 

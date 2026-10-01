@@ -16,7 +16,7 @@ mail_cli learn-ham <label> [flags]
 
 | Parameter | Description |
 |-----------|-------------|
-| `<label>` | The folder name containing ham emails to train on. |
+| `<label>` | The folder name containing ham emails to train on |
 
 ## Flags
 
@@ -24,8 +24,8 @@ mail_cli learn-ham <label> [flags]
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
-| `--force` | Bypass trained message database and re-train all emails. |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
+| `--force` | Bypass trained message database and re-train all emails |
 
 ## Examples
 

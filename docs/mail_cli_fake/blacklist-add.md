@@ -17,7 +17,7 @@ mail_cli blacklist add <email>
 
 | Parameter | Description |
 |-----------|-------------|
-| `<email>` | The sender email address to blacklist (e.g. spammer@gmail.com). |
+| `<email>` | The sender email address to blacklist (e.g. spammer@gmail.com) |
 
 ## Flags
 
@@ -25,7 +25,7 @@ mail_cli blacklist add <email>
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 

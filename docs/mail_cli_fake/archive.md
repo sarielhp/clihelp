@@ -16,8 +16,8 @@ mail_cli archive <all [label] | message-id...>
 
 | Parameter | Description |
 |-----------|-------------|
-| `all [label]` | Archive all emails in the Inbox or specified label prefix. |
-| `<message-id...>` | One or more message IDs to archive (short 8-char or full). |
+| `all [label]` | Archive all emails in the Inbox or specified label prefix |
+| `<message-id...>` | One or more message IDs to archive (short 8-char or full) |
 
 ## Flags
 
@@ -25,7 +25,7 @@ mail_cli archive <all [label] | message-id...>
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 

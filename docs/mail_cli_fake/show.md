@@ -16,8 +16,8 @@ mail_cli show <lbl_prefix> [message_id] [flags]
 
 | Parameter | Description |
 |-----------|-------------|
-| `<lbl_prefix>` | The prefix of the label/folder to view (e.g. 'inbox' or 'receipts'). |
-| `[message_id]` | Optional message ID (short 8-char or full) of a specific email to show. |
+| `<lbl_prefix>` | Label/folder prefix to view (e.g. 'inbox') |
+| `[message_id]` | Message ID (short 8-char or full) of one email to show |
 
 ## Flags
 
@@ -25,8 +25,8 @@ mail_cli show <lbl_prefix> [message_id] [flags]
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
-| `-w, --web` | Open the HTML body of the email in your configured browser. |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
+| `-w, --web` | Open the HTML body of the email in your configured browser |
 
 ## Examples
 

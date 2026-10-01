@@ -4,7 +4,7 @@ title: 'mail_cli config'
 
 # mail\_cli config
 
-Show or manage configuration options.
+Show or manage configuration options
 
 ## Usage
 
@@ -16,10 +16,10 @@ mail_cli config <subcommand> [args...]
 
 | Command | Description |
 |---------|-------------|
-| show | Show the current configuration (download directory, limits, accounts, and browser). |
-| set \<key> \<value> | Set configuration parameters (spam_learn, unspam_learn, browser). |
-| reset \<key> | Reset configuration parameters to system default (browser). |
-| validate | Validate configurations, account parameters, DNS reachability, and Bogofilter service. |
+| show | Show the current configuration |
+| set \<key> \<value> | Set spam_learn, unspam_learn or browser |
+| reset \<key> | Reset configuration parameters to system default (browser) |
+| validate | Validate configuration, accounts, DNS and Bogofilter |
 
 ## Flags
 
@@ -27,7 +27,7 @@ mail_cli config <subcommand> [args...]
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 

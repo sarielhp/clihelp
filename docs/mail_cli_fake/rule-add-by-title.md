@@ -17,8 +17,8 @@ mail_cli rule add_by_title <title> <lbl>
 
 | Parameter | Description |
 |-----------|-------------|
-| `<title>` | The subject prefix to match (e.g. "[Alert]"). |
-| `<lbl>` | The target label hierarchy (e.g. "Sort/Alerts"). |
+| `<title>` | The subject prefix to match (e.g. "[Alert]") |
+| `<lbl>` | The target label hierarchy (e.g. "Sort/Alerts") |
 
 ## Flags
 
@@ -26,7 +26,7 @@ mail_cli rule add_by_title <title> <lbl>
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 

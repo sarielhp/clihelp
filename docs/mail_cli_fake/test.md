@@ -16,7 +16,7 @@ mail_cli test run
 
 | Command | Description |
 |---------|-------------|
-| run | Execute connection and integration tests. |
+| run | Execute connection and integration tests |
 
 ## Flags
 
@@ -24,7 +24,7 @@ mail_cli test run
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 

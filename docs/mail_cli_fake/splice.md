@@ -18,17 +18,17 @@ mail_cli splice <folder> [flags]
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
-| `-n, --n <int>` | Number of messages to process (default 10). |
-| `--folder, -f` | Folder name to use for the destination path without suffix. |
-| `--folder-suffix, -F` | Folder name to use for the destination path with year/month suffix attached. |
-| `--move` | Actually move the messages instead of dry run. |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
+| `-n, --n <int>` | Number of messages to process (default 10) |
+| `-f, --folder <name>` | Destination folder name, without suffix |
+| `-F, --folder-suffix <name>` | Destination folder name, with year/month suffix |
+| `--move` | Actually move the messages instead of dry run |
 
 ## Examples
 
 - `mail_cli splice research/cfps`
-- `mail_cli splice research/cfps -f archive (keep/YYYY/MM/archive)`
-- `mail_cli splice research/cfps -F wuna (keep/YYYY/MM/wuna-YYYY-MM)`
+- `mail_cli splice research/cfps -f archive` — Moves into keep/YYYY/MM/archive
+- `mail_cli splice research/cfps -F wuna` — Moves into keep/YYYY/MM/wuna-YYYY-MM
 - `mail_cli splice research/cfps -n 20 --move`
 
 The destination folder/label is created on the server automatically if it does not exist.

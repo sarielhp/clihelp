@@ -16,7 +16,7 @@ mail_cli scan <lbl_prefix> [flags]
 
 | Parameter | Description |
 |-----------|-------------|
-| `<lbl_prefix>` | The prefix of the label/folder to scan (e.g. 'inbox' or 'receipts'). |
+| `<lbl_prefix>` | Label/folder prefix to scan (e.g. 'inbox') |
 
 ## Flags
 
@@ -24,16 +24,16 @@ mail_cli scan <lbl_prefix> [flags]
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
-| `-m, --move <From>` | Move identified spam emails to Spam folder. Optional: specify From address to move a single unique message. |
-| `--inbox-move <From>` | Move identified emails from a specific From address back to the Inbox folder. |
-| `-p, --pattern <pattern>` | Only process messages whose subject contains this pattern. |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
+| `-m, --move [From]` | Move spam to Spam; a From address moves one sender |
+| `--inbox-move <From>` | Move a From address's messages back to the Inbox |
+| `-p, --pattern <pattern>` | Only messages whose subject contains this pattern |
 
 ## Examples
 
 - `mail_cli scan inbox`
 - `mail_cli scan inbox -m`
-- `mail_cli scan receipts -m spammer@example.com`
+- `mail_cli scan receipts --move=spammer@example.com` — Move one sender's mail
 
 ---
 

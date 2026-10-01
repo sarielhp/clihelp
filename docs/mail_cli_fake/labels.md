@@ -5,7 +5,7 @@ has_children: true
 
 # mail\_cli labels
 
-Manage and organize folders/labels.
+Manage and organize folders/labels
 
 ## Usage
 
@@ -17,14 +17,14 @@ mail_cli labels <subcommand> [args...]
 
 | Command | Description |
 |---------|-------------|
-| list \[-a, --all\] | List labels/folders. |
-| [create \<lbl>](labels-create.md) | Create a new label. |
-| [print](labels-print.md) | Print all labels/folders, one per line (full path only). |
-| [rename \<old> \<new>](labels-rename.md) | Rename a label and move all its emails. |
-| fix | Fix nested folder parent hierarchies. |
-| [del \<lbl>](labels-del.md) | Delete a label. |
-| [search \<str>](labels-search.md) | Search labels by substring (matches full path). |
-| [cache](labels-cache.md) | Manage the labels cache. |
+| [list \[-a, --all\]](labels-list.md) | List labels/folders |
+| [create \<lbl>](labels-create.md) | Create a new label |
+| [print](labels-print.md) | Print all labels/folders, one per line (full path only) |
+| [rename \<old> \<new>](labels-rename.md) | Rename a label and move all its emails |
+| fix | Fix nested folder parent hierarchies |
+| [del \<lbl>](labels-del.md) | Delete a label |
+| [search \<str>](labels-search.md) | Search labels by substring (matches full path) |
+| [cache](labels-cache.md) | Manage the labels cache |
 
 ## Flags
 
@@ -32,7 +32,7 @@ mail_cli labels <subcommand> [args...]
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 

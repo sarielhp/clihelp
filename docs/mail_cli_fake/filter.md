@@ -4,7 +4,7 @@ title: 'mail_cli filter'
 
 # mail\_cli filter
 
-Manage remote filters on Gmail.
+Manage remote filters on Gmail
 
 ## Usage
 
@@ -16,7 +16,7 @@ mail_cli filter <subcommand> [args...]
 
 | Command | Description |
 |---------|-------------|
-| list | List all remote filters on Gmail with detailed action descriptions. |
+| list | List all remote filters on Gmail with detailed action descriptions |
 
 ## Flags
 
@@ -24,7 +24,7 @@ mail_cli filter <subcommand> [args...]
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 

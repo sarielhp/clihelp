@@ -17,13 +17,13 @@ mail_cli unspam <message_id...>
 
 | Command | Description |
 |---------|-------------|
-| folder \<folder\_name> | Mark all messages in the specified folder as ham and move them back to Inbox. |
+| folder \<folder\_name> | Mark a folder's messages as ham, restore to Inbox |
 
 ## Parameters
 
 | Parameter | Description |
 |-----------|-------------|
-| `<message_id...>` | One or more message IDs to unspam (short 8-char or full). |
+| `<message_id...>` | One or more message IDs to unspam (short 8-char or full) |
 
 ## Flags
 
@@ -31,7 +31,7 @@ mail_cli unspam <message_id...>
 |------|-------------|
 | `-v, --verbose` | Enable verbose diagnostic log output |
 | `-A, --account` | Specify target account name from config.json |
-| `-1, -2, -3...` | Shorthand flag to select configured accounts |
+| `-1, -2, -3` | Shorthand flags to select configured accounts |
 
 ## Examples
 
