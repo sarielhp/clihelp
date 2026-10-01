@@ -4,6 +4,10 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Concise help (`-h`) spends its lines on content.** A blank line used to go between every command row as soon as one row wrapped, so at 40 to 60 columns the root page listed four to six of seven commands. The concise page now relies on the hanging indent; the extended page keeps its blank lines.
+- **The "N more lines" note keeps the command it names.** On a narrow terminal it was truncated through its own text (`run 'podctl help buil…`). It now gives up words instead — `… N more lines — run '…' for the rest`, then `… N more — run '…'`, then `… run '…'` — and only truncates when even the shortest cannot fit.
+
 ### Changed — may fail an existing audit
 - **`Audit` checks the `help flags` page.** It is a listing like `-h` but with its own column: it carries the library's `-h, --help` and `-v, --version` rows (and `-H` when enabled), and leaves out the application's own `Options` and the `-E` row. A flag description that fit the root page could therefore wrap there, and `Audit` could not see it. It now measures that listing and names it (`help flags: description of "-x" …`); the library's own rows shape the column and are never reported. The rule is now stated as covering the listing pages (`-h`, `--help`, `help flags`, `help topics`); `help man` is a manual and may wrap.
   - **If your CI now fails:** run `Audit` with `Warn: t.Log`; the message names the page. Shorten the description, or detail it in `LongDescription`.

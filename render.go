@@ -301,6 +301,8 @@ func (a *App) renderCommandGrouped(w io.Writer, th Theme, o Options, termWidth i
 		return visualLen(rendered) > textWidth || strings.Contains(rendered, "\n")
 	}
 
+	// The concise page is held to a few lines, and a blank between every row
+	// spent them on nothing; the hanging indent already separates wrapped rows.
 	anyMultiLine := false
 	for _, p := range params {
 		if isMultiLine(p) {
@@ -317,7 +319,7 @@ func (a *App) renderCommandGrouped(w io.Writer, th Theme, o Options, termWidth i
 			}
 			th.Accent.Fprintln(w, g+":")
 			prev = g
-		} else if anyMultiLine && i > 0 {
+		} else if anyMultiLine && !o.Concise && i > 0 {
 			fmt.Fprintln(w)
 		}
 		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, p.Name, o.inline(p.Description), th.Subcommand)
@@ -820,7 +822,7 @@ func (a *App) budgeted(w io.Writer, o Options, path []string, fn func(io.Writer)
 		_, _ = w.Write(buf.Bytes())
 		return
 	}
-	writeWithinBudget(w, buf.String(), budget, o.width(), a.explainMoreHint(path))
+	writeWithinBudget(w, buf.String(), budget, o.width(), a.explainMoreHint(path)...)
 }
 
 func (a *App) renderCommandConciseFooter(w io.Writer, th Theme, o Options, termWidth int, path []string) {

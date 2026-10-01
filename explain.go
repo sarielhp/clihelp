@@ -147,15 +147,18 @@ func (a *App) explainLine(w io.Writer, line string, columns, budget int) {
 	} else {
 		a.RenderCommand(o, path...)
 	}
-	writeWithinBudget(w, buf.String(), budget-1, columns, a.explainMoreHint(path))
+	writeWithinBudget(w, buf.String(), budget-1, columns, a.explainMoreHint(path)...)
 }
 
-// explainMoreHint names the command that prints the help in full.
-func (a *App) explainMoreHint(path []string) string {
-	if len(path) == 0 {
-		return fmt.Sprintf("run '%s help' for the rest", appName(a))
+// explainMoreHint names the command that prints the help in full, longest
+// wording first; writeWithinBudget falls back to the shorter ones when a narrow
+// terminal cannot hold the long one.
+func (a *App) explainMoreHint(path []string) []string {
+	cmd := appName(a) + " help"
+	if len(path) > 0 {
+		cmd += " " + strings.Join(path, " ")
 	}
-	return fmt.Sprintf("run '%s help %s' for the rest", appName(a), strings.Join(path, " "))
+	return []string{"run '" + cmd + "' for the rest", "run '" + cmd + "'"}
 }
 
 // dropOrphanHeading removes a section heading that the cut left with nothing
@@ -194,7 +197,12 @@ func isHeadingLine(line string) bool {
 
 // writeWithinBudget writes at most budget lines of text, replacing whatever did
 // not fit with a single line saying how much was left and where to read it.
-func writeWithinBudget(w io.Writer, text string, budget, columns int, hint string) {
+//
+// The hints are alternative wordings, longest first. That line is the page's only
+// pointer to the rest, so on a terminal too narrow for the long wording it gives
+// up words — "N more lines" becomes "N more", then the count goes — and never
+// the command it names, which used to be cut mid-word ("run 'podctl help buil…").
+func writeWithinBudget(w io.Writer, text string, budget, columns int, hints ...string) {
 	lines := splitLines(strings.TrimRight(text, "\n"))
 	if budget < 1 {
 		return
@@ -209,8 +217,27 @@ func writeWithinBudget(w io.Writer, text string, budget, columns int, hint strin
 	for _, l := range kept {
 		fmt.Fprintln(w, l)
 	}
-	note := fmt.Sprintf("… %d more lines — %s", len(lines)-len(kept), hint)
-	fmt.Fprintln(w, runewidth.Truncate(note, columns, "…"))
+	fmt.Fprintln(w, moreNote(len(lines)-len(kept), columns, hints))
+}
+
+// moreNote is the first wording of the "more lines" note that fits columns.
+func moreNote(more, columns int, hints []string) string {
+	if len(hints) == 0 {
+		hints = []string{""}
+	}
+	var candidates []string
+	for _, hint := range hints {
+		candidates = append(candidates,
+			fmt.Sprintf("… %d more lines — %s", more, hint),
+			fmt.Sprintf("… %d more — %s", more, hint),
+			"… "+hint)
+	}
+	for _, c := range candidates {
+		if runewidth.StringWidth(c) <= columns {
+			return c
+		}
+	}
+	return runewidth.Truncate(candidates[len(candidates)-1], columns, "…")
 }
 
 // handleExplain serves the __explain protocol call: one argument, the command
