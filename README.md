@@ -205,6 +205,8 @@ An unrecognized flag and `--` both end command resolution, so unknown flags are 
 
 > [!TIP]
 > **Recommended:** Running the audit helper as a standard Go unit test makes it easy to avoid introducing missing descriptions, duplicate shorthand flags, subcommand name collisions, or confusing path permutations (like `job run` vs `run job`) as your CLI expands.
+>
+> The audit also holds help text to a visual standard: every short `Description` must fit on one row of its listing at 80 columns (`AuditOptions.Width` changes the width), and all violations are reported at once. Detail belongs in `LongDescription` and `Notes`, which are unlimited. Verbatim notes and example lines wider than the width are reported through `AuditOptions.Warn` and do not fail.
 
 ---
 

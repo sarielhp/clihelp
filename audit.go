@@ -1,6 +1,7 @@
 package clihelp
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -48,9 +49,6 @@ func auditCommandNameUniqueness(seenNames map[string]bool, cmd Command, currentP
 			return fmt.Errorf("duplicate subcommand alias %q under path %q", alias, strings.Join(currentPath, " "))
 		}
 		seenNames[alias] = true
-	}
-	if strings.Contains(strings.TrimSpace(cmd.Description), "\n") {
-		return fmt.Errorf("command %q under path %q: Description must be one line; put the rest in LongDescription", cmd.Name, strings.Join(currentPath, " "))
 	}
 	if cmd.Description == "" {
 		return fmt.Errorf("command %q under path %q is missing a Description", cmd.Name, strings.Join(currentPath, " "))
@@ -169,10 +167,6 @@ func auditCommandTree(cmds []Command, currentPath []string, allPaths *[]commandP
 			return err
 		}
 
-		if err := auditCommandLayout(cmd, cmdPath, opts); err != nil {
-			return err
-		}
-
 		if err := auditCommandTree(cmd.Subcommands, cmdPath, allPaths, persistent, opts); err != nil {
 			return err
 		}
@@ -217,10 +211,7 @@ func audit(app *App, opts AuditOptions) error {
 		return err
 	}
 
-	if err := auditAppLayout(app, opts); err != nil {
-		return err
-	}
-
 	var allPaths []commandPathInfo
-	return auditCommandTree(app.Commands, nil, &allPaths, owners, opts)
+	structural := auditCommandTree(app.Commands, nil, &allPaths, owners, opts)
+	return errors.Join(structural, auditLayout(app, opts))
 }

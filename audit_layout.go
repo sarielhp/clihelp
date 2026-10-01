@@ -1,6 +1,7 @@
 package clihelp
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -26,24 +27,22 @@ func (o AuditOptions) warn(format string, args ...any) {
 // description column from colIndentFor, and the text width from wrapWidth.
 // A name wider than the column puts the description on its own line, so
 // the same indent applies either way.
-func auditRows(scope string, params []Param, opts AuditOptions) error {
+func auditRows(scope string, params []Param, opts AuditOptions) []error {
 	if len(params) == 0 {
 		return nil
 	}
+	var errs []error
 	width := opts.width()
 	indent := colIndentFor(params, width, minTextColumns)
 	textWidth := wrapWidth(width, indent, Options{}.maxContent()) - indent
 	for _, p := range params {
 		rendered := renderInlineTo(p.Description, true)
-		if strings.Contains(rendered, "\n") {
-			return fmt.Errorf("%s: description of %q spans several lines; the short description must be one line", scope, p.Name)
-		}
 		if w := visualLen(rendered); w > textWidth {
-			return fmt.Errorf("%s: description of %q is %d columns, but only %d fit on one row at width %d (shorten it, or move the detail to LongDescription)",
-				scope, p.Name, w, textWidth, width)
+			errs = append(errs, fmt.Errorf("%s: description of %q is %d columns, but only %d fit on one row at width %d (shorten it, or move the detail to LongDescription)",
+				scope, p.Name, w, textWidth, width))
 		}
 	}
-	return nil
+	return errs
 }
 
 func commandParams(cmds []Command) []Param {
@@ -69,34 +68,37 @@ func visibleOptionParams(groups ...[]Option) []Param {
 	return params
 }
 
-// auditCommandLayout checks the rows a command contributes to its own help: its
-// subcommand listing and its flag lists. The command's own row belongs to its
-// parent's listing and is checked there.
-func auditCommandLayout(cmd Command, path []string, opts AuditOptions) error {
-	scope := "command " + strings.Join(path, " ")
-	if err := auditRows(scope+" subcommands", commandParams(cmd.Subcommands), opts); err != nil {
-		return err
-	}
-	if err := auditRows(scope+" flags", visibleOptionParams(cmd.PersistentOptions, cmd.Options), opts); err != nil {
-		return err
-	}
-	warnLongText(scope, cmd.Examples, cmd.Notes, opts)
-	return nil
+// auditLayout checks the layout of the whole tree and reports every violation,
+// not just the first: an application with ten long descriptions should learn
+// that in one run. It is independent of the structural checks, which stop at
+// their first error, and audit joins the two.
+func auditLayout(app *App, opts AuditOptions) error {
+	errs := auditRows("the app's commands", commandParams(app.Commands), opts)
+	errs = append(errs, auditRows("the app's shortcuts", commandParams(app.Shortcuts), opts)...)
+	errs = append(errs, auditRows("the app's flags", visibleOptionParams(app.PersistentOptions, app.GlobalFlags, app.Options), opts)...)
+	warnLongText("the app", app.Examples, nil, opts)
+	errs = append(errs, auditCommandsLayout(app.Commands, nil, opts)...)
+	errs = append(errs, auditCommandsLayout(app.Shortcuts, nil, opts)...)
+	return errors.Join(errs...)
 }
 
-// auditAppLayout checks the application-level listings.
-func auditAppLayout(app *App, opts AuditOptions) error {
-	if err := auditRows("the app's commands", commandParams(app.Commands), opts); err != nil {
-		return err
+// auditCommandsLayout checks what each command contributes to its own help: a
+// one-line Description, its subcommand listing and its flag lists. A command's
+// own row belongs to its parent's listing and is checked there.
+func auditCommandsLayout(cmds []Command, parent []string, opts AuditOptions) []error {
+	var errs []error
+	for _, cmd := range cmds {
+		path := append(append([]string(nil), parent...), cmd.Name)
+		scope := "command " + strings.Join(path, " ")
+		if strings.Contains(strings.TrimSpace(cmd.Description), "\n") {
+			errs = append(errs, fmt.Errorf("%s: Description must be one line; put the rest in LongDescription", scope))
+		}
+		errs = append(errs, auditRows(scope+" subcommands", commandParams(cmd.Subcommands), opts)...)
+		errs = append(errs, auditRows(scope+" flags", visibleOptionParams(cmd.PersistentOptions, cmd.Options), opts)...)
+		warnLongText(scope, cmd.Examples, cmd.Notes, opts)
+		errs = append(errs, auditCommandsLayout(cmd.Subcommands, path, opts)...)
 	}
-	if err := auditRows("the app's shortcuts", commandParams(app.Shortcuts), opts); err != nil {
-		return err
-	}
-	if err := auditRows("the app's flags", visibleOptionParams(app.PersistentOptions, app.GlobalFlags, app.Options), opts); err != nil {
-		return err
-	}
-	warnLongText("the app", app.Examples, nil, opts)
-	return nil
+	return errs
 }
 
 // warnLongText reports the long-tier text that the renderer cannot wrap:

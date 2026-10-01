@@ -223,7 +223,7 @@ a redirecting caller sees it, and that caller wants it.
 | `docs/` | User and developer documentation guides, site index, and generated markdown reference sites |
 | `docs_drift_test.go` | Guard verifying that documentation prose only names real exported symbols and members |
 | `tree/` | Subpackage for command hierarchy tree visualization (`tree.Render`) |
-| `audit.go` | Static analysis audit (`Audit`) verifying command uniqueness, flag collision, and parameter invariants |
+| `audit.go` | Static analysis audit (`Audit`) verifying command uniqueness, flag collision, parameter invariants, and one-row short descriptions (`audit_layout.go`) |
 | `examples.go` | Example command syntax colorizer, shell tokenizer, and static example validator (`ValidateExample`, `ValidateAllExamples`) |
 | `examples_test.go` | Unit tests for example shell splitting, ANSI syntax colorization, and CLI constraint validation |
 | `clihelp_test.go` | Unit tests for help formatting, command dispatch, ANSI stripping, and usage output |
@@ -267,6 +267,12 @@ dependency cycle across five files until it was untangled; keep it acyclic:
 A reference from a lower layer to a higher one is the cycle coming back. If a constant is
 what you need from above, move the constant down — that is why the `__complete` / `__explain`
 / `__clihelp` names live in `names.go` and not in `protocol.go`.
+
+## Visual Standards for Help Text
+
+- **Short descriptions fit one row.** A `Description` (command, subcommand, shortcut, flag) is one line that renders on a single row of a listing at 80 columns. `clihelp.Audit` fails otherwise and reports every offender in one run. Put detail in `LongDescription`, `Notes` and `Examples`, which have no length limit.
+- Verbatim notes (`Note.Raw`) and example lines wider than 80 columns cannot be wrapped; `Audit` reports them through `AuditOptions.Warn` without failing.
+- Set `AuditOptions.Width` to audit against a different terminal width.
 
 ## Agent Development Rules
 

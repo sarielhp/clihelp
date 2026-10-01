@@ -71,3 +71,24 @@ func TestAuditLongTierIsUnlimitedButWarnsOnUnwrappable(t *testing.T) {
 		})
 	}
 }
+
+func TestAuditReportsEveryLayoutViolation(t *testing.T) {
+	long := strings.Repeat("word ", 20)
+	app := &App{Name: "a", Commands: []Command{
+		{Name: "one", Description: long},
+		{Name: "two", Description: "fine"},
+		{Name: "three", Description: long, Subcommands: []Command{{Name: "sub", Description: long}}},
+	}}
+	err := Audit(app, AuditOptions{SkipExampleValidation: true})
+	if err == nil {
+		t.Fatal("Audit = nil, want errors")
+	}
+	for _, want := range []string{`"one"`, `"three"`, `"sub"`} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("Audit error does not mention %s:\n%v", want, err)
+		}
+	}
+	if strings.Contains(err.Error(), `"two"`) {
+		t.Errorf("Audit error mentions the conforming command:\n%v", err)
+	}
+}
