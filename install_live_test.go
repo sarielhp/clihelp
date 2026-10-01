@@ -45,7 +45,7 @@ func liveShell(t *testing.T, shell, home, script string, args ...string) string 
 	t.Helper()
 	path, err := exec.LookPath(shell)
 	if err != nil {
-		t.Skipf("%s not found, skipping", shell)
+		skipMissingToolf(t, "%s not found, skipping", shell)
 	}
 	cmd := sandboxedCommand(t, path, append(args, "-c", script)...)
 	cmd.Env = append(cmd.Env,
@@ -64,7 +64,7 @@ func liveShell(t *testing.T, shell, home, script string, args ...string) string 
 
 func TestLiveZshOneStepInstall(t *testing.T) {
 	if _, err := exec.LookPath("zsh"); err != nil {
-		t.Skip("zsh not found, skipping")
+		skipMissingTool(t, "zsh not found, skipping")
 	}
 	home, _ := liveInstall(t, "zsh")
 
@@ -97,7 +97,7 @@ print -r -- "HOOK: ${precmd_functions[*]:-none}"
 // while compdef does not exist yet. Registration has to survive it.
 func TestLiveZshInstallSurvivesDeferredCompinit(t *testing.T) {
 	if _, err := exec.LookPath("zsh"); err != nil {
-		t.Skip("zsh not found, skipping")
+		skipMissingTool(t, "zsh not found, skipping")
 	}
 	home, _ := liveInstall(t, "zsh")
 
@@ -122,7 +122,7 @@ print -r -- "AFTER: ${_comps[podctl]:-none} hook=${precmd_functions[*]:-none}"
 // a fish with its own configuration and asks what it found there.
 func TestLiveFishOneStepInstall(t *testing.T) {
 	if _, err := exec.LookPath("fish"); err != nil {
-		t.Skip("fish not found, skipping")
+		skipMissingTool(t, "fish not found, skipping")
 	}
 	home, _ := liveInstall(t, "fish")
 
@@ -153,7 +153,7 @@ func TestLiveUninstallLeavesNothingBehind(t *testing.T) {
 	for _, shell := range []string{"zsh", "fish"} {
 		t.Run(shell, func(t *testing.T) {
 			if _, err := exec.LookPath(shell); err != nil {
-				t.Skipf("%s not found, skipping", shell)
+				skipMissingToolf(t, "%s not found, skipping", shell)
 			}
 			home, bin := liveInstall(t, shell)
 

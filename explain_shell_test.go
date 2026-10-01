@@ -43,7 +43,7 @@ func TestKeyBindingSnippetsParse(t *testing.T) {
 		t.Run(tt.shell, func(t *testing.T) {
 			shellPath, err := exec.LookPath(tt.shell)
 			if err != nil {
-				t.Skipf("%s not found, skipping", tt.shell)
+				skipMissingToolf(t, "%s not found, skipping", tt.shell)
 			}
 			_, snippet := buildExplainFixture(t, tt.shell)
 			if out, err := sandboxedCommand(t, shellPath, append(tt.args, snippet)...).CombinedOutput(); err != nil {
@@ -58,7 +58,7 @@ func TestKeyBindingSnippetsParse(t *testing.T) {
 func TestLiveBashAltHExpandsAndExplains(t *testing.T) {
 	bashPath, err := exec.LookPath("bash")
 	if err != nil {
-		t.Skip("bash not found, skipping")
+		skipMissingTool(t, "bash not found, skipping")
 	}
 	binDir, snippet := buildExplainFixture(t, "bash")
 
@@ -108,7 +108,7 @@ echo "POINT:$READLINE_POINT"
 func TestLiveBashAltHIgnoresOtherCommands(t *testing.T) {
 	bashPath, err := exec.LookPath("bash")
 	if err != nil {
-		t.Skip("bash not found, skipping")
+		skipMissingTool(t, "bash not found, skipping")
 	}
 	binDir, snippet := buildExplainFixture(t, "bash")
 
@@ -154,7 +154,7 @@ func TestCompletionScriptsAreSafeToSource(t *testing.T) {
 		t.Run(tt.shell, func(t *testing.T) {
 			shellPath, err := exec.LookPath(tt.shell)
 			if err != nil {
-				t.Skipf("%s not found, skipping", tt.shell)
+				skipMissingToolf(t, "%s not found, skipping", tt.shell)
 			}
 
 			dir := t.TempDir()
@@ -194,7 +194,7 @@ func TestCompletionScriptsAreSafeToSource(t *testing.T) {
 func TestLiveBashAltHServesSeveralPrograms(t *testing.T) {
 	bashPath, err := exec.LookPath("bash")
 	if err != nil {
-		t.Skip("bash not found, skipping")
+		skipMissingTool(t, "bash not found, skipping")
 	}
 
 	dir := t.TempDir()
@@ -257,7 +257,7 @@ done
 func TestLiveBashWrapperScript(t *testing.T) {
 	bashPath, err := exec.LookPath("bash")
 	if err != nil {
-		t.Skip("bash not found, skipping")
+		skipMissingTool(t, "bash not found, skipping")
 	}
 
 	dir := t.TempDir()
@@ -327,7 +327,7 @@ func TestLiveBashWrapperScript(t *testing.T) {
 func TestLiveBashOneStepInstall(t *testing.T) {
 	bashPath, err := exec.LookPath("bash")
 	if err != nil {
-		t.Skip("bash not found, skipping")
+		skipMissingTool(t, "bash not found, skipping")
 	}
 
 	home := t.TempDir()
@@ -376,7 +376,7 @@ echo "CANDIDATES: ${COMPREPLY[*]}"
 func TestLiveBashAltHRefusesAPathBearingCommand(t *testing.T) {
 	bashPath, err := exec.LookPath("bash")
 	if err != nil {
-		t.Skip("bash not found, skipping")
+		skipMissingTool(t, "bash not found, skipping")
 	}
 
 	dir := t.TempDir()
@@ -425,7 +425,7 @@ echo "LINE:$READLINE_LINE"
 func TestLiveBashAltHHandlesLeadingWhitespace(t *testing.T) {
 	bashPath, err := exec.LookPath("bash")
 	if err != nil {
-		t.Skip("bash not found, skipping")
+		skipMissingTool(t, "bash not found, skipping")
 	}
 
 	dir := t.TempDir()

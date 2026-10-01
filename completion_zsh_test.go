@@ -12,7 +12,7 @@ import (
 func setupZshCompletion(t *testing.T) (string, func([]string) []string) {
 	zshPath, err := exec.LookPath("zsh")
 	if err != nil {
-		t.Skip("zsh not found on system, skipping live zsh completion test")
+		skipMissingTool(t, "zsh not found on system, skipping live zsh completion test")
 	}
 
 	tmpDir := t.TempDir()
@@ -326,7 +326,7 @@ func TestLiveZshCompletion(t *testing.T) {
 func TestLiveZshDynamicCallback(t *testing.T) {
 	zshPath, err := exec.LookPath("zsh")
 	if err != nil {
-		t.Skip("zsh not found on system, skipping live zsh completion test")
+		skipMissingTool(t, "zsh not found on system, skipping live zsh completion test")
 	}
 
 	tmpDir := t.TempDir()

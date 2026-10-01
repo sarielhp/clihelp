@@ -12,7 +12,7 @@ import (
 func setupFishCompletion(t *testing.T) (string, func(string) []string) {
 	fishPath, err := exec.LookPath("fish")
 	if err != nil {
-		t.Skip("fish not found on system, skipping live fish completion test")
+		skipMissingTool(t, "fish not found on system, skipping live fish completion test")
 	}
 
 	tmpDir := t.TempDir()
@@ -279,7 +279,7 @@ func TestLiveFishCompletion(t *testing.T) {
 func TestLiveFishDynamicCallback(t *testing.T) {
 	fishPath, err := exec.LookPath("fish")
 	if err != nil {
-		t.Skip("fish not found on system, skipping live fish completion test")
+		skipMissingTool(t, "fish not found on system, skipping live fish completion test")
 	}
 
 	tmpDir := t.TempDir()

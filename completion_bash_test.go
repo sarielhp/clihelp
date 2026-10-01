@@ -12,7 +12,7 @@ import (
 func setupBashCompletion(t *testing.T) (string, func([]string, int) []string) {
 	bashPath, err := exec.LookPath("bash")
 	if err != nil {
-		t.Skip("bash not found on system, skipping live bash completion test")
+		skipMissingTool(t, "bash not found on system, skipping live bash completion test")
 	}
 
 	tmpDir := t.TempDir()
@@ -286,7 +286,7 @@ func TestLiveBashCompletion(t *testing.T) {
 func TestLiveBashDynamicCallback(t *testing.T) {
 	bashPath, err := exec.LookPath("bash")
 	if err != nil {
-		t.Skip("bash not found on system, skipping live bash completion test")
+		skipMissingTool(t, "bash not found on system, skipping live bash completion test")
 	}
 
 	tmpDir := t.TempDir()

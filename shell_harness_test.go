@@ -47,7 +47,7 @@ func driveShell(t *testing.T, shell, dir, snippet, stubs, body string) string {
 	t.Helper()
 	path, err := exec.LookPath(shell)
 	if err != nil {
-		t.Skipf("%s not found, skipping", shell)
+		skipMissingToolf(t, "%s not found, skipping", shell)
 	}
 
 	script := stubs + "\nsource " + snippet + "\n" + body + "\n"
@@ -517,7 +517,7 @@ printf 'REPLY:%s\n' "${COMPREPLY[@]}"`
 func TestWrapperSplitsOnAnyBlank(t *testing.T) {
 	shPath, err := exec.LookPath("sh")
 	if err != nil {
-		t.Skip("sh not found, skipping")
+		skipMissingTool(t, "sh not found, skipping")
 	}
 	dir := t.TempDir()
 	// The wrapped program reports the line it was asked to explain.

@@ -365,7 +365,7 @@ func TestClihelpVerbsRejectContradictoryFlags(t *testing.T) {
 func TestGeneratedWrapperPassesArgumentsThrough(t *testing.T) {
 	shPath, err := exec.LookPath("sh")
 	if err != nil {
-		t.Skip("sh not found")
+		skipMissingTool(t, "sh not found")
 	}
 	dir := t.TempDir()
 	marker := filepath.Join(dir, "EXECUTED")

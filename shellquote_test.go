@@ -94,7 +94,7 @@ func runShell(t *testing.T, shell, rc string) {
 	t.Helper()
 	path, err := exec.LookPath(shell)
 	if err != nil {
-		t.Skipf("%s not found", shell)
+		skipMissingToolf(t, "%s not found", shell)
 	}
 	cmd := sandboxedCommand(t, path, "--norc", "--noprofile", "-c", "source "+rc)
 	cmd.Env = append(cmd.Env, "HOME="+filepath.Dir(rc))

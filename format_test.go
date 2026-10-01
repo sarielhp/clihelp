@@ -2,6 +2,7 @@ package clihelp
 
 import (
 	"bytes"
+	"github.com/mattn/go-runewidth"
 	"strings"
 	"testing"
 
@@ -319,6 +320,7 @@ func TestUniformWrappingWithLinks(t *testing.T) {
 }
 
 func TestHangingIndentNumberedAndBulletLists(t *testing.T) {
+	narrowWidthRules(t) // the expected indents are for the narrow rules; see the East Asian test below
 	tests := []struct {
 		name        string
 		indent      int
@@ -464,4 +466,32 @@ func TestRawAndFencedNotesFormatting(t *testing.T) {
 			t.Errorf("fences should not appear in terminal output:\n%s", plain)
 		}
 	})
+}
+
+// Under East Asian width rules (RUNEWIDTH_EASTASIAN=1, CJK locales) a bullet
+// such as "•" is drawn two columns wide, and the text of a list item starts one
+// column further right. The hanging indent follows what is drawn, so the
+// continuation lines move with it — five spaces, not four.
+func TestHangingIndentFollowsTheBulletAsDrawn(t *testing.T) {
+	set := func(eastAsian bool) {
+		was := runewidth.DefaultCondition.EastAsianWidth
+		runewidth.DefaultCondition.EastAsianWidth = eastAsian
+		t.Cleanup(func() { runewidth.DefaultCondition.EastAsianWidth = was })
+	}
+	for _, tt := range []struct {
+		eastAsian bool
+		want      int
+	}{{false, 4}, {true, 5}} {
+		set(tt.eastAsian)
+		var buf bytes.Buffer
+		reflow(&buf, color.New(color.FgWhite), 30, 2, "", "• Unicode bullet item that wraps nicely across multiple lines in the terminal.")
+		lines := strings.Split(strings.TrimRight(stripANSI(buf.String()), "\n"), "\n")
+		if len(lines) < 2 {
+			t.Fatalf("no wrap:\n%s", buf.String())
+		}
+		got := len(lines[1]) - len(strings.TrimLeft(lines[1], " "))
+		if got != tt.want {
+			t.Errorf("East Asian rules %v: continuation indent %d, want %d", tt.eastAsian, got, tt.want)
+		}
+	}
 }

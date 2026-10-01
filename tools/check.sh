@@ -33,8 +33,18 @@ if [ "$want" != "$lib" ]; then
     exit 1
 fi
 
+# A shell, man or sh that is missing must fail the gate, not skip its tests in
+# silence; set CLIHELP_REQUIRE_SHELLS=0 to run on a machine without them.
+export CLIHELP_REQUIRE_SHELLS="${CLIHELP_REQUIRE_SHELLS:-1}"
+
 echo "=== Test (race) ==="
 go test -race -timeout 300s ./...
+
+# Ambiguous-width characters (a bullet, an em dash, an ellipsis) are two columns
+# under East Asian width rules. The library measures what it draws, so layout must
+# hold there too; one leg of the suite proves it.
+echo "=== Test (East Asian widths) ==="
+RUNEWIDTH_EASTASIAN=1 go test -count=1 -timeout 300s .
 
 echo "=== Build Example ==="
 go build -o /dev/null ./example

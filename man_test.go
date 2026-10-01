@@ -119,7 +119,7 @@ func TestManEscaping(t *testing.T) {
 func TestLiveManRendersThePageWithoutWarnings(t *testing.T) {
 	manPath, err := exec.LookPath("man")
 	if err != nil {
-		t.Skip("man not found, skipping")
+		skipMissingTool(t, "man not found, skipping")
 	}
 
 	dir := t.TempDir()
@@ -187,7 +187,7 @@ func TestInstallManPage(t *testing.T) {
 
 func TestInstallManPageRefusesToShadowAnother(t *testing.T) {
 	if _, err := exec.LookPath("man"); err != nil {
-		t.Skip("man not found, skipping")
+		skipMissingTool(t, "man not found, skipping")
 	}
 	home := sandboxHome(t)
 
@@ -276,7 +276,7 @@ func TestManPageRefreshedButNeverCreated(t *testing.T) {
 func TestManPageHeaderSurvivesAHostileVersion(t *testing.T) {
 	manPath, err := exec.LookPath("man")
 	if err != nil {
-		t.Skip("man not found, skipping")
+		skipMissingTool(t, "man not found, skipping")
 	}
 	app := manApp()
 	app.Version = `1.0"beta\x`

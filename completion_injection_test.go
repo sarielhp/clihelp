@@ -38,7 +38,7 @@ func TestCompletionRecordsAreOneLinePerCandidate(t *testing.T) {
 func TestBashCompletionDoesNotExpandCandidates(t *testing.T) {
 	bashPath, err := exec.LookPath("bash")
 	if err != nil {
-		t.Skip("bash not found on system, skipping live bash completion test")
+		skipMissingTool(t, "bash not found on system, skipping live bash completion test")
 	}
 
 	tmpDir := t.TempDir()
@@ -125,7 +125,7 @@ done
 func TestZshCompletionDoesNotEvaluateTheTypedLine(t *testing.T) {
 	zshPath, err := exec.LookPath("zsh")
 	if err != nil {
-		t.Skip("zsh not found, skipping")
+		skipMissingTool(t, "zsh not found, skipping")
 	}
 
 	dir := t.TempDir()
