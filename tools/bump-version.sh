@@ -49,7 +49,10 @@ trap 'restore; trap - ERR INT TERM HUP; echo "bump interrupted; version files re
 log=$(mktemp -t clihelp-bump-XXXXXX)
 
 echo "$new" > VERSION
-ruby -pi -e "sub(/Version:\s+\"[^\"]+\"/, %Q{Version:        \"$new\"})" example/main.go
+# Keep the whitespace after "Version:" as it is: gofmt aligns the keys of that
+# literal, and a fixed run of spaces made the tree un-gofmt-clean the moment the
+# number changed.
+NEW="$new" ruby -pi -e 'sub(/(Version:\s+)"[^"]+"/) { %Q{#{$1}"#{ENV["NEW"]}"} }' example/main.go
 ruby -pi -e "sub(/const Version = \"[^\"]+\"/, %Q{const Version = \"$new\"})" clihelp.go
 
 # Promote the changelog: what has accumulated under [Unreleased] becomes this

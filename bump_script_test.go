@@ -32,7 +32,7 @@ func bumpFixture(t *testing.T, goStub, changelog string) (root, path string) {
 	files := map[string]string{
 		"tools/bump-version.sh":       string(script),
 		"VERSION":                     "0.0.1\n",
-		"example/main.go":             "package main\n\nvar app = App{\n\tVersion:        \"0.0.1\",\n}\n",
+		"example/main.go":             "package main\n\nvar app = App{\n\tName:                  \"x\",\n\tVersion:               \"0.0.1\",\n}\n",
 		"clihelp.go":                  "package clihelp\n\nconst Version = \"0.0.1\"\n",
 		"docs/clihelp/index.md":       "docs\n",
 		"docs/mail_cli_fake/index.md": "docs\n",
@@ -219,5 +219,28 @@ func TestBumpRefusesAnEmptyChangelog(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "Unreleased") {
 		t.Errorf("the refusal does not mention [Unreleased]:\n%s", stderr.String())
+	}
+}
+
+// The version literal in example/main.go sits among keys that gofmt aligns, and
+// the bump rewrote it with a fixed run of spaces. The tree was no longer
+// gofmt-clean, which the old check hid by reformatting it after the fact and
+// leaving that rewrite uncommitted after the tag; the read-only check refuses it.
+// The bump has to change the number and nothing else.
+func TestBumpKeepsTheVersionLiteralAligned(t *testing.T) {
+	root, path := bumpFixture(t, "exit 0", defaultChangelog)
+	var stderr bytes.Buffer
+	cmd := bumpCommand(root, path)
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("bump failed: %v\n%s", err, stderr.String())
+	}
+	body, err := os.ReadFile(filepath.Join(root, "example", "main.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = "\tVersion:               \"0.0.2\",\n"
+	if !strings.Contains(string(body), want) {
+		t.Errorf("the version literal lost its alignment; want a line %q in\n%s", want, body)
 	}
 }
