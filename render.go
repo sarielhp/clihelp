@@ -429,11 +429,15 @@ func writeUsage(w io.Writer, th Theme, o Options, termWidth int, usage string) {
 	_, _ = io.WriteString(w, strings.ReplaceAll(buf.String(), groupSpace, " "))
 }
 
-// groupSpace stands in for a space that must not be a line break. It is a
-// private-use rune: unlike U+00A0 it is not white space to strings.Fields, so
-// the reflow keeps it inside its word, and it measures one column like the
-// space it replaces.
-const groupSpace = "\ue000"
+// groupSpace stands in for a space that must not be a line break. It is the
+// Unicode noncharacter U+FDD0, set aside for exactly this kind of internal use:
+// it is not white space to strings.Fields, so the reflow keeps it inside its
+// word; it cannot occur in real text; and go-runewidth measures it as one column
+// under both the narrow and the East Asian width rules, like the space it
+// replaces. A private-use rune looked equivalent and was not — U+E000 is two
+// columns under East Asian rules, so a glued group cost an extra column per
+// space and the same page wrapped differently depending on the user's locale.
+const groupSpace = "\ufdd0"
 
 // maxGluedGroup bounds the groups kept whole; a longer one is prose that
 // happens to sit in brackets, and holding it together would overflow the line.

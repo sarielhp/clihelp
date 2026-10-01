@@ -2,6 +2,7 @@ package clihelp
 
 import (
 	"bytes"
+	"github.com/mattn/go-runewidth"
 	"strings"
 	"testing"
 )
@@ -46,9 +47,9 @@ func TestUsageLineKeepsBracketedGroupsWhole(t *testing.T) {
 
 func TestGlueGroups(t *testing.T) {
 	tests := []struct{ name, in, want string }{
-		{"flag and value", "a [--x V] b", "a [--x\ue000V] b"},
-		{"nested", "[--[no-]n v]", "[--[no-]n\ue000v]"},
-		{"angle", "<a b> c", "<a\ue000b> c"},
+		{"flag and value", "a [--x V] b", "a [--x" + groupSpace + "V] b"},
+		{"nested", "[--[no-]n v]", "[--[no-]n" + groupSpace + "v]"},
+		{"angle", "<a b> c", "<a" + groupSpace + "b> c"},
 		{"unbalanced opener", "a [b c", "a [b c"},
 		{"too long is prose", "[" + strings.Repeat("word ", 12) + "]", "[" + strings.Repeat("word ", 12) + "]"},
 		{"no groups", "plain text", "plain text"},
@@ -59,5 +60,34 @@ func TestGlueGroups(t *testing.T) {
 				t.Errorf("glueGroups(%q) = %q, want %q", tt.in, got, tt.want)
 			}
 		})
+	}
+}
+
+// go-runewidth measures some runes as two columns under East Asian width rules
+// (RUNEWIDTH_EASTASIAN=1, or a CJK locale) and as one otherwise. The stand-in
+// for a non-breaking space is swapped back to a one-column space after the
+// wrap, so it has to be measured as one column under both settings — otherwise
+// a glued group costs an extra column per space and lines wrap early, and the
+// same help page is laid out differently depending on the user's locale.
+func TestUsageWrapDoesNotDependOnEastAsianWidth(t *testing.T) {
+	const usage = "x [aa bb cc dd] [ee ff gg hh] [ii jj kk]"
+	render := func(eastAsian bool, width int) string {
+		was := runewidth.DefaultCondition.EastAsianWidth
+		runewidth.DefaultCondition.EastAsianWidth = eastAsian
+		defer func() { runewidth.DefaultCondition.EastAsianWidth = was }()
+		var buf bytes.Buffer
+		writeUsage(&buf, defaultTheme(), Options{NoColor: true}, width, usage)
+		return buf.String()
+	}
+	// Widths where a two-column sentinel moves a break: the groups are 13 and
+	// 10 columns, so the cost of each glued space decides where the row ends.
+	for _, width := range []int{24, 32, 33} {
+		narrow, east := render(false, width), render(true, width)
+		if narrow != east {
+			t.Errorf("width %d wraps differently under East Asian width rules:\n--- narrow\n%s--- east asian\n%s", width, narrow, east)
+		}
+		if !strings.Contains(narrow, "\n") {
+			t.Fatalf("width %d: the usage line did not wrap, so the test measures nothing:\n%s", width, narrow)
+		}
 	}
 }
