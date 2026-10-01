@@ -200,7 +200,9 @@ func (a *App) renderManPage(o Options) {
 
 	// 2. SYNOPSIS
 	th.Hdr.Fprintln(w, "SYNOPSIS")
-	reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", o.inline(a.usageLine()))
+	wrapGlued(w, wrapWidth(termWidth, 4, o.maxContent())-4, a.usageLine(), func(b io.Writer, text string) {
+		reflow(b, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", o.inline(text))
+	})
 	fmt.Fprintln(w)
 
 	// 3. DESCRIPTION

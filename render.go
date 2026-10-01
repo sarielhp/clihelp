@@ -425,9 +425,20 @@ const examplesFlagSpec = "-E, --examples"
 // value leaves "[--tags" at the end of one row and "TAGS]" at the start of the
 // next, which reads as two different things.
 func writeUsage(w io.Writer, th Theme, o Options, termWidth int, usage string) {
+	room := wrapWidth(termWidth, 8, o.maxContent()) - 8
+	wrapGlued(w, room, usage, func(b io.Writer, text string) {
+		reflowMargin(b, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 0, 8,
+			"Usage:", o.inline(text), th.Hdr)
+	})
+}
+
+// wrapGlued runs render over text with the spaces inside its bracketed groups
+// made unbreakable, then turns them back into spaces in the output. room is the
+// columns a row of that text has; a group wider than a row is left breakable,
+// because holding it together would overflow the terminal.
+func wrapGlued(w io.Writer, room int, text string, render func(io.Writer, string)) {
 	var buf bytes.Buffer
-	reflowMargin(&buf, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 0, 8,
-		"Usage:", o.inline(glueGroups(usage)), th.Hdr)
+	render(&buf, glueGroups(text, min(maxGluedGroup, room-1)))
 	_, _ = io.WriteString(w, strings.ReplaceAll(buf.String(), groupSpace, " "))
 }
 
@@ -445,21 +456,25 @@ const groupSpace = "\ufdd0"
 // happens to sit in brackets, and holding it together would overflow the line.
 const maxGluedGroup = 40
 
-// glueGroups replaces the spaces inside each balanced [..] or <..> group of s
-// with groupSpace. An unbalanced opener is left alone.
-func glueGroups(s string) string {
+// glueGroups replaces the white space inside each balanced [..] or <..> group of
+// s with groupSpace, for groups whose brackets are at most limit runes apart. An
+// unbalanced opener is left alone. An angle bracket only counts when it hugs its
+// text — "<file>" opens a group, "< in.txt" and "a > b" do not — so a shell
+// redirect or a comparison in a usage line is not mistaken for one.
+func glueGroups(s string, limit int) string {
 	runes := []rune(s)
 	glued := make([]bool, len(runes))
+	isSpace := func(i int) bool { return i < 0 || i >= len(runes) || runes[i] == ' ' || runes[i] == '\t' }
 	for _, pair := range [][2]rune{{'[', ']'}, {'<', '>'}} {
 		var open []int
 		for i, r := range runes {
 			switch {
-			case r == pair[0]:
+			case r == pair[0] && (pair[0] == '[' || !isSpace(i+1)):
 				open = append(open, i)
-			case r == pair[1] && len(open) > 0:
+			case r == pair[1] && len(open) > 0 && (pair[1] == ']' || !isSpace(i-1)):
 				start := open[len(open)-1]
 				open = open[:len(open)-1]
-				if i-start <= maxGluedGroup {
+				if i-start <= limit {
 					for j := start; j <= i; j++ {
 						glued[j] = true
 					}
@@ -468,7 +483,7 @@ func glueGroups(s string) string {
 		}
 	}
 	for i, r := range runes {
-		if r == ' ' && glued[i] {
+		if (r == ' ' || r == '\t') && glued[i] {
 			runes[i] = []rune(groupSpace)[0]
 		}
 	}

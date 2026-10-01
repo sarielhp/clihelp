@@ -6,6 +6,7 @@ All notable changes to `clihelp` will be documented in this file.
 
 ### Changed
 - **Concise help (`-h`) spends its lines on content.** A blank line used to go between every command row as soon as one row wrapped, so at 40 to 60 columns the root page listed four to six of seven commands. The concise page now relies on the hanging indent; the extended page keeps its blank lines.
+- **Usage-line gluing is finished.** `help man`'s synopsis now keeps `[--output FILE]` whole like the `Usage:` line does; a group wider than a row is left breakable instead of overflowing the terminal (a 49-column row at width 30 before); tabs inside a group are glued; and a `<` or `>` only counts as a bracket when it hugs its text, so `x < in.txt [opts] > out` and `a > b` are not mistaken for groups.
 - **The "N more lines" note keeps the command it names.** On a narrow terminal it was truncated through its own text (`run 'podctl help buil…`). It now gives up words instead — `… N more lines — run '…' for the rest`, then `… N more — run '…'`, then `… run '…'` — and only truncates when even the shortest cannot fit.
 
 ### Changed — may fail an existing audit

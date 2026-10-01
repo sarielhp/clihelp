@@ -57,7 +57,7 @@ func TestGlueGroups(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := glueGroups(tt.in); got != tt.want {
+			if got := glueGroups(tt.in, maxGluedGroup); got != tt.want {
 				t.Errorf("glueGroups(%q) = %q, want %q", tt.in, got, tt.want)
 			}
 		})
@@ -158,10 +158,74 @@ func TestGlueGroupsBoundary(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			in := group(tt.span)
-			got := glueGroups(in)
+			got := glueGroups(in, maxGluedGroup)
 			if glued := strings.Contains(got, groupSpace); glued != tt.glue {
 				t.Errorf("glueGroups of a %d-rune group: glued = %v, want %v", tt.span, glued, tt.glue)
 			}
 		})
+	}
+}
+
+// A bracketed group is kept whole only while it can fit on a row. Past that,
+// holding it together overflows the terminal, and a split group is the lesser
+// evil: the old behaviour put a 39-column group on its own row at width 30.
+func TestUsageGroupsWiderThanTheRowAreAllowedToSplit(t *testing.T) {
+	const usage = "x [aaaa bbbb cccc dddd eeee ffff gggg hhhh]"
+	var buf bytes.Buffer
+	writeUsage(&buf, defaultTheme(), Options{NoColor: true}, 30, usage)
+	for _, row := range strings.Split(strings.TrimRight(buf.String(), "\n"), "\n") {
+		if visualLen(row) > 30 {
+			t.Errorf("usage row is %d columns at width 30: %q\n%s", visualLen(row), row, buf.String())
+		}
+	}
+}
+
+func TestGlueGroupsEdges(t *testing.T) {
+	tests := []struct{ name, in, want string }{
+		{"shell redirect is not a group", "x < in.txt [opts here] > out.txt", "x < in.txt [opts" + groupSpace + "here] > out.txt"},
+		{"tab inside a group is glued", "[a\tb]", "[a" + groupSpace + "b]"},
+		{"angle group hugging its text", "x <in file> y", "x <in" + groupSpace + "file> y"},
+		{"comparison is not a group", "if a > b and c < d", "if a > b and c < d"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := glueGroups(tt.in, maxGluedGroup); got != tt.want {
+				t.Errorf("glueGroups(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+	t.Run("limit is honoured", func(t *testing.T) {
+		in := "[a b c d e f]" // the brackets are 12 runes apart
+		if got := glueGroups(in, 11); got != in {
+			t.Errorf("a group wider than the limit was glued: %q", got)
+		}
+		if got := glueGroups(in, 12); got == in {
+			t.Errorf("a group exactly at the limit was not glued")
+		}
+	})
+}
+
+// `help man` printed the synopsis through the plain reflow and split
+// "[--output FILE]" exactly as the Usage: line used to.
+func TestManSynopsisKeepsGroupsWhole(t *testing.T) {
+	const usage = "x build [--tags TAGS] [--output FILE] <image name> [args...]"
+	app := &App{Name: "x", UsageLine: usage, Commands: []Command{{Name: "build", Description: "Build"}}}
+	var buf bytes.Buffer
+	app.renderManPage(Options{Writer: &buf, Width: 40, NoColor: true})
+	page := buf.String()
+	i := strings.Index(page, "SYNOPSIS")
+	if i < 0 {
+		t.Fatalf("no SYNOPSIS:\n%s", page)
+	}
+	block := page[i+len("SYNOPSIS"):]
+	block = block[:strings.Index(block, "\n\n")]
+	rows := strings.Split(strings.TrimSpace(block), "\n")
+	if len(rows) < 2 {
+		t.Fatalf("the synopsis did not wrap at width 40:\n%s", block)
+	}
+	for _, row := range rows {
+		if strings.Count(row, "[")-strings.Count(row, "]") != 0 {
+			t.Errorf("a synopsis row splits a bracketed group: %q", row)
+		}
 	}
 }
