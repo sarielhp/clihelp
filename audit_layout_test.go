@@ -92,3 +92,28 @@ func TestAuditReportsEveryLayoutViolation(t *testing.T) {
 		t.Errorf("Audit error mentions the conforming command:\n%v", err)
 	}
 }
+
+// A flag row is drawn with its default, required and deprecated suffixes, so
+// the audit measures the decorated text the renderer draws.
+func TestAuditFlagRowsIncludeDecorations(t *testing.T) {
+	desc := strings.Repeat("x", 40)
+	tests := []struct {
+		name    string
+		opt     Option
+		wantErr bool
+	}{
+		{"plain fits", Option{Flags: "--x", Description: desc}, false},
+		{"default overflows", Option{Flags: "--x", Description: desc, DefaultText: "/var/lib/some/long/default/path"}, true},
+		{"required overflows", Option{Flags: "--x", Description: strings.Repeat("x", 65), Required: true}, true},
+		{"deprecated overflows", Option{Flags: "--x", Description: desc, Deprecated: "use --other-flag instead"}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			app := &App{Name: "a", GlobalFlags: []Option{tt.opt}}
+			err := Audit(app, AuditOptions{SkipExampleValidation: true})
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Audit = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

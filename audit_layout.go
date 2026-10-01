@@ -61,7 +61,7 @@ func visibleOptionParams(groups ...[]Option) []Param {
 	for _, options := range groups {
 		for _, opt := range options {
 			if !opt.Hidden {
-				params = append(params, Param{Name: opt.Flags, Description: firstSentence(opt.Description)})
+				params = append(params, Param{Name: opt.Flags, Description: decorateOptionDescription(opt)})
 			}
 		}
 	}
