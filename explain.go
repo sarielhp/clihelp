@@ -158,6 +158,29 @@ func (a *App) explainMoreHint(path []string) string {
 	return fmt.Sprintf("run '%s help %s' for the rest", appName(a), strings.Join(path, " "))
 }
 
+// dropOrphanHeading removes a section heading that the cut left with nothing
+// under it, along with the blank lines before it. A page that ends on
+// "Examples:" and then says "7 more lines" shows a heading that promises content
+// and delivers none; the dropped lines are counted in the note instead.
+func dropOrphanHeading(lines []string) []string {
+	end := len(lines)
+	for end > 0 && strings.TrimSpace(lines[end-1]) == "" {
+		end--
+	}
+	if end > 0 && isHeadingLine(lines[end-1]) {
+		end--
+		for end > 0 && strings.TrimSpace(lines[end-1]) == "" {
+			end--
+		}
+	}
+	return lines[:end]
+}
+
+// isHeadingLine reports whether line is an unindented "Name:" section heading.
+func isHeadingLine(line string) bool {
+	return line != "" && line[0] != ' ' && strings.HasSuffix(strings.TrimRight(stripANSI(line), " "), ":")
+}
+
 // writeWithinBudget writes at most budget lines of text, replacing whatever did
 // not fit with a single line saying how much was left and where to read it.
 func writeWithinBudget(w io.Writer, text string, budget, columns int, hint string) {
@@ -171,10 +194,11 @@ func writeWithinBudget(w io.Writer, text string, budget, columns int, hint strin
 		}
 		return
 	}
-	for _, l := range lines[:budget-1] {
+	kept := dropOrphanHeading(lines[:budget-1])
+	for _, l := range kept {
 		fmt.Fprintln(w, l)
 	}
-	note := fmt.Sprintf("… %d more lines — %s", len(lines)-(budget-1), hint)
+	note := fmt.Sprintf("… %d more lines — %s", len(lines)-len(kept), hint)
 	fmt.Fprintln(w, runewidth.Truncate(note, columns, "…"))
 }
 

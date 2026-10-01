@@ -195,3 +195,25 @@ func itoa(n int) string {
 	}
 	return string(b)
 }
+
+func TestWriteWithinBudgetDropsAnOrphanHeading(t *testing.T) {
+	page := "Usage: a\n\nCommands:\n  one  First\n\nExamples:\n  a one\n    Run it\n"
+	tests := []struct {
+		name   string
+		budget int
+		want   string
+	}{
+		{"cut lands under a heading", 7, "Usage: a\n\nCommands:\n  one  First\n… 4 more lines — hint\n"},
+		{"cut lands on the blank before it", 6, "Usage: a\n\nCommands:\n  one  First\n… 4 more lines — hint\n"},
+		{"fits", 20, page[:len(page)-1] + "\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf strings.Builder
+			writeWithinBudget(&buf, page, tt.budget, 80, "hint")
+			if buf.String() != tt.want {
+				t.Errorf("budget %d:\n got %q\nwant %q", tt.budget, buf.String(), tt.want)
+			}
+		})
+	}
+}
