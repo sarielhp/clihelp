@@ -2,6 +2,18 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Start only from a tree whose tracked files are all committed. restore() below
+# runs `git checkout` on the three version files, which silently throws away an
+# uncommitted edit to any of them (clihelp.go is the library's core file), and a
+# successful bump commits those files whole, so an unrelated edit would ship
+# inside a tagged, pushed release. Untracked files cannot be touched by either,
+# so they do not block a release.
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+    echo "bump: tracked files have uncommitted changes; commit or stash them first:" >&2
+    git status --short --untracked-files=no >&2
+    exit 1
+fi
+
 current=$(cat VERSION)
 IFS='.' read -r major minor patch <<< "$current"
 patch=$((patch + 1))
@@ -28,6 +40,11 @@ restore() {
     [ "$generated_were_clean" = 1 ] && git checkout -- "${generated[@]}" 2>/dev/null || true
 }
 trap restore ERR
+# An interrupt is a failure too. Only ERR used to restore, so Ctrl-C (or a
+# killed terminal) left the new version written into every file and the next
+# run bumped again from there, skipping a version — exactly what this function
+# exists to prevent.
+trap 'restore; trap - ERR INT TERM HUP; echo "bump interrupted; version files restored." >&2; exit 130' INT TERM HUP
 
 log=$(mktemp -t clihelp-bump-XXXXXX)
 
@@ -69,8 +86,8 @@ fi
 git add "${versioned[@]}" "${generated[@]}"
 git commit -q -m "chore: bump version to $new"
 # Past here the version is committed; restoring the files would empty the very
-# commit just made, so the trap comes off and each step reports for itself.
-trap - ERR
+# commit just made, so the traps come off and each step reports for itself.
+trap - ERR INT TERM HUP
 
 if ! git tag -a "$tag" -m "Release $tag"; then
     echo "bump: the version commit landed, but tag $tag could not be created." >&2
