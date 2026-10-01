@@ -332,7 +332,7 @@ var levelSuffixes = [][]string{
 func buildDeepTree() clihelp.Command {
 	return clihelp.Command{
 		Name:            "deep",
-		Description:     "**deep** — a nested tree of [demo commands](https://example.com/deep)",
+		Description:     "**deep** — a nested tree of [demo commands](https://example.com/deep).",
 		LongDescription: "This is the [deep command](https://example.com/deep) at the root of the demonstration hierarchy with a very long description that should trigger word-wrapping behavior in the help output formatter to ensure proper text reflow across multiple lines for testing purposes.",
 		UsageLine:       "podctl deep [options] <subcommand> — This is a **very long usage line** for the [deep command](https://example.com/deep) that should definitely trigger word-wrapping in the help output because it exceeds typical terminal widths and needs to be reflowed properly by the formatter.",
 		Subcommands: []clihelp.Command{

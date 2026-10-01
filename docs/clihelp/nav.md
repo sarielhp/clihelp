@@ -22,7 +22,7 @@ title: 'podctl — Navigation'
   - [install](completion-install.md) — Set up tab completion, the Alt-H key binding and the man page
   - [uninstall](completion-uninstall.md) — Remove the installed tab completion and key binding
   - [wrap](completion-wrap.md) — Generate a wrapper script with preset arguments
-- [deep](deep.md) — **deep** — a nested tree of [demo commands](https://example.com/deep)
+- [deep](deep.md) — **deep** — a nested tree of [demo commands](https://example.com/deep).
   - [alpha](deep-alpha.md) — The [alpha command](https://example.com/deep/alpha) at depth 2
     - [alpha\_one](deep-alpha-alpha-one.md) — The [alpha_one command](https://example.com/deep/alpha/alpha_one) at depth 3
       - [alpha\_one\_a](deep-alpha-alpha-one-alpha-one-a.md) — The [alpha_one_a command](https://example.com/deep/alpha/alpha_one/alpha_one_a) at depth 4

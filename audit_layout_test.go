@@ -1,6 +1,7 @@
 package clihelp
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -113,6 +114,42 @@ func TestAuditFlagRowsIncludeDecorations(t *testing.T) {
 			err := Audit(app, AuditOptions{SkipExampleValidation: true})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Audit = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestAuditTrailingPeriodsAreConsistent(t *testing.T) {
+	cmds := func(descs ...string) []Command {
+		var out []Command
+		for i, d := range descs {
+			out = append(out, Command{Name: fmt.Sprintf("c%d", i), Description: d})
+		}
+		return out
+	}
+	tests := []struct {
+		name    string
+		app     *App
+		wantErr string
+	}{
+		{"none end with a period", &App{Name: "a", Commands: cmds("First", "Second")}, ""},
+		{"all end with a period", &App{Name: "a", Commands: cmds("First.", "Second.")}, ""},
+		{"mixed", &App{Name: "a", Commands: cmds("First.", "Second")}, "trailing period"},
+		{"mixed subcommands", &App{Name: "a", Commands: []Command{{Name: "g", Description: "Group", Subcommands: cmds("One.", "Two")}}}, "g subcommands"},
+		{"first sentence decides", &App{Name: "a", Commands: cmds("First. More detail follows", "Second.")}, ""},
+		{"different listings may differ", &App{Name: "a", Commands: []Command{{Name: "g", Description: "Group", Subcommands: cmds("One.", "Two.")}}}, ""},
+		{"flags mixed", &App{Name: "a", GlobalFlags: []Option{{Flags: "--a", Description: "One."}, {Flags: "--b", Description: "Two"}}}, "trailing period"},
+		{"a default suffix does not hide the period", &App{Name: "a", GlobalFlags: []Option{{Flags: "--a", Description: "One.", DefaultText: "x"}, {Flags: "--b", Description: "Two."}}}, ""},
+		{"library commands are exempt", &App{Name: "a", Commands: append(cmds("First.", "Second."), CompletionCommand())}, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := Audit(tt.app, AuditOptions{SkipExampleValidation: true})
+			switch {
+			case tt.wantErr == "" && err != nil:
+				t.Errorf("Audit = %v, want nil", err)
+			case tt.wantErr != "" && (err == nil || !strings.Contains(err.Error(), tt.wantErr)):
+				t.Errorf("Audit = %v, want error containing %q", err, tt.wantErr)
 			}
 		})
 	}

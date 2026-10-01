@@ -272,6 +272,7 @@ what you need from above, move the constant down — that is why the `__complete
 ## Visual Standards for Help Text
 
 - **Short descriptions fit one row.** A `Description` (command, subcommand, shortcut, flag) is one line that renders on a single row of a listing at 80 columns. `clihelp.Audit` fails otherwise and reports every offender in one run. Put detail in `LongDescription`, `Notes` and `Examples`, which have no length limit.
+- **Punctuation is consistent within a listing.** Short descriptions in one listing either all end with a full stop or none do; which one is the author's choice. Library-supplied commands (`CompletionCommand`, `ManPageCommand`) are exempt.
 - Verbatim notes (`Note.Raw`) and example lines wider than 80 columns cannot be wrapped; `Audit` reports them through `AuditOptions.Warn` without failing.
 - Set `AuditOptions.Width` to audit against a different terminal width.
 

@@ -176,6 +176,21 @@ type Command struct {
 	Parameters        []Param
 	SubcommandEntries []Param
 	Notes             []Note
+
+	// libraryOwned marks a command the library supplies (CompletionCommand,
+	// ManPageCommand), whose wording is not the author's to style.
+	libraryOwned bool
+}
+
+// markLibraryOwned flags cmd and everything beneath it as library-supplied.
+func markLibraryOwned(cmd Command) Command {
+	cmd.libraryOwned = true
+	subs := make([]Command, len(cmd.Subcommands))
+	for i, s := range cmd.Subcommands {
+		subs[i] = markLibraryOwned(s)
+	}
+	cmd.Subcommands = subs
+	return cmd
 }
 
 // App represents the root CLI application.

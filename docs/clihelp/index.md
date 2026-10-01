@@ -17,7 +17,7 @@ has_children: true
 | [deploy](deploy.md) | Publish compiled podcast RSS feeds and MP3 files to cloud storage. Supports Amazon S3, Google Cloud Storage, CDN cache invalidation, dry-run simulation, and multi-stage deployments. |
 | [status](status.md) | Check and display comprehensive health and validation metrics. Monitors RSS feed status, CDN edge cache, episode download statistics, and origin server connectivity across environments. |
 | [completion](completion.md) | Generate or install shell tab-completion scripts |
-| [deep](deep.md) | **deep** — a nested tree of [demo commands](https://example.com/deep) |
+| [deep](deep.md) | **deep** — a nested tree of [demo commands](https://example.com/deep). |
 
 ## Global Flags
 

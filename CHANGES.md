@@ -5,7 +5,7 @@ All notable changes to `clihelp` will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- **Layout checks in `Audit`**: every short description (command, subcommand, shortcut and flag listings) must render on one row at `AuditOptions.Width` (default 80), measured with the renderer's own column layout; a multi-line `Command.Description` is an error. `LongDescription`, `Notes` and extended help are unlimited. Verbatim notes and example lines wider than `Width` go to the new `AuditOptions.Warn` callback instead of failing. All violations are reported together, and flag rows are measured with their `(default: …)`, `(required)` and `(deprecated: …)` suffixes.
+- **Layout checks in `Audit`**: every short description (command, subcommand, shortcut and flag listings) must render on one row at `AuditOptions.Width` (default 80), measured with the renderer's own column layout; a multi-line `Command.Description` is an error. `LongDescription`, `Notes` and extended help are unlimited. Verbatim notes and example lines wider than `Width` go to the new `AuditOptions.Warn` callback instead of failing. All violations are reported together, and flag rows are measured with their `(default: …)`, `(required)` and `(deprecated: …)` suffixes. Within one listing, descriptions must also agree on a trailing full stop — all or none, the author's choice; `CompletionCommand` and `ManPageCommand` are exempt.
 
 ### Changed
 - **Redirected help is laid out at 80 columns, not 70.** The fallback when stdout is not a terminal and `COLUMNS` is unset now equals the width `Audit` holds short descriptions to, so help that passes the audit is not re-wrapped when written to a file or pipe.

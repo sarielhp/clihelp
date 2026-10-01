@@ -12,6 +12,10 @@ import (
 
 // CompletionCommand returns a standard clihelp.Command providing 'bash', 'zsh', 'fish', and 'install' subcommands.
 func CompletionCommand() Command {
+	return markLibraryOwned(completionCommand())
+}
+
+func completionCommand() Command {
 	return Command{
 		Name:        "completion",
 		Description: "Generate or install shell tab-completion scripts",

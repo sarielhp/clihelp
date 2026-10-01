@@ -48,6 +48,18 @@ func auditRows(scope string, params []Param, opts AuditOptions) []error {
 	return errs
 }
 
+// styleParams is commandParams without the commands the library supplies: their
+// wording is fixed, so it cannot be held to the author's punctuation.
+func styleParams(cmds []Command) []Param {
+	authored := make([]Command, 0, len(cmds))
+	for _, c := range cmds {
+		if !c.libraryOwned {
+			authored = append(authored, c)
+		}
+	}
+	return commandParams(authored)
+}
+
 func commandParams(cmds []Command) []Param {
 	params := make([]Param, 0, len(cmds))
 	for _, c := range cmds {
@@ -76,9 +88,9 @@ func optionParams(options []Option) []Param {
 // that in one run. It is independent of the structural checks, which stop at
 // their first error, and audit joins the two.
 func auditLayout(app *App, opts AuditOptions) error {
-	errs := auditRows("the app's commands", commandParams(app.Commands), opts)
-	errs = append(errs, auditRows("the app's shortcuts", commandParams(app.Shortcuts), opts)...)
-	errs = append(errs, auditRows("the app's flags", optionParams(app.rootFlags()), opts)...)
+	errs := auditListing("the app's commands", commandParams(app.Commands), styleParams(app.Commands), opts)
+	errs = append(errs, auditListing("the app's shortcuts", commandParams(app.Shortcuts), styleParams(app.Shortcuts), opts)...)
+	errs = append(errs, auditOptionListing("the app's flags", app.rootFlags(), opts)...)
 	warnLongText("the app", app.Examples, nil, opts)
 	errs = append(errs, auditCommandsLayout(app, app.Commands, nil, opts)...)
 	errs = append(errs, auditCommandsLayout(app, app.Shortcuts, nil, opts)...)
@@ -111,10 +123,10 @@ func auditCommandsLayout(app *App, cmds []Command, parent []string, opts AuditOp
 		if strings.Contains(strings.TrimSpace(cmd.Description), "\n") {
 			errs = append(errs, fmt.Errorf("%s: Description must be one line; put the rest in LongDescription", scope))
 		}
-		errs = append(errs, auditRows(scope+" subcommands", commandParams(cmd.Subcommands), opts)...)
-		errs = append(errs, auditRows(scope+" flags", optionParams(app.collectLocalOptions(&cmd)), opts)...)
+		errs = append(errs, auditListing(scope+" subcommands", commandParams(cmd.Subcommands), styleParams(cmd.Subcommands), opts)...)
+		errs = append(errs, auditOptionListing(scope+" flags", app.collectLocalOptions(&cmd), opts)...)
 		if !app.OmitGlobalFlagsInCommands {
-			errs = append(errs, auditRows("global flags on command pages", optionParams(app.collectGlobalOptions(path, &cmd)), opts)...)
+			errs = append(errs, auditOptionListing("global flags on command pages", app.collectGlobalOptions(path, &cmd), opts)...)
 		}
 		warnLongText(scope, cmd.Examples, cmd.Notes, opts)
 		errs = append(errs, auditCommandsLayout(app, cmd.Subcommands, path, opts)...)
@@ -144,4 +156,53 @@ func warnLongText(scope string, examples []Example, notes []Note, opts AuditOpti
 			opts.warn("%s: example %q is %d columns, wider than %d", scope, ex.Line, w, width)
 		}
 	}
+}
+
+// auditListing runs every check on one listing: rows holds all of its entries
+// for the one-row rule, and style the ones whose punctuation is the author's.
+func auditListing(scope string, rows, style []Param, opts AuditOptions) []error {
+	errs := auditRows(scope, rows, opts)
+	if err := auditPeriods(scope, style); err != nil {
+		errs = append(errs, err)
+	}
+	return errs
+}
+
+// auditPeriods requires one listing to pick a style for its descriptions: all
+// end with a full stop, or none do. Which one is the author's choice; a listing
+// that mixes them reads as unfinished.
+func auditPeriods(scope string, params []Param) error {
+	var with, without []string
+	for _, p := range params {
+		if p.Name == examplesFlagSpec {
+			continue
+		}
+		text := strings.TrimSpace(renderInlineTo(p.Description, true))
+		if text == "" {
+			continue
+		}
+		if strings.HasSuffix(text, ".") {
+			with = append(with, p.Name)
+		} else {
+			without = append(without, p.Name)
+		}
+	}
+	if len(with) == 0 || len(without) == 0 {
+		return nil
+	}
+	return fmt.Errorf("%s: descriptions disagree about a trailing period: %s end with one, %s do not (use one style throughout the listing)",
+		scope, strings.Join(with, ", "), strings.Join(without, ", "))
+}
+
+// auditOptionListing is auditListing for a flag list. The one-row rule measures
+// the decorated text the renderer draws; the punctuation rule reads the author's
+// own words, since a "(default: x)" suffix would otherwise hide a full stop.
+func auditOptionListing(scope string, options []Option, opts AuditOptions) []error {
+	raw := make([]Param, 0, len(options))
+	for _, opt := range options {
+		if !opt.Hidden {
+			raw = append(raw, Param{Name: opt.Flags, Description: opt.Description})
+		}
+	}
+	return auditListing(scope, optionParams(options), raw, opts)
 }

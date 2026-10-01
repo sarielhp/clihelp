@@ -527,6 +527,10 @@ func (a *App) manPageAction(out, notes io.Writer, install, uninstall, force bool
 // A generated page makes zsh's run-help and fish's man-page key — both bound to
 // Alt-H by default — answer for a program that ships no manual of its own.
 func ManPageCommand() Command {
+	return markLibraryOwned(manPageCommand())
+}
+
+func manPageCommand() Command {
 	var install, uninstall, force bool
 	return Command{
 		Name:        "manpage",
