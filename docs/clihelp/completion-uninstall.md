@@ -10,7 +10,7 @@ Remove the installed tab completion and key binding
 ## Usage
 
 ```
-completion uninstall [<shell>]
+podctl completion uninstall [<shell>]
 ```
 
 ## Parameters

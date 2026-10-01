@@ -481,7 +481,9 @@ func renderCommandFlagsTable(b *strings.Builder, options []clihelp.Option) {
 
 // renderCommandPage renders the detailed page for a single command.
 func renderCommandPage(a *clihelp.App, n cmdNode) string {
-	cmd := n.cmd
+	// As the terminal pages show it: library commands get the program name and
+	// their real mount point in their usage and example lines.
+	cmd := a.ForDisplay(n.cmd, n.path)
 	fullTitle := a.Name + " " + strings.Join(n.path, " ")
 
 	meta := pageMeta{title: fullTitle}

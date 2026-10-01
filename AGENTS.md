@@ -179,7 +179,7 @@ a redirecting caller sees it, and that caller wants it.
 | `topics.go` | Specialized help topic renderers (`RenderFlags`, `RenderMan`, `RenderHelpTopics`, grouped option reflow) |
 | `topics_test.go` | Unit tests for topic routing, manual pages, and help flags |
 | `render.go` | Terminal help rendering for global app, individual commands, and grouped commands |
-| `library_lines.go` | Makes the usage and example lines of `CompletionCommand` / `ManPageCommand` absolute (program name and real mount point) at render time |
+| `library_lines.go` | Makes the usage and example lines of `CompletionCommand` / `ManPageCommand` absolute (program name and real mount point) at render time; `App.ForDisplay` offers the same to generators in other packages |
 | `format.go` | Text layout, word-wrapping, hanging list indentation, ANSI stripping, and column indentation utilities |
 | `format_test.go` | Unit tests for word-wrapping, list hanging indents, visual string measurement, and column indent |
 | `execute.go` | Flag-set construction, flag validation, execution dispatch, and the run lifecycle |

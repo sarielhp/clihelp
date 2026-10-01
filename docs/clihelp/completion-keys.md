@@ -10,7 +10,7 @@ Print shell key bindings (Alt-H explains the command line)
 ## Usage
 
 ```
-completion keys [<shell>]
+podctl completion keys [<shell>]
 ```
 
 ## Parameters
@@ -33,7 +33,7 @@ completion keys [<shell>]
 
 ## Examples
 
-- `completion keys bash` — Print the Bash key bindings
+- `podctl completion keys bash` — Print the Bash key bindings
 
 ## Why This Is Separate
 

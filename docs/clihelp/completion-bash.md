@@ -10,7 +10,7 @@ Generate Bash tab-completion script
 ## Usage
 
 ```
-completion bash
+podctl completion bash
 ```
 
 ## Flags

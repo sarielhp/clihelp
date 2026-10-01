@@ -646,3 +646,39 @@ func TestSubcommandTableMatchesTheTerminalHelp(t *testing.T) {
 		}
 	}
 }
+
+// The library's own commands write their usage and example lines relative to
+// their own root ("completion zsh"), because they are written before the
+// program's name or mount point is known. The terminal pages make them absolute;
+// the generated Markdown used to print them as written, so a site documenting
+// "tool" told readers to type "completion install".
+func TestMarkdownNamesTheProgramInLibraryCommandLines(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("CLIHELP_GEN", "1")
+	app := &clihelp.App{Name: "tool", Description: "A tool", Commands: []clihelp.Command{
+		{Name: "cfg", Description: "Config", Subcommands: []clihelp.Command{clihelp.CompletionCommand(), clihelp.ManPageCommand()}},
+	}}
+	if _, err := RenderMarkdown(app, MarkdownOptions{Dir: dir}); err != nil {
+		t.Fatal(err)
+	}
+	for file, wants := range map[string][]string{
+		"cfg-completion-install.md": {"tool cfg completion install", "tool cfg completion install --no-keys zsh"},
+		"cfg-completion.md":         {"tool cfg completion zsh"},
+		"cfg-manpage.md":            {"tool cfg manpage > tool.1"},
+	} {
+		body, err := os.ReadFile(filepath.Join(dir, file))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, want := range wants {
+			if !strings.Contains(string(body), want) {
+				t.Errorf("%s does not contain %q:\n%s", file, want, body)
+			}
+		}
+		for _, bad := range []string{"`completion ", "`manpage ", "myapp", "<app>", "```\ncompletion ", "```\nmanpage "} {
+			if strings.Contains(string(body), bad) {
+				t.Errorf("%s still has the relative form %q:\n%s", file, bad, body)
+			}
+		}
+	}
+}

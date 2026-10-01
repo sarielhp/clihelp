@@ -10,7 +10,7 @@ Generate or install shell tab-completion scripts
 ## Usage
 
 ```
-completion <subcommand>
+podctl completion <subcommand>
 ```
 
 ## Subcommands
@@ -39,8 +39,8 @@ completion <subcommand>
 
 ## Examples
 
-- `completion zsh` — Generate Zsh tab-completion script
-- `completion install` — Install tab-completions for the active shell
+- `podctl completion zsh` — Generate Zsh tab-completion script
+- `podctl completion install` — Install tab-completions for the active shell
 
 ## Shell Tip
 

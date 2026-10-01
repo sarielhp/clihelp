@@ -10,7 +10,7 @@ Generate Fish tab-completion script
 ## Usage
 
 ```
-completion fish
+podctl completion fish
 ```
 
 ## Flags

@@ -50,3 +50,19 @@ func (a *App) absoluteExamples(cmd *Command, path []string, examples []Example) 
 	}
 	return out
 }
+
+// ForDisplay returns cmd as the help pages show it. The library's own commands
+// (CompletionCommand, ManPageCommand) carry usage and example lines relative to
+// their own root; here they are made absolute — program name and real mount
+// point — exactly as the terminal pages do. Any other command is returned
+// unchanged. path is the full path the command was reached by.
+//
+// It exists for generators in other packages (doc/), which cannot reach the
+// unexported helpers and would otherwise print the lines as the library wrote them.
+func (a *App) ForDisplay(cmd Command, path []string) Command {
+	if cmd.UsageLine != "" {
+		cmd.UsageLine = a.absoluteLibraryLine(&cmd, path, cmd.UsageLine)
+	}
+	cmd.Examples = a.absoluteExamples(&cmd, path, cmd.Examples)
+	return cmd
+}

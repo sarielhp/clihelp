@@ -10,7 +10,7 @@ Generate a wrapper script with preset arguments
 ## Usage
 
 ```
-completion wrap [--from <path>] <name> [<args>...]
+podctl completion wrap [--from <path>] <name> [<args>...]
 ```
 
 ## Parameters
@@ -35,8 +35,8 @@ completion wrap [--from <path>] <name> [<args>...]
 
 ## Examples
 
-- `completion wrap pd deploy` — Generate wrapper 'pd' for '<app> deploy'
-- `completion wrap --from ~/bin/mt` — Inspect existing script and generate wrapper
+- `podctl completion wrap pd deploy` — Generate wrapper 'pd' for 'podctl deploy'
+- `podctl completion wrap --from ~/bin/mt` — Inspect existing script and generate wrapper
 
 ---
 

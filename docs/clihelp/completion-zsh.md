@@ -10,7 +10,7 @@ Generate Zsh tab-completion script
 ## Usage
 
 ```
-completion zsh
+podctl completion zsh
 ```
 
 ## Flags
