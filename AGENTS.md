@@ -26,7 +26,7 @@
 | `tools/map.sh` | Print package structure, key types, and exported functions |
 | `tools/version.sh` | Print current version from `VERSION` file |
 | `tools/bump-version.sh` | Refuse a dirty tree, bump the patch version, promote `[Unreleased]` in `CHANGES.md`, regenerate docs, run the gate, then commit, tag and push |
-| `tools/commit.sh <msg>` | Quality gate + stage + commit; silent on success, prints the failing step's output on failure. `COMMIT_TRAILER` adds a trailer paragraph |
+| `tools/commit.sh <msg>` | Check the message is a conventional commit, run the quality gate, stage tracked changes, commit; silent on success, prints the failing step's output on failure. New files must be staged first or admitted with `COMMIT_ADD_UNTRACKED=1`; `COMMIT_TRAILER` adds a trailer paragraph |
 | `tools/checkpoint.sh` | Auto micro-commit of all changes (saves work state) |
 | `tools/ex_podcl [args]` | Incrementally build and execute `podctl` example with CLI arguments |
 | `tools/ex_mail_cli [args]` | Incrementally build and execute `mail_cli` example with CLI arguments |
@@ -58,7 +58,8 @@ A `Makefile` at the project root delegates to all scripts:
 
 ```bash
 # Standard development loop:
-make commit ARGS="feat: add new feature"   # quality gate + commits (silent)
+make commit ARGS="feat: add new feature"   # quality gate + commits tracked changes (silent)
+                                            # new files: `git add` them first, or COMMIT_ADD_UNTRACKED=1
 make bump                                   # bumps version, commits, pushes (silent)
 
 # Quick checks without commit:

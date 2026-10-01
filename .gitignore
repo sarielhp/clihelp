@@ -5,3 +5,13 @@ opencode.json
 podctl
 .bws/
 
+
+# Anything shaped like a credential or a merge leftover stays out of the tree,
+# so that no script that stages new files can publish one.
+.env
+.env.*
+*.pem
+*.key
+id_rsa*
+*.orig
+*.rej

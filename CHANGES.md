@@ -4,6 +4,9 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **`tools/commit.sh` checks the message first and no longer sweeps up untracked files.** The message must be a conventional commit (`feat:`, `fix:`, `docs:`, `test:`, `chore:`, `refactor:` …) and is checked before the 30-second gate; an empty `ARGS=` used to run the whole gate and then fail inside git. Only tracked files are staged; a new file has to be staged with `git add` or admitted with `COMMIT_ADD_UNTRACKED=1`, and a refusal names the files. `.gitignore` now keeps `.env*`, `*.pem`, `*.key`, `id_rsa*`, `*.orig` and `*.rej` out of the tree. `tools/checkpoint.sh` no longer hides its errors.
+
 ### Fixed
 - **`make commit ARGS="…"` no longer alters a message containing `$`.** make expanded `$` in the variable when it exported it, so `cost $5 $HOME` was committed as `cost  OME`, `$$` collapsed to `$`, and `$(x)` vanished — silently. The message now reaches `tools/commit.sh` exactly as typed, newlines included, whether it is given as `ARGS=` or in the environment.
 
