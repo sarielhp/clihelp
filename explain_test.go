@@ -255,3 +255,33 @@ func TestWriteWithinBudgetUnderColour(t *testing.T) {
 		})
 	}
 }
+
+func TestIsHeadingLine(t *testing.T) {
+	had := color.NoColor
+	color.NoColor = false
+	defer func() { color.NoColor = had }()
+
+	tests := []struct {
+		name string
+		line string
+		want bool
+	}{
+		{"plain heading", "Examples:", true},
+		{"trailing spaces", "Examples:   ", true},
+		{"coloured heading", color.New(color.FgYellow, color.Bold).Sprint("Examples:"), true},
+		{"no colon", "Run it", false},
+		{"indented with a colon", "  note:", false},
+		{"tab-indented with a colon", "\tnote:", false},
+		{"coloured indented row", color.New(color.FgCyan).Sprint("  -t, --tags <t>  ") + "tags:", false},
+		{"colon inside, not last", "Note: this", false},
+		{"empty", "", false},
+		{"only an escape", color.New(color.FgYellow).Sprint(""), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isHeadingLine(tt.line); got != tt.want {
+				t.Errorf("isHeadingLine(%q) = %v, want %v", tt.line, got, tt.want)
+			}
+		})
+	}
+}

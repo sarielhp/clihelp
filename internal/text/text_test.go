@@ -60,3 +60,16 @@ func TestFirstSentence(t *testing.T) {
 		})
 	}
 }
+
+func TestFirstSentenceKeepsADotInsideAWord(t *testing.T) {
+	tests := []struct{ in, want string }{
+		{"Uses v1.2 now. More", "Uses v1.2 now."},
+		{"Edit file.txt in place. Then", "Edit file.txt in place."},
+		{"Version 1.2.3", "Version 1.2.3"},
+	}
+	for _, tt := range tests {
+		if got := FirstSentence(tt.in); got != tt.want {
+			t.Errorf("FirstSentence(%q) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}

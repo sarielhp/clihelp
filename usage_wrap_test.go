@@ -2,6 +2,7 @@ package clihelp
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/mattn/go-runewidth"
 	"strings"
 	"testing"
@@ -89,5 +90,78 @@ func TestUsageWrapDoesNotDependOnEastAsianWidth(t *testing.T) {
 		if !strings.Contains(narrow, "\n") {
 			t.Fatalf("width %d: the usage line did not wrap, so the test measures nothing:\n%s", width, narrow)
 		}
+	}
+}
+
+// Usage lines are drawn by three renderers — the root page, a command page and
+// `help flags` — and the grouping fix was only exercised on one of them; reverting
+// either of the other two passed the whole suite.
+func TestEveryUsageRendererKeepsGroupsWhole(t *testing.T) {
+	const usage = "podctl [--output PATH] [--bitrate KBPS] [--[no-]normalize] [--tags TAGS] [--loudness LUFS] <source-file>"
+	app := &App{
+		Name:      "podctl",
+		UsageLine: usage,
+		Commands:  []Command{{Name: "build", Description: "Build", UsageLine: usage}},
+	}
+	renderers := map[string]func(*bytes.Buffer, int){
+		"root page":    func(b *bytes.Buffer, w int) { app.RenderGlobal(Options{Writer: b, Width: w, NoColor: true}) },
+		"command page": func(b *bytes.Buffer, w int) { app.RenderCommand(Options{Writer: b, Width: w, NoColor: true}, "build") },
+		"help flags":   func(b *bytes.Buffer, w int) { app.renderFlagsPage(Options{Writer: b, Width: w, NoColor: true}) },
+	}
+	for name, render := range renderers {
+		for _, width := range []int{45, 60, 120} {
+			t.Run(fmt.Sprintf("%s/%d", name, width), func(t *testing.T) {
+				var buf bytes.Buffer
+				render(&buf, width)
+				var rows []string
+				inUsage := false
+				for _, l := range strings.Split(buf.String(), "\n") {
+					switch {
+					case strings.HasPrefix(l, "Usage:"):
+						inUsage = true
+						rows = append(rows, l)
+					case inUsage && strings.HasPrefix(l, "        "):
+						rows = append(rows, l)
+					default:
+						inUsage = false
+					}
+				}
+				if len(rows) == 0 {
+					t.Fatalf("no usage line on the %s:\n%s", name, buf.String())
+				}
+				for _, row := range rows {
+					if strings.Count(row, "[")-strings.Count(row, "]") != 0 {
+						t.Errorf("a row splits a bracketed group: %q", row)
+					}
+					if limit := wrapWidth(width, 8, 80); visualLen(row) > limit {
+						t.Errorf("usage row is %d columns, past the %d it was wrapped to: %q", visualLen(row), limit, row)
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestGlueGroupsBoundary(t *testing.T) {
+	// A group is glued when its closing bracket is at most maxGluedGroup runes
+	// past its opening one.
+	group := func(span int) string { return "[a " + strings.Repeat("x", span-3) + "]" }
+	tests := []struct {
+		name string
+		span int
+		glue bool
+	}{
+		{"exactly at the limit", maxGluedGroup, true},
+		{"one past the limit", maxGluedGroup + 1, false},
+		{"well inside", 10, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			in := group(tt.span)
+			got := glueGroups(in)
+			if glued := strings.Contains(got, groupSpace); glued != tt.glue {
+				t.Errorf("glueGroups of a %d-rune group: glued = %v, want %v", tt.span, glued, tt.glue)
+			}
+		})
 	}
 }

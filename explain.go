@@ -189,7 +189,7 @@ func isBlankLine(line string) bool {
 // sequence, not a space, and must not be mistaken for one.
 func isHeadingLine(line string) bool {
 	plain := stripANSI(line)
-	return plain != "" && plain[0] != ' ' && strings.HasSuffix(strings.TrimRight(plain, " "), ":")
+	return plain != "" && plain[0] != ' ' && plain[0] != '\t' && strings.HasSuffix(strings.TrimRight(plain, " "), ":")
 }
 
 // writeWithinBudget writes at most budget lines of text, replacing whatever did
