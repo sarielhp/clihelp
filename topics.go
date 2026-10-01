@@ -161,25 +161,24 @@ func (a *App) collectRenderFlags() []Option {
 // grouped persistent flags, standard help flags, and guidance.
 func (a *App) renderFlagsPage(o Options) {
 	o = o.withApp(a)
-	a.pageOutput(o, func(w io.Writer) {
-		th := o.theme(a)
-		termWidth := o.width()
+	w := o.out()
+	th := o.theme(a)
+	termWidth := o.width()
 
-		reflowMargin(w, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 0, 8,
-			"Usage:", o.inline(a.usageLine()), th.Hdr) // see RenderGlobal
+	reflowMargin(w, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 0, 8,
+		"Usage:", o.inline(a.usageLine()), th.Hdr) // see RenderGlobal
 
+	fmt.Fprintln(w)
+	reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", "Global flags available to all commands:")
+	fmt.Fprintln(w)
+
+	allFlags := a.collectRenderFlags()
+	renderOptionsGrouped(w, th, o, termWidth, allFlags)
+
+	if len(a.Commands) > 0 || len(a.Shortcuts) > 0 {
 		fmt.Fprintln(w)
-		reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", "Global flags available to all commands:")
-		fmt.Fprintln(w)
-
-		allFlags := a.collectRenderFlags()
-		renderOptionsGrouped(w, th, o, termWidth, allFlags)
-
-		if len(a.Commands) > 0 || len(a.Shortcuts) > 0 {
-			fmt.Fprintln(w)
-			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", fmt.Sprintf("Run '%s <command> -h' for command-specific flags.", appName(a)))
-		}
-	})
+		reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", fmt.Sprintf("Run '%s <command> -h' for command-specific flags.", appName(a)))
+	}
 }
 
 // renderManPage writes an exhaustive, Unix manual-style reference containing the
@@ -187,75 +186,74 @@ func (a *App) renderFlagsPage(o Options) {
 // parameters, local flags, examples, notes, and help topics.
 func (a *App) renderManPage(o Options) {
 	o = o.withApp(a)
-	a.pageOutput(o, func(w io.Writer) {
-		th := o.theme(a)
-		termWidth := o.width()
+	w := o.out()
+	th := o.theme(a)
+	termWidth := o.width()
 
-		// 1. NAME
-		th.Hdr.Fprintln(w, "NAME")
-		nameDesc := appName(a)
+	// 1. NAME
+	th.Hdr.Fprintln(w, "NAME")
+	nameDesc := appName(a)
+	if a.Description != "" {
+		nameDesc += " - " + a.Description
+	}
+	reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", o.inline(nameDesc))
+	fmt.Fprintln(w)
+
+	// 2. SYNOPSIS
+	th.Hdr.Fprintln(w, "SYNOPSIS")
+	reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", o.inline(a.usageLine()))
+	fmt.Fprintln(w)
+
+	// 3. DESCRIPTION
+	if a.Description != "" || a.GlobalNote != "" {
+		th.Hdr.Fprintln(w, "DESCRIPTION")
 		if a.Description != "" {
-			nameDesc += " - " + a.Description
+			reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", o.inline(a.Description))
 		}
-		reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", o.inline(nameDesc))
-		fmt.Fprintln(w)
-
-		// 2. SYNOPSIS
-		th.Hdr.Fprintln(w, "SYNOPSIS")
-		reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", o.inline(a.usageLine()))
-		fmt.Fprintln(w)
-
-		// 3. DESCRIPTION
-		if a.Description != "" || a.GlobalNote != "" {
-			th.Hdr.Fprintln(w, "DESCRIPTION")
+		if a.GlobalNote != "" {
 			if a.Description != "" {
-				reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", o.inline(a.Description))
+				fmt.Fprintln(w)
 			}
-			if a.GlobalNote != "" {
-				if a.Description != "" {
-					fmt.Fprintln(w)
-				}
-				reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", o.inline(a.GlobalNote))
-			}
-			fmt.Fprintln(w)
+			reflow(w, th.Body, wrapWidth(termWidth, 4, o.maxContent()), 4, "", o.inline(a.GlobalNote))
 		}
+		fmt.Fprintln(w)
+	}
 
-		// 4. GLOBAL FLAGS
-		var globalFlags []Option
-		for _, f := range a.PersistentOptions {
-			if !f.Hidden {
-				globalFlags = append(globalFlags, f)
-			}
+	// 4. GLOBAL FLAGS
+	var globalFlags []Option
+	for _, f := range a.PersistentOptions {
+		if !f.Hidden {
+			globalFlags = append(globalFlags, f)
 		}
-		for _, f := range a.GlobalFlags {
-			if !f.Hidden {
-				globalFlags = append(globalFlags, f)
-			}
+	}
+	for _, f := range a.GlobalFlags {
+		if !f.Hidden {
+			globalFlags = append(globalFlags, f)
 		}
-		if len(globalFlags) > 0 {
-			th.Hdr.Fprintln(w, "GLOBAL FLAGS")
-			renderOptionsGrouped(w, th, o, termWidth, globalFlags)
-			fmt.Fprintln(w)
-		}
+	}
+	if len(globalFlags) > 0 {
+		th.Hdr.Fprintln(w, "GLOBAL FLAGS")
+		renderOptionsGrouped(w, th, o, termWidth, globalFlags)
+		fmt.Fprintln(w)
+	}
 
-		// 4b. EXAMPLES
-		if len(a.Examples) > 0 {
-			th.Hdr.Fprintln(w, "EXAMPLES")
-			renderExamples(w, a, nil, th, o, termWidth, a.Examples, 4, 6)
-			fmt.Fprintln(w)
-		}
+	// 4b. EXAMPLES
+	if len(a.Examples) > 0 {
+		th.Hdr.Fprintln(w, "EXAMPLES")
+		renderExamples(w, a, nil, th, o, termWidth, a.Examples, 4, 6)
+		fmt.Fprintln(w)
+	}
 
-		// 5. COMMANDS
-		if len(a.Commands) > 0 {
-			th.Hdr.Fprintln(w, "COMMANDS")
-			a.renderManCommands(w, th, o, termWidth, a.Commands, []string{appName(a)})
-			fmt.Fprintln(w)
-		}
+	// 5. COMMANDS
+	if len(a.Commands) > 0 {
+		th.Hdr.Fprintln(w, "COMMANDS")
+		a.renderManCommands(w, th, o, termWidth, a.Commands, []string{appName(a)})
+		fmt.Fprintln(w)
+	}
 
-		// 6. HELP TOPICS
-		th.Hdr.Fprintln(w, "HELP TOPICS")
-		a.renderManTopics(w, th, o, termWidth)
-	})
+	// 6. HELP TOPICS
+	th.Hdr.Fprintln(w, "HELP TOPICS")
+	a.renderManTopics(w, th, o, termWidth)
 }
 
 // renderManTopics closes the manual with the list of specialised help topics.
@@ -358,27 +356,26 @@ func (a *App) renderManNotes(w io.Writer, th Theme, o Options, termWidth int, no
 // renderTopicsPage writes the index of available help topics.
 func (a *App) renderTopicsPage(o Options) {
 	o = o.withApp(a)
-	a.pageOutput(o, func(w io.Writer) {
-		th := o.theme(a)
-		termWidth := o.width()
+	w := o.out()
+	th := o.theme(a)
+	termWidth := o.width()
 
-		th.Hdr.Fprintln(w, "Help Topics:")
-		topics := []Param{
-			{Name: "help <command>", Description: fmt.Sprintf("Show help for a specific command (or '%s <command> -h')", appName(a))},
-			{Name: "help flags", Description: "Show all global flags and persistent options"},
-			{Name: "help examples", Description: "Show every example in one place; add a command to narrow it"},
-			{Name: "help man", Description: "Display the complete reference manual (paged)"},
-		}
-		indent := colIndentFor(topics, termWidth, minTextColumns)
-		for _, t := range topics {
-			reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, t.Name, o.inline(t.Description), th.Subcommand)
-		}
-	})
+	th.Hdr.Fprintln(w, "Help Topics:")
+	topics := []Param{
+		{Name: "help <command>", Description: fmt.Sprintf("Show help for a specific command (or '%s <command> -h')", appName(a))},
+		{Name: "help flags", Description: "Show all global flags and persistent options"},
+		{Name: "help examples", Description: "Show every example in one place; add a command to narrow it"},
+		{Name: "help man", Description: "Display the complete reference manual (paged)"},
+	}
+	indent := colIndentFor(topics, termWidth, minTextColumns)
+	for _, t := range topics {
+		reflow(w, th.Body, wrapWidth(termWidth, indent, o.maxContent()), indent, t.Name, o.inline(t.Description), th.Subcommand)
+	}
 }
 
 // renderExamplesTopic writes examples for path (or all examples if path is empty) to w.
 func (a *App) renderExamplesTopic(w io.Writer, path []string) {
-	a.renderExamplesPage(Options{Writer: w, Theme: a.Theme, Pager: a.Pager}, path...)
+	a.renderExamplesPage(Options{Writer: w, Theme: a.Theme}, path...)
 }
 
 // renderExamplesPage writes every example in the command tree, grouped under the
@@ -396,67 +393,66 @@ func (a *App) renderExamplesTopic(w io.Writer, path []string) {
 // heading.
 func (a *App) renderExamplesPage(o Options, path ...string) {
 	o = o.withApp(a)
-	a.pageOutput(o, func(w io.Writer) {
-		th := o.theme(a)
-		termWidth := o.width()
+	w := o.out()
+	th := o.theme(a)
+	termWidth := o.width()
 
-		type group struct {
-			path     []string
-			cmd      *Command
-			examples []Example
-		}
-		var groups []group
-		// With a path, the page is that command and its subcommands; without
-		// one, the whole tree including the application's own examples.
-		root := a.Commands
-		var rootPath []string
-		if len(path) > 0 {
-			target, resolved := a.lookupCommandPath(path)
-			if target == nil {
-				fmt.Fprintf(w, "No command %q, so no examples for it.\n", strings.Join(path, " "))
-				return
-			}
-			root = []Command{*target}
-			rootPath = resolved[:len(resolved)-1]
-		} else if len(a.Examples) > 0 {
-			groups = append(groups, group{examples: a.Examples})
-		}
-		var walk func(cmds []Command, prefix []string)
-		walk = func(cmds []Command, prefix []string) {
-			for i := range cmds {
-				c := &cmds[i]
-				if c.Hidden {
-					continue
-				}
-				path := append(append([]string{}, prefix...), c.Name)
-				if len(c.Examples) > 0 {
-					groups = append(groups, group{path: path, cmd: c, examples: c.Examples})
-				}
-				walk(c.Subcommands, path)
-			}
-		}
-		walk(root, rootPath)
-
-		if len(groups) == 0 {
-			what := appName(a)
-			if len(path) > 0 {
-				what += " " + strings.Join(path, " ")
-			}
-			fmt.Fprintf(w, "No examples are declared for %s.\n", what)
+	type group struct {
+		path     []string
+		cmd      *Command
+		examples []Example
+	}
+	var groups []group
+	// With a path, the page is that command and its subcommands; without
+	// one, the whole tree including the application's own examples.
+	root := a.Commands
+	var rootPath []string
+	if len(path) > 0 {
+		target, resolved := a.lookupCommandPath(path)
+		if target == nil {
+			fmt.Fprintf(w, "No command %q, so no examples for it.\n", strings.Join(path, " "))
 			return
 		}
-
-		th.Hdr.Fprintln(w, "Examples:")
-		for i, g := range groups {
-			if i > 0 {
-				fmt.Fprintln(w)
+		root = []Command{*target}
+		rootPath = resolved[:len(resolved)-1]
+	} else if len(a.Examples) > 0 {
+		groups = append(groups, group{examples: a.Examples})
+	}
+	var walk func(cmds []Command, prefix []string)
+	walk = func(cmds []Command, prefix []string) {
+		for i := range cmds {
+			c := &cmds[i]
+			if c.Hidden {
+				continue
 			}
-			heading := appName(a)
-			if len(g.path) > 0 {
-				heading += " " + strings.Join(g.path, " ")
+			path := append(append([]string{}, prefix...), c.Name)
+			if len(c.Examples) > 0 {
+				groups = append(groups, group{path: path, cmd: c, examples: c.Examples})
 			}
-			th.Subcommand.Fprintf(w, "  %s\n", heading)
-			renderExamples(w, a, g.cmd, th, o, termWidth, g.examples, 4, 6)
+			walk(c.Subcommands, path)
 		}
-	})
+	}
+	walk(root, rootPath)
+
+	if len(groups) == 0 {
+		what := appName(a)
+		if len(path) > 0 {
+			what += " " + strings.Join(path, " ")
+		}
+		fmt.Fprintf(w, "No examples are declared for %s.\n", what)
+		return
+	}
+
+	th.Hdr.Fprintln(w, "Examples:")
+	for i, g := range groups {
+		if i > 0 {
+			fmt.Fprintln(w)
+		}
+		heading := appName(a)
+		if len(g.path) > 0 {
+			heading += " " + strings.Join(g.path, " ")
+		}
+		th.Subcommand.Fprintf(w, "  %s\n", heading)
+		renderExamples(w, a, g.cmd, th, o, termWidth, g.examples, 4, 6)
+	}
 }

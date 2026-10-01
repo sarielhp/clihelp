@@ -184,9 +184,3 @@ func TestEachPageIsAboutItsOwnCommand(t *testing.T) {
 		seen[body] = strings.Join(path, " ")
 	}
 }
-
-func TestMailCLIPagerEnabled(t *testing.T) {
-	if app := buildApp(); !app.Pager {
-		t.Error("expected buildApp().Pager to be true, got false")
-	}
-}

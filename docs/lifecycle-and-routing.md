@@ -73,7 +73,6 @@ Lifecycle hooks allow you to structure global pre-flight checks (like loading co
 ```go
 app := &clihelp.App{
     Name:  "mycli",
-    Pager: true,
     BeforeRun: func(ctx *clihelp.Context) error {
         // Global pre-flight (e.g. initialize logger)
         return nil
@@ -146,7 +145,6 @@ Options defined on `App.PersistentOptions` or parent `Command.PersistentOptions`
 ```go
 app := &clihelp.App{
     Name:  "podctl",
-    Pager: true,
     PersistentOptions: []clihelp.Option{
         clihelp.Bool(&verbose, "-v, --verbose", false, "Verbose output"),
     },
@@ -243,7 +241,6 @@ Concise help is designed for fast, non-scrolling terminal scanning:
 Extended mode renders complete reference documentation:
 - Prioritizes `Command.LongDescription` over `Command.Description`.
 - Renders all `Command.Notes` and `Command.Examples`.
-- Automatically pipes output through `$PAGER` (when `App.Pager = true`) if content exceeds terminal height.
 
 ### 3. Enabling the `-H` Flag (`App.ExtendedHelpFlag`)
 

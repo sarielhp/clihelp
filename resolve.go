@@ -106,16 +106,16 @@ func (a *App) handleRootHelpTopic(topic string) (bool, error) {
 	}
 	switch {
 	case topic == "flags" || topic == "options" || topic == "opts" || topic == "flag" || (a.AbbrevCommands && (strings.HasPrefix("flags", topic) || strings.HasPrefix("options", topic))):
-		a.renderFlagsPage(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+		a.renderFlagsPage(Options{Writer: a.stdout(), Theme: a.Theme})
 		return true, nil
 	case topic == "man" || topic == "all" || topic == "full" || topic == "manual" || (a.AbbrevCommands && (strings.HasPrefix("man", topic) || strings.HasPrefix("manual", topic))):
-		a.renderManPage(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+		a.renderManPage(Options{Writer: a.stdout(), Theme: a.Theme})
 		return true, nil
 	case a.isExamplesTopic(topic):
-		a.renderExamplesPage(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+		a.renderExamplesPage(Options{Writer: a.stdout(), Theme: a.Theme})
 		return true, nil
 	case topic == "topics" || topic == "help" || (a.AbbrevCommands && strings.HasPrefix("topics", topic)):
-		a.renderTopicsPage(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+		a.renderTopicsPage(Options{Writer: a.stdout(), Theme: a.Theme})
 		return true, nil
 	case topic == "v" || topic == "-v" || topic == "version" || topic == "--version" || (a.AbbrevCommands && strings.HasPrefix("version", topic)):
 		if a.Version == "" {
@@ -133,7 +133,7 @@ func (a *App) handleRootHelpTopic(topic string) (bool, error) {
 			t := defaultTheme()
 			th = &t
 		}
-		o := Options{Writer: a.stdout(), Theme: th, Pager: a.Pager}
+		o := Options{Writer: a.stdout(), Theme: th}
 		if a.GlobalNote != "" {
 			reflow(a.stdout(), th.Body, wrapWidth(o.width(), 0, o.maxContent()), 0, "", inline(a.GlobalNote))
 		} else if a.Description != "" {
@@ -147,7 +147,7 @@ func (a *App) handleRootHelpTopic(topic string) (bool, error) {
 }
 
 func (a *App) handleHelpInvocation(helpPath []string) (bool, error) {
-	o := Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager, Extended: true}
+	o := Options{Writer: a.stdout(), Theme: a.Theme, Extended: true}
 	if len(helpPath) == 0 {
 		a.RenderGlobal(o)
 		return true, nil

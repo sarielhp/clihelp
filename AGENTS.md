@@ -156,15 +156,14 @@ a redirecting caller sees it, and that caller wants it.
 
 ## New Features
 
-- **Tiered Progressive Help (`-h` vs `--help` / `-H`)**: Differentiates concise help (`-h`, suppressing `Notes`, using `Description`, and displaying a footer hint) from extended help (`--help`, `help <cmd>`, or opt-in `-H` via `App.ExtendedHelpFlag` displaying `LongDescription`, parameters, flags, examples, all notes, and paging through `$PAGER`).
+- **Tiered Progressive Help (`-h` vs `--help` / `-H`)**: Differentiates concise help (`-h`, suppressing `Notes`, using `Description`, and displaying a footer hint) from extended help (`--help`, `help <cmd>`, or opt-in `-H` via `App.ExtendedHelpFlag` displaying `LongDescription`, parameters, flags, examples, all notes).
 - **Extended Command Documentation (`Command.LongDescription`)**: In-depth command documentation rendered in extended help and documentation sites, keeping `Description` concise for listings.
 - **Verbatim Text & Fenced Code Blocks (`Note.Raw`)**: Preserves preformatted text, indentation, and markdown code fences in notes and manual pages without word-wrapping or collapsing spaces.
 - **Hanging Indentation for Lists**: `reflowSegment` automatically detects bullet lists (`- `, `* `, `• `) and numbered lists (`1. `, `2. `, etc.), aligning continuation lines with hanging indents to the start of the list item text.
 - **UV-Style Command Listings**: Command and subcommand index tables render strictly bare command names and aliases without argument or flag signatures, guaranteeing clean single-line scannability.
 - **Command Tree Traversal (`App.Walk`)**: Programmatic depth-first traversal of all commands and nested subcommands with path slice isolation and early error-exit for testing and interface coverage.
 - **Global Flag De-Cluttering & Topic Routing**: Added `Option.Group` and `Group()` helper to organize options by category, `App.OmitGlobalFlagsInCommands` to suppress verbose global flags in subcommands, and dedicated help topic routing (`help flags`, `help man`, `help topics`).
-- **Comprehensive Paged Manual (`help man`)**: Built-in `RenderMan()` renders an exhaustive Unix man page with all commands, subcommands, arguments, flags, and notes paged through `$PAGER`.
-- **Pager Support**: When `App.Pager` or `Options.Pager` is true, help output is automatically paged through `$PAGER` when it exceeds terminal height.
+- **Comprehensive Manual (`help man`)**: Built-in `RenderMan()` renders an exhaustive Unix man page with all commands, subcommands, arguments, flags, and notes.
 - **GNU-Standard Column Formatting**: Two-column command/option listings cap the description column at `DefaultMaxColIndent = 24`, and reduce it further when the terminal is too narrow to leave a usable text column. Long command or flag signatures automatically place description text on the next line, indented to the shared description column — the widest name that fits within `DefaultMaxColIndent`, plus four; `DefaultMaxColIndent` itself when no name fits.
 - **Modular Subpackages**: `github.com/sarielhp/clihelp/doc` for GitHub Markdown documentation site generation and `github.com/sarielhp/clihelp/tree` for command hierarchy visualization.
 - **Prefix Command Matching**: Added `App.AbbrevCommands` field to enable abbreviated command names (e.g. `podctl b` instead of `podctl build`).
@@ -189,7 +188,6 @@ a redirecting caller sees it, and that caller wants it.
 | `validation.go` | Declarative option constraint validation (`MutuallyExclusive`, `RequiredTogether`, etc.) |
 | `testing.go` | Testing harnesses (`TestExecute`, `Audit`) for simulating execution and verifying command trees |
 | `inline.go` | Inline markdown parsing and ANSI/OSC8 terminal formatting (bold, italic, code, hyperlinks) |
-| `pager.go` | Pager detection/execution (`$PAGER`, `less`), terminal height check, and paged output |
 | `completion.go` | The `__complete` protocol, dynamic completion, and the three script generators |
 | `completion_templates.go` | The generated bash, zsh and fish completion scripts, as shell source |
 | `completion_command.go` | The optional `completion` command and the install/uninstall report |

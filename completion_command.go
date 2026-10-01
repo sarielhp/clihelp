@@ -72,7 +72,7 @@ func completionGenerateSubcommands() []Command {
 func completionKeysSubcommand() Command {
 	return Command{
 		Name:        "keys",
-		Description: "Print shell key bindings (Alt-H expands the command line and explains it)",
+		Description: "Print shell key bindings (Alt-H explains the command line)",
 		UsageLine:   "completion keys [<shell>]",
 		Examples: []Example{
 			{Line: "completion keys bash", Description: "Print the Bash key bindings"},
@@ -102,7 +102,7 @@ func completionInstallSubcommand() Command {
 	var noKeys, noMan bool
 	return Command{
 		Name:        "install",
-		Description: "Set this program up: tab completion, the Alt-H key binding and the manual page",
+		Description: "Set up tab completion, the Alt-H key binding and the man page",
 		UsageLine:   "completion install [--no-keys] [--no-man] [<shell>]",
 		Examples: []Example{
 			{Line: "completion install", Description: "Set up the active shell"},

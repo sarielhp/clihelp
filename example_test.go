@@ -18,7 +18,6 @@ func ExampleApp_Execute() {
 		Name:        "demo",
 		Description: "Demonstration CLI tool",
 		Version:     "1.0.0",
-		Pager:       true,
 		Commands: []clihelp.Command{
 			{
 				Name:        "build",
@@ -50,8 +49,7 @@ func ExampleBoolToggle() {
 	var normalize bool
 
 	app := &clihelp.App{
-		Name:  "soundctl",
-		Pager: true,
+		Name: "soundctl",
 		Commands: []clihelp.Command{
 			{
 				Name: "process",
@@ -74,8 +72,7 @@ func ExampleBoolToggle() {
 
 func ExampleExactArgs() {
 	app := &clihelp.App{
-		Name:  "tagger",
-		Pager: true,
+		Name: "tagger",
 		Commands: []clihelp.Command{
 			{
 				Name: "tag",
@@ -100,7 +97,6 @@ func ExampleApp_Render() {
 	app := &clihelp.App{
 		Name:        "webcli",
 		Description: "[webcli](https://example.com) — Modern web utility tool with `fast` execution.",
-		Pager:       true,
 		Commands: []clihelp.Command{
 			{
 				Name:        "ping",
@@ -123,8 +119,7 @@ func ExampleEnum() {
 	var env string
 
 	app := &clihelp.App{
-		Name:  "deployer",
-		Pager: true,
+		Name: "deployer",
 		Commands: []clihelp.Command{
 			{
 				Name: "deploy",
@@ -149,8 +144,7 @@ func ExampleStringSlice() {
 	var tags []string
 
 	app := &clihelp.App{
-		Name:  "builder",
-		Pager: true,
+		Name: "builder",
 		Commands: []clihelp.Command{
 			{
 				Name: "build",
@@ -175,8 +169,7 @@ func ExampleDuration() {
 	var timeout time.Duration
 
 	app := &clihelp.App{
-		Name:  "fetcher",
-		Pager: true,
+		Name: "fetcher",
 		Commands: []clihelp.Command{
 			{
 				Name: "fetch",
@@ -199,8 +192,7 @@ func ExampleDuration() {
 
 func ExampleApp_ExecuteContext() {
 	app := &clihelp.App{
-		Name:  "runner",
-		Pager: true,
+		Name: "runner",
 		Commands: []clihelp.Command{
 			{
 				Name: "run",

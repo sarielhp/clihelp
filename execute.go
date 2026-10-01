@@ -267,7 +267,7 @@ func (a *App) runLifecycle(ctx context.Context, targetCmd *Command, path []strin
 		// running, but PostRun and AfterRun still owe their BeforeRun and PreRun
 		// whatever those acquired, so this path falls through rather than
 		// returning here.
-		o := Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager}
+		o := Options{Writer: a.stdout(), Theme: a.Theme}
 		if len(path) == 0 {
 			a.RenderGlobal(o)
 		} else {
@@ -322,7 +322,7 @@ func (a *App) ExecuteContext(ctx context.Context, args []string) error {
 	targetCmd, ancestors, path, remaining := res.cmd, res.ancestors, res.path, res.remaining
 
 	if targetCmd == nil && len(path) == 0 && len(remaining) == 0 && a.Run == nil {
-		a.RenderGlobal(Options{Writer: a.stdout(), Theme: a.Theme, Pager: a.Pager})
+		a.RenderGlobal(Options{Writer: a.stdout(), Theme: a.Theme})
 		return nil
 	}
 
@@ -367,7 +367,6 @@ func (a *App) renderRequestedHelp(helpFlags *helpFlags, path []string) {
 	o := Options{
 		Writer:   a.stdout(),
 		Theme:    a.Theme,
-		Pager:    a.Pager,
 		Concise:  !isExtended,
 		Extended: isExtended,
 	}

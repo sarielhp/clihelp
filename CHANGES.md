@@ -2,6 +2,14 @@
 
 All notable changes to `clihelp` will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Layout checks in `Audit`**: every short description (command, subcommand, shortcut and flag listings) must render on one row at `AuditOptions.Width` (default 80), measured with the renderer's own column layout; a multi-line `Command.Description` is an error. `LongDescription`, `Notes` and extended help are unlimited. Verbatim notes and example lines wider than `Width` go to the new `AuditOptions.Warn` callback instead of failing.
+
+### Removed
+- **Automatic paging**: `App.Pager`, `Options.Pager` and the `$PAGER` subprocess are gone. Help is always written straight to the output; pipe it through a pager yourself.
+
 ## [0.3.44] - 2026-09-23
 
 ### Added

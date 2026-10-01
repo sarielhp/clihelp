@@ -266,7 +266,6 @@ func buildApp() *clihelp.App {
 		Version:                   "0.3.45",
 		GlobalNote:                "Documentation & source: [https://github.com/sarielhp/clihelp](https://github.com/sarielhp/clihelp)",
 		AbbrevCommands:            true,
-		Pager:                     true,
 		OmitGlobalFlagsInCommands: true,
 		InteractiveFallback:       true,
 		AutoRefreshIntegration:    true,

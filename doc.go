@@ -38,7 +38,6 @@
 //			Name:        "demo",
 //			Description: "Demonstration command-line tool",
 //			Version:     "1.0.0",
-//			Pager:       true,
 //			Commands: []clihelp.Command{
 //				{
 //					Name:        "build",
@@ -126,7 +125,7 @@
 //
 // In addition to subcommand help (<command> -h), clihelp automatically routes specialized help topics:
 //   - the renderFlagsPage page (app help flags): Displays categorized global options.
-//   - the renderManPage page (app help man): Displays an exhaustive reference manual, paged through $PAGER when App.Pager or Options.Pager is set.
+//   - the renderManPage page (app help man): Displays an exhaustive reference manual.
 //   - the renderTopicsPage page (app help topics): Lists available help topics.
 //
 // Set [App.OmitGlobalFlagsInCommands] to true to omit verbose global flag tables from individual subcommand screens.

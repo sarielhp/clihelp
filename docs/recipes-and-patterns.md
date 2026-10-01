@@ -41,7 +41,6 @@ func main() {
 
 	app := &clihelp.App{
 		Name:  "worker",
-		Pager: true,
 		Commands: []clihelp.Command{
 			{
 				Name: "start",
@@ -237,7 +236,6 @@ func buildApp() *clihelp.App {
 
 	return &clihelp.App{
 		Name:  "cloudctl",
-		Pager: true,
 		PersistentOptions: []clihelp.Option{
 			clihelp.String(&cfg.ConfigFile, "-c, --config PATH", "~/.cloudctl.yaml", "Path to configuration file"),
 			clihelp.Bool(&cfg.Verbose, "-v, --verbose", false, "Enable verbose output"),
@@ -317,7 +315,6 @@ customTheme := clihelp.Theme{
 
 app := &clihelp.App{
 	Name:  "mytool",
-	Pager: true,
 	Theme: customTheme,
 	// ...
 }
@@ -333,7 +330,6 @@ When `AbbrevCommands: true` is enabled on `App`, users can type unique prefixes 
 app := &clihelp.App{
 	Name:           "podctl",
 	AbbrevCommands: true,
-	Pager:          true,
 	Commands: []clihelp.Command{
 		{Name: "build", Description: "Build audio"},
 		{Name: "serve", Description: "Start server"},
@@ -363,7 +359,6 @@ func buildApp() *clihelp.App {
 	return &clihelp.App{
 		Name:             "podctl",
 		ExtendedHelpFlag: true, // Enables -H as shortcut for extended help
-		Pager:            true, // Pipes long help through $PAGER
 		Commands: []clihelp.Command{
 			{
 				Name:        "deploy",

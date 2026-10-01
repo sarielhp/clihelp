@@ -151,7 +151,7 @@ Global Flags:
 ### 3. Built-In Help Topics
 
 *   `app help flags` (or `app help options`): Displays the categorized directory of all persistent and global options.
-*   `app help man` (or `app help all`): Displays the exhaustive Unix-style manual paged through `$PAGER`.
+*   `app help man` (or `app help all`): Displays the exhaustive Unix-style manual.
 *   `app help tree`: Renders the full hierarchical command tree with box-drawing characters.
 *   `app help topics`: Displays an index of available help topics.
 

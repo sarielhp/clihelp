@@ -14,7 +14,7 @@ It provides clean, structured usage messages with support for ANSI colors and cl
 ## Features
 
 - **UV-Style Command Listings** — Two-column command index tables display clean, bare command names and aliases without argument or flag clutter, ensuring strictly single-line scannability.
-- **Tiered Progressive Help (`-h` vs `--help` / `-H`)** — Differentiate concise summary help (`-h` <= 24 lines, suppressing notes with a footer hint) from extended documentation (`--help`, `help <cmd>`, or opt-in `-H` via `App.ExtendedHelpFlag`) with `$PAGER` support.
+- **Tiered Progressive Help (`-h` vs `--help` / `-H`)** — Differentiate concise summary help (`-h` <= 24 lines, suppressing notes with a footer hint) from extended documentation (`--help`, `help <cmd>`, or opt-in `-H` via `App.ExtendedHelpFlag`).
 - **Extended Command Documentation (`Command.LongDescription`)** — Support comprehensive architectural overviews and multi-paragraph guides on command pages, while keeping command lists and concise `-h` compact.
 - **Command Tree Traversal (`App.Walk`)** — Programmatic depth-first traversal of all commands and nested subcommands with path slice isolation and early error-exit for testing and interface verification.
 - **Declarative CLI Definition** — Define applications, subcommands, persistent options, and flags in clean struct definitions.
@@ -33,8 +33,7 @@ It provides clean, structured usage messages with support for ANSI colors and cl
 - **Inline Markdown & OSC 8 Hyperlinks** — Rich text formatting in descriptions: bold, italic, code, strikethrough, and clickable terminal hyperlinks.
 - **Markdown Documentation Generator** — Automatically generates navigable, GitHub-friendly Markdown doc trees with SHA-256 change-detection caching.
 - **Global Flag De-Cluttering & Topic Routing** — Categorize global options by group (`Option.Group` and `clihelp.Group`), suppress noisy global flags in subcommands (`App.OmitGlobalFlagsInCommands`), and route dedicated help topics (`help flags`, `help man`, `help tree`, `help topics`).
-- **Comprehensive Paged Manual (`help man`)** — Built-in `help man` renders an exhaustive Unix man page with all commands, subcommands, arguments, flags, and notes paged through `$PAGER`.
-- **Automatic Paging** — When enabled, help output is automatically paged through `$PAGER` when it exceeds terminal height.
+- **Comprehensive Manual (`help man`)** — Built-in `help man` renders an exhaustive Unix man page with all commands, subcommands, arguments, flags, and notes.
 - **Command Tree View** — Render the full command hierarchy as a tree with box-drawing characters (`help tree`).
 - **Written to be read by agents** — the [decision model](docs/how-clihelp-decides.md) states what the library decides and what it reads to decide it, so the rules follow rather than having to be memorised; a test fails the build when the prose names something the code does not have.
 
@@ -117,7 +116,6 @@ func main() {
 		Name:                      "podctl",
 		Description:               "Podcast distribution & audio processing tool",
 		Version:                   "1.0.0",
-		Pager:                     true,
 		OmitGlobalFlagsInCommands: true,
 		PersistentOptions: []clihelp.Option{
 			clihelp.Group("Output & Logging", clihelp.Bool(&verbose, "-v, --verbose", false, "Enable verbose logging")),
@@ -218,7 +216,7 @@ An unrecognized flag and `--` both end command resolution, so unknown flags are 
   ```text
   Run 'podctl help build' (or --help) for extended documentation and examples.
   ```
-* **Extended Help (`--help`, `help <cmd>`, or `-H`):** Renders the full `Command.LongDescription`, positional parameters, all flag descriptions, detailed examples, and all `Notes` sections. Paged via `$PAGER` when `App.Pager` or `Options.Pager` is set and the output does not fit the screen.
+* **Extended Help (`--help`, `help <cmd>`, or `-H`):** Renders the full `Command.LongDescription`, positional parameters, all flag descriptions, detailed examples, and all `Notes` sections.
 * **Opt-in `-H` Flag (`App.ExtendedHelpFlag`):** Set `ExtendedHelpFlag: true` on your `App` struct to treat `-H` as a single-letter shortcut for extended help on all commands.
 * **Preformatted Notes (`Note.Raw`):** Set `Raw: true` on any `clihelp.Note` (or wrap content in markdown code fences) to output ASCII tables, config snippets, or diagrams verbatim without line wrapping or whitespace collapsing.
 

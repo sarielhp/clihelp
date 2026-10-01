@@ -112,7 +112,7 @@ working against the library.** Check this document before writing it.
 
 - **Reads:** `Options.Width`, else the terminal file descriptor (via `term.GetSize`),
   else the `COLUMNS` environment variable, else **70 columns**;
-  `Options.MaxContentWidth`, else 80; `App.Pager` / `Options.Pager` with the
+  `Options.MaxContentWidth`, else 80; the concise-help budget uses the
   terminal height (or the `LINES` environment variable for non-terminals).
 - **Note:** 70 is what every redirected `--help` in every program built on this
   library is laid out at unless `$COLUMNS` is set in the environment.
@@ -220,6 +220,7 @@ these exist:
 | A second renderer to check the first | mutation-tested at 38/38; a golden test of your own output is cheaper and catches more |
 | Shell completion scripts, Alt-H key bindings, a man page | one mounted `CompletionCommand()`, one command for the user |
 | Static checks that your examples still parse | `Audit(app)` — run it in CI |
+| One-row short descriptions in every listing | `Audit(app)` fails when a `Description` does not fit on one row at `AuditOptions.Width` (80); long text belongs in `LongDescription` |
 
 ---
 
@@ -285,7 +286,6 @@ func main() {
 		Name:        "myapp",
 		Description: "Sample CLI tool",
 		Version:     "1.0.0",
-		Pager:       true,
 		// The root takes no positional arguments, so an unrecognised first word
 		// is a typo and gets a suggestion — decision 2.
 		Args: clihelp.NoArgs,

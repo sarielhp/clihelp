@@ -10,6 +10,12 @@ import (
 type AuditOptions struct {
 	AllowPathPermutations [][]string
 	SkipExampleValidation bool
+	// Width is the terminal width the layout checks assume; 80 when zero.
+	Width int
+	// Warn receives findings that do not fail the audit — verbatim notes and
+	// example lines wider than Width, which the renderer cannot wrap. Nil
+	// discards them.
+	Warn func(msg string)
 }
 
 // Audit traverses the app's command tree to statically verify documentation and
@@ -42,6 +48,9 @@ func auditCommandNameUniqueness(seenNames map[string]bool, cmd Command, currentP
 			return fmt.Errorf("duplicate subcommand alias %q under path %q", alias, strings.Join(currentPath, " "))
 		}
 		seenNames[alias] = true
+	}
+	if strings.Contains(strings.TrimSpace(cmd.Description), "\n") {
+		return fmt.Errorf("command %q under path %q: Description must be one line; put the rest in LongDescription", cmd.Name, strings.Join(currentPath, " "))
 	}
 	if cmd.Description == "" {
 		return fmt.Errorf("command %q under path %q is missing a Description", cmd.Name, strings.Join(currentPath, " "))
@@ -160,6 +169,10 @@ func auditCommandTree(cmds []Command, currentPath []string, allPaths *[]commandP
 			return err
 		}
 
+		if err := auditCommandLayout(cmd, cmdPath, opts); err != nil {
+			return err
+		}
+
 		if err := auditCommandTree(cmd.Subcommands, cmdPath, allPaths, persistent, opts); err != nil {
 			return err
 		}
@@ -201,6 +214,10 @@ func audit(app *App, opts AuditOptions) error {
 	// command tree below is audited without them.
 	rootOwners := owners.clone()
 	if err := checkOptionScope(rootOwners, "the app's own options", app.Options); err != nil {
+		return err
+	}
+
+	if err := auditAppLayout(app, opts); err != nil {
 		return err
 	}
 

@@ -72,7 +72,6 @@ func NewApp(cfg *Config) *clihelp.App {
     return &clihelp.App{
         Name:        "app",
         Description: "Application root",
-        Pager:       true,
         Commands: []clihelp.Command{
             {
                 Name:      "build",
@@ -130,7 +129,7 @@ In Cobra, `-h` and `--help` execute identical rendering logic: when commands def
 
 `clihelp` implements tiered progressive disclosure:
 - `-h` renders a compact summary (<= 24 lines) without notes, giving immediate visibility to syntax and flags, ending with an actionable footer pointing to full documentation.
-- `--help`, `help <cmd>`, and `-H` (when `App.ExtendedHelpFlag` is enabled) display the complete manual (`LongDescription`, all notes, code blocks, examples), automatically paged through `$PAGER` when longer than the screen.
+- `--help`, `help <cmd>`, and `-H` (when `App.ExtendedHelpFlag` is enabled) display the complete manual (`LongDescription`, all notes, code blocks, examples).
 
 ---
 

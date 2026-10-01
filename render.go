@@ -74,10 +74,6 @@ type Options struct {
 	// Theme overrides the App.Theme and the package default. When nil the
 	// App's theme (or the default) applies.
 	Theme *Theme
-	// Pager enables automatic paging through $PAGER when output exceeds
-	// the terminal height. When true, output is buffered and piped through
-	// the pager only when it doesn't fit on one screen.
-	Pager bool
 	// Concise requests concise command help (-h), suppressing notes and
 	// displaying a footer hint pointing to extended help. The result is held to
 	// ConciseMaxLines.
@@ -453,69 +449,68 @@ func (a *App) renderGlobalFlagsSection(w io.Writer, th Theme, o Options, termWid
 // global flags, and help footer.
 func (a *App) RenderGlobal(o Options) {
 	o = o.withApp(a)
-	a.pageOutput(o, func(out io.Writer) {
-		a.budgeted(out, o, nil, func(w io.Writer) {
-			th := o.theme(a)
-			termWidth := o.width()
+	out := o.out()
+	a.budgeted(out, o, nil, func(w io.Writer) {
+		th := o.theme(a)
+		termWidth := o.width()
 
-			// "Usage:" is the prefix column, so a long usage line wraps under
-			// itself instead of overflowing. It was the one line in the page that
-			// was never wrapped, which is what made a narrow terminal unreadable.
-			//
-			// inline(), as RenderCommand and RenderMan already do: App.UsageLine
-			// was rendered on two of the four paths, so the same app showed raw
-			// ** here and a URL the author had written as a link.
-			reflowMargin(w, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 0, 8,
-				"Usage:", o.inline(a.usageLine()), th.Hdr)
+		// "Usage:" is the prefix column, so a long usage line wraps under
+		// itself instead of overflowing. It was the one line in the page that
+		// was never wrapped, which is what made a narrow terminal unreadable.
+		//
+		// inline(), as RenderCommand and RenderMan already do: App.UsageLine
+		// was rendered on two of the four paths, so the same app showed raw
+		// ** here and a URL the author had written as a link.
+		reflowMargin(w, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 0, 8,
+			"Usage:", o.inline(a.usageLine()), th.Hdr)
 
-			if a.Description != "" {
-				fmt.Fprintln(w)
-				reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", o.inline(a.Description))
-			}
-			// GlobalNote is the application's own note, and it belongs with the
-			// description on the page an author expects it on. It used to appear
-			// only in "help docs", "help more" and the manual page — so the two
-			// real applications that set one, including this library's own
-			// example, put a link in their help that nobody was shown. Extended
-			// help only, as Command.Notes are: the concise tier is a prompt, not
-			// documentation.
-			if a.GlobalNote != "" && a.GlobalNote != a.Description && !o.Concise {
-				fmt.Fprintln(w)
-				reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", o.inline(a.GlobalNote))
-			}
+		if a.Description != "" {
 			fmt.Fprintln(w)
+			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", o.inline(a.Description))
+		}
+		// GlobalNote is the application's own note, and it belongs with the
+		// description on the page an author expects it on. It used to appear
+		// only in "help docs", "help more" and the manual page — so the two
+		// real applications that set one, including this library's own
+		// example, put a link in their help that nobody was shown. Extended
+		// help only, as Command.Notes are: the concise tier is a prompt, not
+		// documentation.
+		if a.GlobalNote != "" && a.GlobalNote != a.Description && !o.Concise {
+			fmt.Fprintln(w)
+			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", o.inline(a.GlobalNote))
+		}
+		fmt.Fprintln(w)
 
-			var visibleCommands []Command
-			for _, c := range a.Commands {
-				if !c.Hidden {
-					visibleCommands = append(visibleCommands, c)
-				}
+		var visibleCommands []Command
+		for _, c := range a.Commands {
+			if !c.Hidden {
+				visibleCommands = append(visibleCommands, c)
 			}
-			if len(visibleCommands) > 0 {
-				th.Accent.Fprintln(w, "Commands:")
-				a.renderCommandGrouped(w, th, o, termWidth, a.Commands)
-				fmt.Fprintln(w)
-			}
+		}
+		if len(visibleCommands) > 0 {
+			th.Accent.Fprintln(w, "Commands:")
+			a.renderCommandGrouped(w, th, o, termWidth, a.Commands)
+			fmt.Fprintln(w)
+		}
 
-			a.renderGlobalShortcuts(w, th, o, termWidth)
-			a.renderGlobalFlagsSection(w, th, o, termWidth)
+		a.renderGlobalShortcuts(w, th, o, termWidth)
+		a.renderGlobalFlagsSection(w, th, o, termWidth)
 
-			if len(a.Examples) > 0 {
-				th.Accent.Fprintln(w, "Examples:")
-				renderExamples(w, a, nil, th, o, termWidth, a.Examples, 2, 4)
-				fmt.Fprintln(w)
-			}
+		if len(a.Examples) > 0 {
+			th.Accent.Fprintln(w, "Examples:")
+			renderExamples(w, a, nil, th, o, termWidth, a.Examples, 2, 4)
+			fmt.Fprintln(w)
+		}
 
-			if len(visibleCommands) > 0 || len(a.Shortcuts) > 0 {
-				reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", fmt.Sprintf("Run '%s <command> -h' for command help, or '%s help [flags|man]'.", appName(a), appName(a)))
-			}
+		if len(visibleCommands) > 0 || len(a.Shortcuts) > 0 {
+			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", fmt.Sprintf("Run '%s <command> -h' for command help, or '%s help [flags|man]'.", appName(a), appName(a)))
+		}
 
-			if a.ConfigPath != "" {
-				fmt.Fprintln(w)
-				th.Hdr.Fprint(w, "Config: ")
-				fmt.Fprintln(w, a.ConfigPath)
-			}
-		})
+		if a.ConfigPath != "" {
+			fmt.Fprintln(w)
+			th.Hdr.Fprint(w, "Config: ")
+			fmt.Fprintln(w, a.ConfigPath)
+		}
 	})
 }
 
@@ -779,47 +774,46 @@ func (a *App) RenderCommand(o Options, path ...string) bool {
 	if cmd == nil {
 		return false
 	}
-	a.pageOutput(o, func(out io.Writer) {
-		a.budgeted(out, o, path, func(w io.Writer) {
-			th := o.theme(a)
-			sepW := min(o.width(), o.maxContent())
-			termWidth := o.width()
+	out := o.out()
+	a.budgeted(out, o, path, func(w io.Writer) {
+		th := o.theme(a)
+		sepW := min(o.width(), o.maxContent())
+		termWidth := o.width()
 
-			renderCommandTitle(w, th, o, cmd, termWidth, sepW)
+		renderCommandTitle(w, th, o, cmd, termWidth, sepW)
 
-			usage := a.buildDefaultUsage(cmd, path)
-			reflowMargin(w, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 0, 8,
-				"Usage:", o.inline(usage), th.Hdr) // see RenderGlobal
+		usage := a.buildDefaultUsage(cmd, path)
+		reflowMargin(w, th.Body, wrapWidth(termWidth, 8, o.maxContent()), 0, 8,
+			"Usage:", o.inline(usage), th.Hdr) // see RenderGlobal
 
-			desc := cmd.Description
-			if !o.Concise && cmd.LongDescription != "" {
-				desc = cmd.LongDescription
-			}
-			if desc != "" {
-				fmt.Fprintln(w)
-				reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", o.inline(desc))
-			}
-
-			a.renderCommandSubcommands(w, th, o, termWidth, cmd)
-			renderCommandParams(w, th, o, termWidth, cmd.Parameters)
-			a.renderCommandFlags(w, th, o, termWidth, path, cmd)
-
-			if len(cmd.Examples) > 0 {
-				th.Hdr.Fprintln(w, "\nExamples:")
-				renderExamples(w, a, cmd, th, o, termWidth, cmd.Examples, 2, 4)
-			}
-
-			if !o.Concise {
-				renderCommandNotes(w, th, o, termWidth, cmd.Notes)
-			} else if cmd.LongDescription != "" || len(cmd.Notes) > 0 {
-				a.renderCommandConciseFooter(w, th, o, termWidth, path)
-			}
-
-			if th.Separator {
-				separator(w, th, sepW)
-			}
+		desc := cmd.Description
+		if !o.Concise && cmd.LongDescription != "" {
+			desc = cmd.LongDescription
+		}
+		if desc != "" {
 			fmt.Fprintln(w)
-		})
+			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", o.inline(desc))
+		}
+
+		a.renderCommandSubcommands(w, th, o, termWidth, cmd)
+		renderCommandParams(w, th, o, termWidth, cmd.Parameters)
+		a.renderCommandFlags(w, th, o, termWidth, path, cmd)
+
+		if len(cmd.Examples) > 0 {
+			th.Hdr.Fprintln(w, "\nExamples:")
+			renderExamples(w, a, cmd, th, o, termWidth, cmd.Examples, 2, 4)
+		}
+
+		if !o.Concise {
+			renderCommandNotes(w, th, o, termWidth, cmd.Notes)
+		} else if cmd.LongDescription != "" || len(cmd.Notes) > 0 {
+			a.renderCommandConciseFooter(w, th, o, termWidth, path)
+		}
+
+		if th.Separator {
+			separator(w, th, sepW)
+		}
+		fmt.Fprintln(w)
 	})
 	return true
 }
