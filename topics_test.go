@@ -425,3 +425,22 @@ func TestHelpPagesDoNotPromisePaging(t *testing.T) {
 		})
 	}
 }
+
+// The 'help <command>' row used to embed the application's name in its own
+// description, so at 80 columns it wrapped for any name over eight characters —
+// on a page the library writes, which no author can shorten.
+func TestHelpTopicsRowsFitOneLineWhateverTheAppIsCalled(t *testing.T) {
+	labels := []string{"help <command>", "help flags", "help examples", "help man"}
+	for _, name := range []string{"a", "podctl", "mail_cli_fake", strings.Repeat("n", 20), strings.Repeat("n", 40)} {
+		t.Run(name, func(t *testing.T) {
+			app := &App{Name: name, Commands: []Command{{Name: "build", Description: "Build it"}}}
+			var buf bytes.Buffer
+			app.renderTopicsPage(Options{Writer: &buf, Width: 80, NoColor: true})
+			for _, label := range labels {
+				if n := descriptionLines(buf.String(), label); n != 1 {
+					t.Errorf("%q row occupies %d lines at width 80:\n%s", label, n, buf.String())
+				}
+			}
+		})
+	}
+}

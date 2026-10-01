@@ -361,7 +361,9 @@ func (a *App) renderTopicsPage(o Options) {
 
 	th.Hdr.Fprintln(w, "Help Topics:")
 	topics := []Param{
-		{Name: "help <command>", Description: fmt.Sprintf("Show help for a specific command (or '%s <command> -h')", appName(a))},
+		// No application name in the text: a name over eight characters made this row
+		// wrap at 80 columns, on a page no author can edit.
+		{Name: "help <command>", Description: "Show help for a specific command"},
 		{Name: "help flags", Description: "Show all global flags and persistent options"},
 		{Name: "help examples", Description: "Show every example in one place; add a command to narrow it"},
 		{Name: "help man", Description: "Display the complete reference manual"},
