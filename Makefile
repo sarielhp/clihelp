@@ -39,7 +39,7 @@ bump:
 	@./tools/bump-version.sh
 
 commit:
-	@./tools/commit.sh $(ARGS)
+	@./tools/commit.sh "$$ARGS"
 
 push: bump
 
