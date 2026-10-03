@@ -4,6 +4,10 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+### Changed — may fail an existing audit
+- **Library-owned flags are namespaced, so they no longer collide with ordinary application flags.** `ManPageCommand()` declared `--install`, `--uninstall` and `--force` as command-local flags; because a library-owned command's local options are inherited into every page it appears on, `Audit` read a name like `--force` as a duplicate of the app's persistent/global flag and refused the app outright — so any application whose globals included `--force` could not mount the manual-page command at all. The flags are now namespaced by the library root, the same reasoning that reserves `__clihelp` and `__complete`: `manpage` takes `--man-install`, `--man-uninstall` and `--man-force`; `completion install` takes `--completion-no-keys` and `--completion-no-man`; `completion wrap` takes `--completion-from`. Both the visible command and its `__clihelp` twin (`__clihelp manpage --man-install`, `__clihelp wrapper --completion-from`) speak the new spelling, and `Audit` now enforces the rule: a flag on a library-owned command must carry its root's prefix.
+  - **If your scripts call the old spelling:** replace `manpage --install`/`--uninstall`/`--force` with `--man-install`/`--man-uninstall`/`--man-force`, `completion install --no-keys`/`--no-man` with `--completion-no-keys`/`--completion-no-man`, and `completion wrap --from` with `--completion-from`. Before 1.0 there are no aliases; the old names are gone.
+
 ## [0.3.52] - 2026-10-01
 
 ### Changed

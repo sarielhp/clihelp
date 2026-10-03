@@ -280,6 +280,61 @@ func TestMarkLibraryOwnedReachesEveryLevel(t *testing.T) {
 	}
 }
 
+// The flags a library-owned command declares are namespaced by the library
+// root, so they cannot collide with an application's own persistent or global
+// flags of the same name. This is issue #1: any app with a global --force could
+// not mount ManPageCommand() at all, because its command-local --force was read
+// as a duplicate. The same reasoning reserves "__clihelp" and "__complete".
+func TestLibraryOwnedFlagsAreNamespaced(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		cmd     Command
+		wantErr string
+	}{
+		{
+			"defer to the library's own manpage command",
+			ManPageCommand(),
+			"",
+		},
+		{
+			"defer to the library's own completion command",
+			CompletionCommand(),
+			"",
+		},
+		{
+			"a library command whose flag drops the namespace is refused",
+			markLibraryOwned(Command{Name: "lib", Description: "Library",
+				Options: []Option{Bool(new(bool), "--force", false, "Force it.")}}),
+			`--force`,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			app := &App{Name: "a", Commands: []Command{tt.cmd}}
+			err := Audit(app, AuditOptions{SkipExampleValidation: true})
+			switch {
+			case tt.wantErr == "" && err != nil:
+				t.Errorf("Audit = %v, want nil", err)
+			case tt.wantErr != "" && (err == nil || !strings.Contains(err.Error(), tt.wantErr)):
+				t.Errorf("Audit = %v, want an error containing %q", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// The reported reproduction: an app whose global flags include --force can mount
+// the manual-page command, because the library's flags no longer share its name.
+func TestManPageCommandMountsBesideAGlobalForce(t *testing.T) {
+	var force bool
+	app := &App{
+		Name:              "bws",
+		PersistentOptions: []Option{Bool(&force, "-f, --force", false, "Force overwrite")},
+		Commands:          []Command{ManPageCommand()},
+	}
+	if err := Audit(app); err != nil {
+		t.Fatalf("an app with a global --force cannot mount ManPageCommand(): %v", err)
+	}
+}
+
 // The warnings are advisory but their edges are the contract: exactly Width is
 // fine, one past is not; one note reports once however many lines are long; and
 // a caller who passes no Warn gets no panic.

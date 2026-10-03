@@ -229,7 +229,7 @@ func TestAShellOperatorEndsTheValidatedCommand(t *testing.T) {
 // An example declared on a command may be written relative to that command or
 // to any of its ancestors, not only from the root.
 //
-// CompletionCommand() ships the example "completion install --no-keys zsh",
+// CompletionCommand() ships the example "completion install --completion-no-keys zsh",
 // written for a completion command mounted at the root. An application that
 // mounts it under "config" gets the path "config completion install", and Audit
 // — which the README tells people to run in CI — rejected the library's own

@@ -107,17 +107,17 @@ func completionInstallSubcommand() Command {
 	return Command{
 		Name:        "install",
 		Description: "Set up tab completion, the Alt-H key binding and the man page",
-		UsageLine:   "completion install [--no-keys] [--no-man] [<shell>]",
+		UsageLine:   "completion install [--completion-no-keys] [--completion-no-man] [<shell>]",
 		Examples: []Example{
 			{Line: "completion install", Description: "Set up the active shell"},
-			{Line: "completion install --no-keys zsh", Description: "Set up Zsh completion without the Alt-H binding"},
+			{Line: "completion install --completion-no-keys zsh", Description: "Set up Zsh completion without the Alt-H binding"},
 		},
 		Parameters: []Param{
 			{Name: "[<shell>]", Description: "Shell type ('bash', 'zsh', or 'fish'; defaults to current shell)"},
 		},
 		Options: []Option{
-			Bool(&noKeys, "--no-keys", false, "Install tab completion only, leaving Alt-H alone"),
-			Bool(&noMan, "--no-man", false, "Skip the manual page"),
+			Bool(&noKeys, "--completion-no-keys", false, "Install tab completion only, leaving Alt-H alone"),
+			Bool(&noMan, "--completion-no-man", false, "Skip the manual page"),
 		},
 		Notes: []Note{
 			{
@@ -178,17 +178,17 @@ func completionWrapSubcommand() Command {
 	return Command{
 		Name:        "wrap",
 		Description: "Generate a wrapper script with preset arguments",
-		UsageLine:   "completion wrap [--from <path>] <name> [<args>...]",
+		UsageLine:   "completion wrap [--completion-from <path>] <name> [<args>...]",
 		Examples: []Example{
 			{Line: "completion wrap pd deploy", Description: "Generate wrapper 'pd' for '<app> deploy'"},
-			{Line: "completion wrap --from ~/bin/mt", Description: "Inspect existing script and generate wrapper"},
+			{Line: "completion wrap --completion-from ~/bin/mt", Description: "Inspect existing script and generate wrapper"},
 		},
 		Parameters: []Param{
 			{Name: "<name>", Description: "Name of the wrapper script"},
 			{Name: "[<args>...]", Description: "Preset arguments prepended to wrapped command"},
 		},
 		Options: []Option{
-			String(&fromPath, "--from <path>", "", "Inspect an existing wrapper script to extract preset arguments"),
+			String(&fromPath, "--completion-from <path>", "", "Inspect an existing wrapper to extract its arguments"),
 		},
 		Args: MinimumNArgs(0),
 		Run: func(ctx *Context) error {

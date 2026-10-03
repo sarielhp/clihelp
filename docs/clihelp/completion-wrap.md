@@ -10,7 +10,7 @@ Generate a wrapper script with preset arguments
 ## Usage
 
 ```
-podctl completion wrap [--from <path>] <name> [<args>...]
+podctl completion wrap [--completion-from <path>] <name> [<args>...]
 ```
 
 ## Parameters
@@ -31,12 +31,12 @@ podctl completion wrap [--from <path>] <name> [<args>...]
 | `-v, --verbose` | Enable verbose output logs |
 | `-s, --silent` | Suppress non-error output |
 | `--no-color` | Disable ANSI color output |
-| `--from <path>` | Inspect an existing wrapper script to extract preset arguments |
+| `--completion-from <path>` | Inspect an existing wrapper to extract its arguments |
 
 ## Examples
 
 - `podctl completion wrap pd deploy` — Generate wrapper 'pd' for 'podctl deploy'
-- `podctl completion wrap --from ~/bin/mt` — Inspect existing script and generate wrapper
+- `podctl completion wrap --completion-from ~/bin/mt` — Inspect existing script and generate wrapper
 
 ---
 

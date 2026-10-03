@@ -202,7 +202,7 @@ a redirecting caller sees it, and that caller wants it.
 | `completion_command.go` | The optional `completion` command and the install/uninstall report |
 | `autorefresh.go` | `AutoRefreshIntegration`: the only unattended writer, allowed to refresh and never to create |
 | `preserve_unix.go`, `preserve_other.go` | Ownership preservation for the atomic replace (POSIX), and its no-op elsewhere |
-| `wrapper_parse.go` | Read-only parser that extracts the preset arguments from an existing wrapper script (`__clihelp wrapper --from`) |
+| `wrapper_parse.go` | Read-only parser that extracts the preset arguments from an existing wrapper script (`__clihelp wrapper --completion-from`) |
 | `atomicwrite.go` | `writeFileAtomically` — symlink-resolving, fsynced, owner-preserving replace |
 | `shell.go` | `resolveShell` — the one answer to "which shell, and can we write for it?" |
 | `versions.go` | Every version number stamped into a generated artifact, in one place |

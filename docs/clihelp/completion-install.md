@@ -10,7 +10,7 @@ Set up tab completion, the Alt-H key binding and the man page
 ## Usage
 
 ```
-podctl completion install [--no-keys] [--no-man] [<shell>]
+podctl completion install [--completion-no-keys] [--completion-no-man] [<shell>]
 ```
 
 ## Parameters
@@ -30,13 +30,13 @@ podctl completion install [--no-keys] [--no-man] [<shell>]
 | `-v, --verbose` | Enable verbose output logs |
 | `-s, --silent` | Suppress non-error output |
 | `--no-color` | Disable ANSI color output |
-| `--no-keys` | Install tab completion only, leaving Alt-H alone |
-| `--no-man` | Skip the manual page |
+| `--completion-no-keys` | Install tab completion only, leaving Alt-H alone |
+| `--completion-no-man` | Skip the manual page |
 
 ## Examples
 
 - `podctl completion install` — Set up the active shell
-- `podctl completion install --no-keys zsh` — Set up Zsh completion without the Alt-H binding
+- `podctl completion install --completion-no-keys zsh` — Set up Zsh completion without the Alt-H binding
 
 ## What It Writes
 

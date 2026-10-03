@@ -562,7 +562,7 @@ func readFileWithMode(path string) (string, os.FileMode, error) {
 }
 
 // integrationHasKeys reports whether the installed file carries the key
-// bindings, so that refreshing it keeps the choice the user made with --no-keys.
+// bindings, so that refreshing it keeps the choice the user made with --completion-no-keys.
 // The header records the choice; a file too old or too damaged to say is read
 // for the dispatcher itself, and failing that treated as completion only, since
 // adding a key binding nobody asked for is the worse of the two mistakes.

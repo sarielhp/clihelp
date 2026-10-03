@@ -139,7 +139,7 @@ func validateOptionSpec(opt Option, spec flagSpec) error {
 	return spec.validate()
 }
 
-func auditCommandOptions(inherited flagOwners, cmd Command) (flagOwners, error) {
+func auditCommandOptions(inherited flagOwners, cmd Command, currentPath []string) (flagOwners, error) {
 	scope := fmt.Sprintf("command %q", cmd.Name)
 	persistent := inherited.clone()
 	if err := checkOptionScope(persistent, scope, cmd.PersistentOptions); err != nil {
@@ -149,8 +149,42 @@ func auditCommandOptions(inherited flagOwners, cmd Command) (flagOwners, error) 
 	if err := checkOptionScope(local, scope, cmd.Options); err != nil {
 		return nil, err
 	}
+	if err := checkLibraryFlagNamespace(cmd, currentPath); err != nil {
+		return nil, err
+	}
 	// Only persistent options reach the subcommands.
 	return persistent, nil
+}
+
+// libraryFlagPrefix is the long-flag namespace a library-owned command's flags
+// must carry, keyed by the library root. A root not named here is its own
+// prefix, so a new library command that follows its name needs no entry.
+var libraryFlagPrefix = map[string]string{"manpage": "man"}
+
+// checkLibraryFlagNamespace enforces the namespacing policy: a library-owned
+// command's flags are namespaced by the library root, so they cannot collide
+// with an application's own persistent or global flags of the same name. It is
+// the same reasoning that reserves "__clihelp" and "__complete": the library
+// should occupy names an author would never choose.
+func checkLibraryFlagNamespace(cmd Command, currentPath []string) error {
+	if !cmd.libraryOwned {
+		return nil
+	}
+	prefix := cmd.libraryRoot
+	if short, ok := libraryFlagPrefix[cmd.libraryRoot]; ok {
+		prefix = short
+	}
+	for _, opt := range append(append([]Option{}, cmd.PersistentOptions...), cmd.Options...) {
+		spec := parseFlagSpec(opt.Flags)
+		for _, long := range spec.longNames {
+			if long == prefix || strings.HasPrefix(long, prefix+"-") {
+				continue
+			}
+			return fmt.Errorf("library-owned command %q declares flag %q %s: its flags must be namespaced as %q",
+				cmd.Name, "--"+long, underPath(currentPath), "--"+prefix+"-*")
+		}
+	}
+	return nil
 }
 
 func auditCommandTree(cmds []Command, currentPath []string, allPaths *[]commandPathInfo, inherited flagOwners, opts AuditOptions) error {
@@ -167,7 +201,7 @@ func auditCommandTree(cmds []Command, currentPath []string, allPaths *[]commandP
 		}
 		*allPaths = append(*allPaths, commandPathInfo{path: cmdPath, wordSet: wordSetKey})
 
-		persistent, err := auditCommandOptions(inherited, cmd)
+		persistent, err := auditCommandOptions(inherited, cmd, cmdPath)
 		if err != nil {
 			return err
 		}

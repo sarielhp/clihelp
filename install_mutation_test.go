@@ -61,7 +61,7 @@ func TestZshHonoursZDOTDIR(t *testing.T) {
 }
 
 // The automatic refresh preserves what the user installed: an integration
-// written with --no-keys must not gain the Alt-H binding when it is refreshed.
+// written with --completion-no-keys must not gain the Alt-H binding when it is refreshed.
 // integrationHasKeys is the only thing carrying that decision forward, and it
 // could be made to answer "yes" always with the suite green.
 func TestIntegrationHasKeysReadsTheFile(t *testing.T) {

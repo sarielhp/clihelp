@@ -147,7 +147,7 @@ to the shell's startup file, installs the manual page, and rewrites the generate
 the application is upgraded. That is a genuine convenience, and it is also the whole of the
 risk this library carries and Cobra does not — every destructive-write concern in
 `docs/completion.md` exists because something here writes to a home directory. If that trade
-is not one you want, `--no-keys`, `--no-man` and simply not calling `install` leave you with
+is not one you want, `--completion-no-keys`, `--completion-no-man` and simply not calling `install` leave you with
 Cobra's model: generators whose output you place yourself.
 
 The Alt-H binding is the same bet in smaller form. It is not an invention: Alt-H is already

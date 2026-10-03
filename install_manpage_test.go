@@ -8,7 +8,7 @@ import (
 )
 
 // One command, one interruption. Setting a program up used to mean "install"
-// followed by "manpage --install", two calls the user had to know about, so the
+// followed by "manpage --man-install", two calls the user had to know about, so the
 // man page — which is also what makes Alt-H answer natively in zsh and fish —
 // was the half most people would never get.
 func TestInstallAlsoInstallsTheManPage(t *testing.T) {
@@ -77,7 +77,7 @@ func TestInstallSurvivesAManPageItCannotWrite(t *testing.T) {
 	app := installApp()
 
 	// A page of someone else's, where ours would go, is the collision clihelp
-	// refuses to overwrite without --force.
+	// refuses to overwrite without --man-force.
 	elsewhere := filepath.Join(home, "other", "man1")
 	writeFixture(t, filepath.Join(elsewhere, "myapp.1"), ".TH MYAPP 1\n")
 	t.Setenv("MANPATH", elsewhere+"/..")
@@ -94,7 +94,7 @@ func TestInstallSurvivesAManPageItCannotWrite(t *testing.T) {
 	}
 }
 
-// --no-man opts out, the way --no-keys does.
+// --completion-no-man opts out, the way --completion-no-keys does.
 func TestInstallWithoutTheManPage(t *testing.T) {
 	home := sandboxHome(t)
 	app := installApp()
@@ -104,10 +104,10 @@ func TestInstallWithoutTheManPage(t *testing.T) {
 		t.Fatal(err)
 	}
 	if res.ManPage != "" {
-		t.Errorf("--no-man still installed a page: %q", res.ManPage)
+		t.Errorf("--completion-no-man still installed a page: %q", res.ManPage)
 	}
 	if _, err := os.Stat(filepath.Join(home, ".local", "share", "man", "man1", "myapp.1")); !os.IsNotExist(err) {
-		t.Errorf("--no-man wrote a manual page anyway")
+		t.Errorf("--completion-no-man wrote a manual page anyway")
 	}
 }
 

@@ -45,7 +45,7 @@ func TestManPageDateIsReproducible(t *testing.T) {
 // man prints the path it resolved, so clihelp's own page came back under a
 // different spelling — a symlinked $XDG_DATA_HOME is enough, as is /home versus
 // /export/home — and the install then refused, reporting a collision with
-// itself and telling the user to pass --force to overwrite their own file.
+// itself and telling the user to pass --man-force to overwrite their own file.
 func TestManPageElsewhereIgnoresOurOwnPageUnderAnotherName(t *testing.T) {
 	home := t.TempDir()
 	real := filepath.Join(home, "real", "man1")

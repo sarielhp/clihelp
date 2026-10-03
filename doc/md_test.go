@@ -662,7 +662,7 @@ func TestMarkdownNamesTheProgramInLibraryCommandLines(t *testing.T) {
 		t.Fatal(err)
 	}
 	for file, wants := range map[string][]string{
-		"cfg-completion-install.md": {"tool cfg completion install", "tool cfg completion install --no-keys zsh"},
+		"cfg-completion-install.md": {"tool cfg completion install", "tool cfg completion install --completion-no-keys zsh"},
 		"cfg-completion.md":         {"tool cfg completion zsh"},
 		"cfg-manpage.md":            {"tool cfg manpage > tool.1"},
 	} {

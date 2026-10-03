@@ -387,7 +387,7 @@ func installManPage(app *App, force bool) (string, error) {
 	}
 	if !force {
 		if other, found := manPageElsewhere(app, target); found {
-			return "", fmt.Errorf("a manual page for %s is already installed at %s; pass --force to install this one as well", appName(app), other)
+			return "", fmt.Errorf("a manual page for %s is already installed at %s; pass --man-force to install this one as well", appName(app), other)
 		}
 	}
 
@@ -473,7 +473,7 @@ func manPageIsCurrent(path string) bool {
 
 // refreshManPage keeps a manual page clihelp generated up to date when the
 // template changes, and never creates one: installing a page is the user's
-// decision, taken by running "__clihelp manpage --install".
+// decision, taken by running "__clihelp manpage --man-install".
 func (a *App) refreshManPage() {
 	path, err := ManPagePath(a)
 	if err != nil || !isGeneratedManPage(path) || manPageIsCurrent(path) {
@@ -485,14 +485,14 @@ func (a *App) refreshManPage() {
 // manPageAction is the behaviour behind both "__clihelp manpage" and the
 // optional visible command: print the page, or install or remove it.
 func (a *App) manPageAction(out, notes io.Writer, install, uninstall, force bool) error {
-	// The usage says "[--install|--uninstall]"; make the bar mean something
-	// rather than silently preferring one. --force applies to installing, so on
+	// The usage says "[--man-install|--man-uninstall]"; make the bar mean something
+	// rather than silently preferring one. --man-force applies to installing, so on
 	// its own it was accepted and ignored.
 	if install && uninstall {
-		return errors.New("--install and --uninstall are mutually exclusive")
+		return errors.New("--man-install and --man-uninstall are mutually exclusive")
 	}
 	if force && !install {
-		return errors.New("--force applies to --install")
+		return errors.New("--man-force applies to --man-install")
 	}
 	switch {
 	case uninstall:
@@ -535,20 +535,20 @@ func manPageCommand() Command {
 	return Command{
 		Name:        "manpage",
 		Description: "Print the manual page, or install it for man(1)",
-		UsageLine:   "manpage [--install|--uninstall] [--force]",
+		UsageLine:   "manpage [--man-install|--man-uninstall] [--man-force]",
 		Examples: []Example{
 			{Line: "manpage > <app>.1", Description: "Write the page for a package to install"},
-			{Line: "manpage --install", Description: "Install it for this user"},
+			{Line: "manpage --man-install", Description: "Install it for this user"},
 		},
 		Options: []Option{
-			Bool(&install, "--install", false, "Install it under the user's data directory, where man(1) looks"),
-			Bool(&uninstall, "--uninstall", false, "Remove a manual page installed this way"),
-			Bool(&force, "--force", false, "Install even though another manual page for this program exists"),
+			Bool(&install, "--man-install", false, "Install it under the user's data directory"),
+			Bool(&uninstall, "--man-uninstall", false, "Remove a manual page installed this way"),
+			Bool(&force, "--man-force", false, "Install even though another page exists"),
 		},
 		Notes: []Note{
 			{
 				Heading: "Installing",
-				Text:    "Installation refuses when a manual page for this program already exists elsewhere, because which of two pages man(1) shows is not predictable and the one that loses is invisible. --force installs anyway.",
+				Text:    "Installation refuses when a manual page for this program already exists elsewhere, because which of two pages man(1) shows is not predictable and the one that loses is invisible. --man-force installs anyway.",
 			},
 		},
 		Args: NoArgs,

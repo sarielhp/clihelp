@@ -470,7 +470,7 @@ func splitExampleCommandLine(line string) ([]string, error) {
 // declaring command's own path is tried, longest first, until one resolves.
 //
 // Prepending only the command's own name was not enough. CompletionCommand()
-// ships the example "completion install --no-keys zsh", which is written for a
+// ships the example "completion install --completion-no-keys zsh", which is written for a
 // completion command mounted at the root; an application that mounts it under
 // "config" gets the path "config completion install", and Audit — which the
 // README tells people to run in CI — rejected the library's own example as an
@@ -491,7 +491,7 @@ func resolveExampleCommand(app *App, cmd *Command, cmdPath []string, tokens []st
 		// since that is what the line is about. Trying longest-first and taking
 		// the first success does not work: the full path resolves greedily and
 		// leaves the rest of the line as positional arguments, so
-		// "completion install --no-keys zsh" under "config completion install"
+		// "completion install --completion-no-keys zsh" under "config completion install"
 		// became three arguments to a command that accepts one.
 		var fallback *resolution
 		for n := 1; n <= len(cmdPath); n++ {

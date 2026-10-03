@@ -93,8 +93,8 @@ lock and gets none, because `conf.d` is a drop-in directory and nothing shared i
 **Options.**
 
 ```bash
-podctl completion install --no-keys      # tab completion only, leave Alt-H alone
-podctl completion install --no-man       # skip the manual page
+podctl completion install --completion-no-keys      # tab completion only, leave Alt-H alone
+podctl completion install --completion-no-man       # skip the manual page
 podctl completion install zsh            # a shell other than the active one
 podctl completion uninstall              # remove the file and the block
 ```
@@ -163,14 +163,14 @@ Usage:
 
 Verbs:
   version              report the clihelp version this program was built with
-  install [--no-keys] [--no-man] [<shell>]
+  install [--completion-no-keys] [--completion-no-man] [<shell>]
                        set this program up: completion, the Alt-H binding and
                        the manual page
   uninstall [<shell>]  remove what install wrote
   keys [<shell>]       print the key bindings, for inspection or manual setup
-  wrapper [--from <path>] <name> [<args>...]
+  wrapper [--completion-from <path>] <name> [<args>...]
                        print a wrapper script for this program, with arguments
-  manpage [--install|--uninstall] [--force]
+  manpage [--man-install|--man-uninstall] [--man-force]
                        print a roff manual page, or install it for man(1)
 
 Shells:
@@ -180,8 +180,8 @@ Shells:
 Examples:
   myapp __clihelp install                       # set up completion, Alt-H, and man page
   myapp __clihelp wrapper pd deploy > ~/bin/pd  # generate wrapper script with preset args
-  myapp __clihelp wrapper --from ~/bin/mt       # inspect existing script and generate wrapper
-  myapp __clihelp manpage --install             # install manual page for man(1)
+  myapp __clihelp wrapper --completion-from ~/bin/mt       # inspect existing script and generate wrapper
+  myapp __clihelp manpage --man-install             # install manual page for man(1)
 
 Run 'myapp __clihelp -H' for what install writes and which names are reserved.
 ```
@@ -217,7 +217,7 @@ done
 
 ```console
 $ myapp __clihelp manpage > debian/myapp.1     # for a package to install
-$ myapp __clihelp manpage --install            # for this user
+$ myapp __clihelp manpage --man-install            # for this user
 ~/.local/share/man/man1/myapp.1
 ```
 
@@ -225,7 +225,7 @@ $ myapp __clihelp manpage --install            # for this user
 
 It does not replace clihelp's own Alt-H binding, which answers a different question: `man myapp` is the whole manual, while the binding explains *the command line as typed*, expanding abbreviated command names and showing that subcommand's help within two thirds of the screen. And bash has no native help key at all.
 
-**Installation refuses to create a second page.** If a manual page for the program already exists — packaged by a distribution, say — `--install` stops and says where it is, because which of two pages `man` shows is not predictable and the one that loses is invisible. `--force` installs anyway. `--uninstall` removes only a page clihelp generated; a hand-written one at the same path is left alone.
+**Installation refuses to create a second page.** If a manual page for the program already exists — packaged by a distribution, say — `--man-install` stops and says where it is, because which of two pages `man` shows is not predictable and the one that loses is invisible. `--man-force` installs anyway. `--man-uninstall` removes only a page clihelp generated; a hand-written one at the same path is left alone.
 
 **The author decides how much of this is on offer.** `clihelp.ManPageCommand()` added to `App.Commands` gives a visible `myapp manpage`; without it, `__clihelp manpage` still works, because a packager is not the author. Nothing is ever installed unasked: `AutoRefreshIntegration` refreshes a generated page when a clihelp upgrade changes the template, and never creates one.
 
@@ -247,10 +247,10 @@ $ myapp __clihelp wrapper pd deploy > ~/.local/bin/pd && chmod +x ~/.local/bin/p
 #   complete -F _myapp_complete pd
 ```
 
-If you already have a simple handwritten script (e.g. `~/bin/mt` running `myapp -2 tui "$@"`), pass `--from` to inspect it and extract preset arguments without retyping them:
+If you already have a simple handwritten script (e.g. `~/bin/mt` running `myapp -2 tui "$@"`), pass `--completion-from` to inspect it and extract preset arguments without retyping them:
 
 ```console
-$ myapp __clihelp wrapper --from ~/bin/mt > ~/.local/bin/mt && chmod +x ~/.local/bin/mt
+$ myapp __clihelp wrapper --completion-from ~/bin/mt > ~/.local/bin/mt && chmod +x ~/.local/bin/mt
 ```
 
 The script carries a `# clihelp-wraps: myapp deploy` marker in its second line — the convention pyenv and asdf use for their shims, so that a wrapper can be recognised and followed without being executed.

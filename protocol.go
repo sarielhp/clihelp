@@ -39,11 +39,11 @@ type clihelpVerb struct {
 func clihelpVerbs() []clihelpVerb {
 	return []clihelpVerb{
 		{"version", "", "report the clihelp version this program was built with"},
-		{"install", "[--no-keys] [--no-man] [<shell>]", "set this program up: completion, the Alt-H binding and the manual page"},
+		{"install", "[--completion-no-keys] [--completion-no-man] [<shell>]", "set this program up: completion, the Alt-H binding and the manual page"},
 		{"uninstall", "[<shell>]", "remove what install wrote"},
 		{"keys", "[<shell>]", "print the key bindings, for inspection or manual setup"},
-		{"wrapper", "[--from <path>] <name> [<args>...]", "print a wrapper script for this program, with arguments"},
-		{"manpage", "[--install|--uninstall] [--force]", "print a roff manual page, or install it for man(1)"},
+		{"wrapper", "[--completion-from <path>] <name> [<args>...]", "print a wrapper script for this program, with arguments"},
+		{"manpage", "[--man-install|--man-uninstall] [--man-force]", "print a roff manual page, or install it for man(1)"},
 	}
 }
 
@@ -135,7 +135,7 @@ func (a *App) printVerbHelp(w io.Writer, verb string) error {
 //
 // Each verb used to parse for itself: install looked at args[0] only, manpage
 // looped over everything, and the rest silently discarded surplus positionals.
-// So "install bash --no-keys" installed the key binding the user had just
+// So "install bash --completion-no-keys" installed the key binding the user had just
 // declined, and "uninstall bash zsh" said nothing about zsh. The visible
 // commands get this grammar from pflag; this is the same grammar for the hidden
 // spelling of the same verbs.
@@ -223,8 +223,8 @@ func (a *App) printClihelpVerbs(w io.Writer, extended bool) {
 	examples := []struct{ cmd, comment string }{
 		{name + " " + protoClihelp + " install", "# set up completion, Alt-H, and man page"},
 		{name + " " + protoClihelp + " wrapper pd deploy > ~/bin/pd", "# generate wrapper script with preset args"},
-		{name + " " + protoClihelp + " wrapper --from ~/bin/mt", "# inspect existing script and generate wrapper"},
-		{name + " " + protoClihelp + " manpage --install", "# install manual page for man(1)"},
+		{name + " " + protoClihelp + " wrapper --completion-from ~/bin/mt", "# inspect existing script and generate wrapper"},
+		{name + " " + protoClihelp + " manpage --man-install", "# install manual page for man(1)"},
 	}
 	for _, ex := range examples {
 		fmt.Fprintf(w, "  %-46s %s\n",
@@ -273,7 +273,7 @@ func (a *App) printClihelpDetail(w io.Writer, th Theme) {
 // script can capture it; everything for a human goes to stderr.
 func (a *App) clihelpInstall(args []string) error {
 	var noKeys, noMan bool
-	rest, err := parseVerbArgs("install", args, map[string]*bool{"--no-keys": &noKeys, "--no-man": &noMan}, 1)
+	rest, err := parseVerbArgs("install", args, map[string]*bool{"--completion-no-keys": &noKeys, "--completion-no-man": &noMan}, 1)
 	if err != nil {
 		return err
 	}
@@ -296,14 +296,14 @@ func (a *App) clihelpWrapper(args []string) error {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch {
-		case arg == "--from":
+		case arg == "--completion-from":
 			if i+1 >= len(args) {
-				return fmt.Errorf("%s wrapper: --from requires a path or command argument", protoClihelp)
+				return fmt.Errorf("%s wrapper: --completion-from requires a path or command argument", protoClihelp)
 			}
 			i++
 			fromPath = args[i]
-		case strings.HasPrefix(arg, "--from="):
-			fromPath = strings.TrimPrefix(arg, "--from=")
+		case strings.HasPrefix(arg, "--completion-from="):
+			fromPath = strings.TrimPrefix(arg, "--completion-from=")
 		case strings.HasPrefix(arg, "-"):
 			return fmt.Errorf("unknown option %q for %s wrapper", arg, protoClihelp)
 		default:
@@ -338,14 +338,14 @@ func executeWrapperGen(app *App, fromPath string, positional []string, stdout, s
 		if len(positional) > 0 {
 			name = positional[0]
 			if len(positional) > 1 {
-				return fmt.Errorf("%s wrapper: cannot specify preset arguments when using --from", protoClihelp)
+				return fmt.Errorf("%s wrapper: cannot specify preset arguments when using --completion-from", protoClihelp)
 			}
 		} else {
 			name = defaultName
 		}
 	} else {
 		if len(positional) == 0 {
-			return fmt.Errorf("usage: %s wrapper [--from <path>] <name> [<args>...]", protoClihelp)
+			return fmt.Errorf("usage: %s wrapper [--completion-from <path>] <name> [<args>...]", protoClihelp)
 		}
 		name, wrapped = positional[0], positional[1:]
 	}
@@ -362,7 +362,7 @@ func executeWrapperGen(app *App, fromPath string, positional []string, stdout, s
 func (a *App) clihelpManPage(args []string) error {
 	var install, uninstall, force bool
 	if _, err := parseVerbArgs("manpage", args, map[string]*bool{
-		"--install": &install, "--uninstall": &uninstall, "--force": &force,
+		"--man-install": &install, "--man-uninstall": &uninstall, "--man-force": &force,
 	}, 0); err != nil {
 		return err
 	}

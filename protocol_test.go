@@ -176,14 +176,14 @@ func TestClihelpUninstall(t *testing.T) {
 
 func TestClihelpInstallWithoutKeys(t *testing.T) {
 	home := sandboxHome(t)
-	runProto(t, bareApp(), "__clihelp", "install", "--no-keys", "bash").AssertNoError(t)
+	runProto(t, bareApp(), "__clihelp", "install", "--completion-no-keys", "bash").AssertNoError(t)
 
 	body, err := os.ReadFile(filepath.Join(home, ".config", "bare", "shell", "bash"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(string(body), "_clihelp_explain") {
-		t.Errorf("--no-keys still installed the key binding")
+		t.Errorf("--completion-no-keys still installed the key binding")
 	}
 }
 
@@ -272,7 +272,7 @@ func TestClihelpManPageVerb(t *testing.T) {
 	})
 
 	t.Run("install prints only the path", func(t *testing.T) {
-		res := runProto(t, bareApp(), "__clihelp", "manpage", "--install")
+		res := runProto(t, bareApp(), "__clihelp", "manpage", "--man-install")
 		res.AssertNoError(t)
 		if strings.Count(res.Stdout, "\n") != 1 {
 			t.Errorf("stdout should be the path alone:\n%s", res.Stdout)
@@ -286,10 +286,10 @@ func TestClihelpManPageVerb(t *testing.T) {
 	})
 
 	t.Run("uninstall", func(t *testing.T) {
-		first := runProto(t, bareApp(), "__clihelp", "manpage", "--uninstall")
+		first := runProto(t, bareApp(), "__clihelp", "manpage", "--man-uninstall")
 		first.AssertStdoutContains(t, "/") // the removed path, for a script
 		first.AssertStderrContains(t, "removed")
-		runProto(t, bareApp(), "__clihelp", "manpage", "--uninstall").AssertStderrContains(t, "no generated manual page")
+		runProto(t, bareApp(), "__clihelp", "manpage", "--man-uninstall").AssertStderrContains(t, "no generated manual page")
 	})
 
 	t.Run("an unknown option is an error", func(t *testing.T) {
@@ -312,7 +312,7 @@ func TestManPageCommandIsOptional(t *testing.T) {
 
 // A flag is a flag wherever it appears, an unknown token is an error, and a
 // surplus positional is an error — the same grammar the visible commands get
-// from pflag. "--no-keys" silently ignored after the shell name meant the user
+// from pflag. "--completion-no-keys" silently ignored after the shell name meant the user
 // declined a global key binding and got one anyway.
 func TestClihelpVerbsParseArgumentsInAnyOrder(t *testing.T) {
 	for _, tt := range []struct {
@@ -321,10 +321,10 @@ func TestClihelpVerbsParseArgumentsInAnyOrder(t *testing.T) {
 		keys    bool
 		wantErr string
 	}{
-		{"flag first", []string{"--no-keys", "bash"}, false, ""},
-		{"shell first", []string{"bash", "--no-keys"}, false, ""},
+		{"flag first", []string{"--completion-no-keys", "bash"}, false, ""},
+		{"shell first", []string{"bash", "--completion-no-keys"}, false, ""},
 		{"no flag", []string{"bash"}, true, ""},
-		{"flag alone", []string{"--no-keys"}, false, ""},
+		{"flag alone", []string{"--completion-no-keys"}, false, ""},
 		{"unknown option", []string{"bash", "--nonesuch"}, false, "--nonesuch"},
 		{"two shells", []string{"bash", "zsh"}, false, "zsh"},
 	} {
@@ -350,10 +350,10 @@ func TestClihelpVerbsParseArgumentsInAnyOrder(t *testing.T) {
 
 func TestClihelpVerbsRejectContradictoryFlags(t *testing.T) {
 	sandboxHome(t)
-	runProto(t, bareApp(), "__clihelp", "manpage", "--install", "--uninstall").
+	runProto(t, bareApp(), "__clihelp", "manpage", "--man-install", "--man-uninstall").
 		AssertErrorContains(t, "mutually exclusive")
-	runProto(t, bareApp(), "__clihelp", "manpage", "--force").
-		AssertErrorContains(t, "--force")
+	runProto(t, bareApp(), "__clihelp", "manpage", "--man-force").
+		AssertErrorContains(t, "--man-force")
 	runProto(t, bareApp(), "__clihelp", "uninstall", "bash", "zsh").
 		AssertErrorContains(t, "zsh")
 }
@@ -447,8 +447,8 @@ func TestStdoutCarriesOnlyMachineReadableOutput(t *testing.T) {
 	}{
 		{"install", []string{"__clihelp", "install", "bash"}},
 		{"uninstall", []string{"__clihelp", "uninstall", "bash"}},
-		{"manpage --install", []string{"__clihelp", "manpage", "--install"}},
-		{"manpage --uninstall", []string{"__clihelp", "manpage", "--uninstall"}},
+		{"manpage --man-install", []string{"__clihelp", "manpage", "--man-install"}},
+		{"manpage --man-uninstall", []string{"__clihelp", "manpage", "--man-uninstall"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			sandboxHome(t)
@@ -457,7 +457,7 @@ func TestStdoutCarriesOnlyMachineReadableOutput(t *testing.T) {
 			if strings.Contains(tt.name, "uninstall") {
 				pre := []string{"__clihelp", "install", "bash"}
 				if strings.Contains(tt.name, "manpage") {
-					pre = []string{"__clihelp", "manpage", "--install"}
+					pre = []string{"__clihelp", "manpage", "--man-install"}
 				}
 				runProto(t, bareApp(), pre...).AssertNoError(t)
 			}
@@ -516,7 +516,7 @@ func TestClihelpWrapperFromFlag(t *testing.T) {
 	app := bareApp()
 
 	t.Run("auto name and extracted arguments", func(t *testing.T) {
-		res := runProto(t, app, "__clihelp", "wrapper", "--from", shim)
+		res := runProto(t, app, "__clihelp", "wrapper", "--completion-from", shim)
 		res.AssertNoError(t)
 		res.AssertStdoutContains(t, "# clihelp-wraps: bare build -v")
 		res.AssertStdoutContains(t, `__clihelp_target='bare build -v'`)
@@ -524,23 +524,23 @@ func TestClihelpWrapperFromFlag(t *testing.T) {
 	})
 
 	t.Run("override wrapper name", func(t *testing.T) {
-		res := runProto(t, app, "__clihelp", "wrapper", "--from", shim, "custom-name")
+		res := runProto(t, app, "__clihelp", "wrapper", "--completion-from", shim, "custom-name")
 		res.AssertNoError(t)
 		res.AssertStdoutContains(t, `__clihelp_target='bare build -v'`)
 		res.AssertStderrContains(t, "complete -F _bare_complete custom-name")
 	})
 
 	t.Run("rejects contradictory positional arguments", func(t *testing.T) {
-		res := runProto(t, app, "__clihelp", "wrapper", "--from", shim, "custom-name", "extra-arg")
+		res := runProto(t, app, "__clihelp", "wrapper", "--completion-from", shim, "custom-name", "extra-arg")
 		if res.Error == nil {
-			t.Errorf("expected error when extra arguments passed with --from")
+			t.Errorf("expected error when extra arguments passed with --completion-from")
 		}
 	})
 
-	t.Run("missing --from argument", func(t *testing.T) {
-		res := runProto(t, app, "__clihelp", "wrapper", "--from")
+	t.Run("missing --completion-from argument", func(t *testing.T) {
+		res := runProto(t, app, "__clihelp", "wrapper", "--completion-from")
 		if res.Error == nil {
-			t.Errorf("expected error when --from is missing value")
+			t.Errorf("expected error when --completion-from is missing value")
 		}
 	})
 }

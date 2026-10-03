@@ -203,12 +203,12 @@ func TestInstallManPageRefusesToShadowAnother(t *testing.T) {
 
 	if _, err := installManPage(manApp(), false); err == nil {
 		t.Errorf("installed over an existing manual page without being forced")
-	} else if !strings.Contains(err.Error(), "--force") {
+	} else if !strings.Contains(err.Error(), "--man-force") {
 		t.Errorf("the refusal should say how to override it: %v", err)
 	}
 
 	if _, err := installManPage(manApp(), true); err != nil {
-		t.Errorf("--force was refused: %v", err)
+		t.Errorf("--man-force was refused: %v", err)
 	}
 }
 

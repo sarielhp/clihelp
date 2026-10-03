@@ -177,10 +177,10 @@ func TestInstallWithoutKeys(t *testing.T) {
 		t.Fatal(err)
 	}
 	if strings.Contains(string(body), "_clihelp_explain") {
-		t.Errorf("--no-keys still installed the key binding:\n%s", body)
+		t.Errorf("--completion-no-keys still installed the key binding:\n%s", body)
 	}
 	if !strings.Contains(string(body), "_myapp_complete") {
-		t.Errorf("--no-keys dropped the completion as well")
+		t.Errorf("--completion-no-keys dropped the completion as well")
 	}
 }
 
