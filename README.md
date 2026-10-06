@@ -14,7 +14,7 @@ It provides clean, structured usage messages with support for ANSI colors and cl
 ## Features
 
 - **UV-Style Command Listings** — Two-column command index tables display clean, bare command names and aliases without argument or flag clutter, ensuring strictly single-line scannability.
-- **Tiered Progressive Help (`-h` vs `--help` / `-H`)** — Differentiate concise summary help (`-h` <= 24 lines, suppressing notes with a footer hint) from extended documentation (`--help`, `help <cmd>`, or opt-in `-H` via `App.ExtendedHelpFlag`).
+- **Tiered Progressive Help (`-h` vs `--help` / `-H`)** — Differentiate concise summary help (`-h` targets 24 lines, always listing all top-level commands before truncating later sections) from extended documentation (`--help`, `help <cmd>`, or opt-in `-H` via `App.ExtendedHelpFlag`).
 - **Extended Command Documentation (`Command.LongDescription`)** — Support comprehensive architectural overviews and multi-paragraph guides on command pages, while keeping command lists and concise `-h` compact.
 - **Command Tree Traversal (`App.Walk`)** — Programmatic depth-first traversal of all commands and nested subcommands with path slice isolation and early error-exit for testing and interface verification.
 - **Declarative CLI Definition** — Define applications, subcommands, persistent options, and flags in clean struct definitions.
@@ -216,7 +216,7 @@ An unrecognized flag and `--` both end command resolution, so unknown flags are 
 
 `clihelp` differentiates between concise terminal usage and in-depth reference documentation:
 
-* **Concise Help (`-h`):** Formatted to stay within typical 24-line terminal windows. Suppresses verbose notes, displays a compact description, and shows an actionable footer hint:
+* **Concise Help (`-h`):** Formatted for typical 24-line terminal windows; root help may run longer to show every top-level command. Suppresses verbose notes, displays a compact description, and shows an actionable footer hint:
   ```text
   Run 'podctl help build' (or --help) for extended documentation and examples.
   ```

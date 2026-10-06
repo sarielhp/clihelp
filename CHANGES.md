@@ -4,6 +4,9 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Concise root help lists every top-level command before truncating.** The 24-line target could cut off commands at the bottom of the list, leaving users unable to discover them from `-h`. The full visible command list now takes priority; later sections still follow the line budget and point to full help when shortened.
+
 ## [0.3.53] - 2026-10-03
 
 ### Changed — may fail an existing audit

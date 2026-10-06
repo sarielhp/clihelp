@@ -21,7 +21,7 @@ While Cobra excels at building large CLI ecosystems, `clihelp` offers a differen
 | **Manual Pages** | `cobra/doc`'s `GenManTree`, run at build time for a packager to ship | `__clihelp manpage`, and `install` writes one for the user directly |
 | **Key Binding** | None | Alt-H expands the abbreviated command line and prints that command's help, capped at two thirds of the screen |
 | **Setup Without the Author** | Not available: completion exists only if the author wired it up | Every program answers `__clihelp`, so a dotfiles script or packager can set one up regardless |
-| **Tiered Progressive Help** | `-h` and `--help` render identical help output | `-h` provides concise help (<= 24 lines); `--help` / `-H` renders full documentation |
+| **Tiered Progressive Help** | `-h` and `--help` render identical help output | `-h` targets 24 lines while keeping all top-level commands visible; `--help` / `-H` renders full documentation |
 | **AI Agent Prompting** | Multi-step `init()` wiring patterns | Self-contained struct literal, with the decision model written down |
 
 ---
@@ -128,7 +128,7 @@ Self-contained struct declarations are straightforward for LLMs to generate in a
 In Cobra, `-h` and `--help` execute identical rendering logic: when commands define long descriptions, multi-step examples, and notes, requesting `-h` frequently scrolls hundreds of lines past the visible terminal viewport.
 
 `clihelp` implements tiered progressive disclosure:
-- `-h` renders a compact summary (<= 24 lines) without notes, giving immediate visibility to syntax and flags, ending with an actionable footer pointing to full documentation.
+- `-h` renders a compact summary without notes, showing every top-level command before truncating later sections and pointing to full documentation.
 - `--help`, `help <cmd>`, and `-H` (when `App.ExtendedHelpFlag` is enabled) display the complete manual (`LongDescription`, all notes, code blocks, examples).
 
 ---

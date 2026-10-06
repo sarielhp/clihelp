@@ -84,7 +84,9 @@ working against the library.** Check this document before writing it.
 
 - **Reads:** which flag was given, plus `App.ExtendedHelpFlag`.
   - `-h` (bound to the hidden long name `--help-concise`) — concise: no notes,
-    held to a line budget, with a footer pointing at the extended form.
+    held to a line budget, with a footer pointing at the extended form. Root
+    help always shows the full top-level command list before truncating later
+    sections, even when the list exceeds the budget.
   - `--help` — extended: `LongDescription`, every note, every example.
   - `-H` — the same as `--help`, only when `App.ExtendedHelpFlag` is true.
 - **Never declare any of those four yourself.** They are bound for you and a

@@ -76,7 +76,7 @@ type Options struct {
 	Theme *Theme
 	// Concise requests concise command help (-h), suppressing notes and
 	// displaying a footer hint pointing to extended help. The result is held to
-	// ConciseMaxLines.
+	// ConciseMaxLines, except that global help always shows every command.
 	Concise bool
 	// NoColor renders this one call without colour, whatever the process-wide
 	// setting is. An application offering a --no-color flag had no thread-safe
@@ -85,7 +85,8 @@ type Options struct {
 	NoColor bool
 	// ConciseMaxLines bounds concise (-h) output. Zero means the documented
 	// default of 24 lines; a negative value means no bound, which is what the
-	// concise tier did before the bound existed.
+	// concise tier did before the bound existed. Global help may exceed the bound
+	// to finish its top-level command list and show the rest hint.
 	//
 	// The number is the promise -h has always made in README.md and llms.txt and
 	// in the comparison with cobra, where it is the stated differentiator. It was
@@ -368,68 +369,74 @@ func (a *App) renderGlobalFlagsSection(w io.Writer, th Theme, o Options, termWid
 // global flags, and help footer.
 func (a *App) RenderGlobal(o Options) {
 	o = o.withApp(a)
-	out := o.out()
-	a.budgeted(out, o, nil, func(w io.Writer) {
-		th := o.theme(a)
-		termWidth := o.width()
+	var buf bytes.Buffer
+	protectedLines := a.renderGlobalPage(&buf, o)
+	a.writeBudgeted(o.out(), o, nil, buf.Bytes(), protectedLines)
+}
 
-		// "Usage:" is the prefix column, so a long usage line wraps under
-		// itself instead of overflowing. It was the one line in the page that
-		// was never wrapped, which is what made a narrow terminal unreadable.
-		//
-		// inline(), as RenderCommand and RenderMan already do: App.UsageLine
-		// was rendered on two of the four paths, so the same app showed raw
-		// ** here and a URL the author had written as a link.
-		writeUsage(w, th, o, termWidth, a.usageLine())
+func (a *App) renderGlobalPage(w *bytes.Buffer, o Options) int {
+	protectedLines := 0
+	th := o.theme(a)
+	termWidth := o.width()
 
-		if a.Description != "" {
-			fmt.Fprintln(w)
-			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", o.inline(a.Description))
-		}
-		// GlobalNote is the application's own note, and it belongs with the
-		// description on the page an author expects it on. It used to appear
-		// only in "help docs", "help more" and the manual page — so the two
-		// real applications that set one, including this library's own
-		// example, put a link in their help that nobody was shown. Extended
-		// help only, as Command.Notes are: the concise tier is a prompt, not
-		// documentation.
-		if a.GlobalNote != "" && a.GlobalNote != a.Description && !o.Concise {
-			fmt.Fprintln(w)
-			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", o.inline(a.GlobalNote))
-		}
+	// "Usage:" is the prefix column, so a long usage line wraps under
+	// itself instead of overflowing. It was the one line in the page that
+	// was never wrapped, which is what made a narrow terminal unreadable.
+	//
+	// inline(), as RenderCommand and RenderMan already do: App.UsageLine
+	// was rendered on two of the four paths, so the same app showed raw
+	// ** here and a URL the author had written as a link.
+	writeUsage(w, th, o, termWidth, a.usageLine())
+
+	if a.Description != "" {
 		fmt.Fprintln(w)
+		reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", o.inline(a.Description))
+	}
+	// GlobalNote is the application's own note, and it belongs with the
+	// description on the page an author expects it on. It used to appear
+	// only in "help docs", "help more" and the manual page — so the two
+	// real applications that set one, including this library's own
+	// example, put a link in their help that nobody was shown. Extended
+	// help only, as Command.Notes are: the concise tier is a prompt, not
+	// documentation.
+	if a.GlobalNote != "" && a.GlobalNote != a.Description && !o.Concise {
+		fmt.Fprintln(w)
+		reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", o.inline(a.GlobalNote))
+	}
+	fmt.Fprintln(w)
 
-		var visibleCommands []Command
-		for _, c := range a.Commands {
-			if !c.Hidden {
-				visibleCommands = append(visibleCommands, c)
-			}
+	var visibleCommands []Command
+	for _, c := range a.Commands {
+		if !c.Hidden {
+			visibleCommands = append(visibleCommands, c)
 		}
-		if len(visibleCommands) > 0 {
-			th.Accent.Fprintln(w, "Commands:")
-			a.renderCommandGrouped(w, th, o, termWidth, a.Commands)
-			fmt.Fprintln(w)
-		}
+	}
+	if len(visibleCommands) > 0 {
+		th.Accent.Fprintln(w, "Commands:")
+		a.renderCommandGrouped(w, th, o, termWidth, a.Commands)
+		fmt.Fprintln(w)
+		protectedLines = len(splitLines(strings.TrimRight(w.String(), "\n")))
+	}
 
-		a.renderGlobalShortcuts(w, th, o, termWidth)
-		a.renderGlobalFlagsSection(w, th, o, termWidth)
+	a.renderGlobalShortcuts(w, th, o, termWidth)
+	a.renderGlobalFlagsSection(w, th, o, termWidth)
 
-		if len(a.Examples) > 0 {
-			th.Accent.Fprintln(w, "Examples:")
-			renderExamples(w, a, nil, th, o, termWidth, a.Examples, 2, 4)
-			fmt.Fprintln(w)
-		}
+	if len(a.Examples) > 0 {
+		th.Accent.Fprintln(w, "Examples:")
+		renderExamples(w, a, nil, th, o, termWidth, a.Examples, 2, 4)
+		fmt.Fprintln(w)
+	}
 
-		if len(visibleCommands) > 0 || len(a.Shortcuts) > 0 {
-			reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", fmt.Sprintf("Run '%s <command> -h' for command help, or '%s help [flags|man]'.", appName(a), appName(a)))
-		}
+	if len(visibleCommands) > 0 || len(a.Shortcuts) > 0 {
+		reflow(w, th.Body, wrapWidth(termWidth, 0, o.maxContent()), 0, "", fmt.Sprintf("Run '%s <command> -h' for command help, or '%s help [flags|man]'.", appName(a), appName(a)))
+	}
 
-		if a.ConfigPath != "" {
-			fmt.Fprintln(w)
-			th.Hdr.Fprint(w, "Config: ")
-			fmt.Fprintln(w, a.ConfigPath)
-		}
-	})
+	if a.ConfigPath != "" {
+		fmt.Fprintln(w)
+		th.Hdr.Fprint(w, "Config: ")
+		fmt.Fprintln(w, a.ConfigPath)
+	}
+	return protectedLines
 }
 
 // normalizeGroups gives ungrouped entries a heading of their own, but only when
@@ -650,20 +657,30 @@ func conciseBudgetFor(configured, height int) int {
 // replacing whatever did not fit with one line saying how much was dropped and
 // where to read it. Outside the concise tier it renders straight through.
 func (a *App) budgeted(w io.Writer, o Options, path []string, fn func(io.Writer)) {
-	budget := o.conciseBudget()
-	if !o.Concise || budget < 1 {
+	if !o.Concise || o.conciseBudget() < 1 {
 		fn(w)
 		return
 	}
 	var buf bytes.Buffer
 	fn(&buf)
-	// Pass it through untouched when it fits: writeWithinBudget trims trailing
-	// newlines, and the blank line a help page ends with is deliberate spacing.
-	if len(splitLines(strings.TrimRight(buf.String(), "\n"))) <= budget {
-		_, _ = w.Write(buf.Bytes())
+	a.writeBudgeted(w, o, path, buf.Bytes(), 0)
+}
+
+// writeBudgeted preserves the command index on global help, even when it is
+// taller than the concise budget. The extra line leaves room for the rest hint.
+func (a *App) writeBudgeted(w io.Writer, o Options, path []string, page []byte, protectedLines int) {
+	budget := o.conciseBudget()
+	if !o.Concise || budget < 1 {
+		_, _ = w.Write(page)
 		return
 	}
-	writeWithinBudget(w, buf.String(), budget, o.width(), a.explainMoreHint(path)...)
+	// Pass it through untouched when it fits: writeWithinBudget trims trailing
+	// newlines, and the blank line a help page ends with is deliberate spacing.
+	if len(splitLines(strings.TrimRight(string(page), "\n"))) <= budget {
+		_, _ = w.Write(page)
+		return
+	}
+	writeWithinBudget(w, string(page), max(budget, protectedLines+1), o.width(), a.explainMoreHint(path)...)
 }
 
 func (a *App) renderCommandConciseFooter(w io.Writer, th Theme, o Options, termWidth int, path []string) {

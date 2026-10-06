@@ -55,10 +55,63 @@ func TestConciseHelpFitsItsBudget(t *testing.T) {
 	}
 }
 
-// RenderGlobal ignored o.Concise entirely, so `probe -h` and `probe --help`
-// were byte-identical at the root.
-func TestConciseGlobalHelpFitsItsBudget(t *testing.T) {
+// Root help keeps every command visible even when the list exceeds the
+// requested height. Sections after the list still yield to the budget.
+func TestConciseGlobalHelpKeepsCommands(t *testing.T) {
 	app := budgetApp()
+	app.Commands[1].Group = "Maintenance"
+	app.Commands[2].Group = "Maintenance"
+	app.Commands[3].Hidden = true
+	app.Options = []Option{{Flags: "--root-flag", Description: "Root option."}}
+	app.Examples = []Example{{Line: "probe sync a b"}}
+
+	for _, tt := range []struct {
+		name   string
+		width  int
+		budget int
+	}{
+		{"narrow terminal", 40, 8},
+		{"default budget", 80, conciseHelpLines},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var concise bytes.Buffer
+			app.RenderGlobal(Options{Writer: &concise, Width: tt.width, NoColor: true, Concise: true, ConciseMaxLines: tt.budget})
+			out := concise.String()
+			lastCommand := 0
+			for _, cmd := range app.Commands {
+				if cmd.Hidden {
+					if strings.Contains(out, "  "+cmd.Name+" ") {
+						t.Errorf("hidden command %q was listed", cmd.Name)
+					}
+					continue
+				}
+				pos := strings.Index(out, "  "+cmd.Name)
+				if pos < 0 {
+					t.Errorf("command %q was cut from short help:\n%s", cmd.Name, out)
+				}
+				if pos > lastCommand {
+					lastCommand = pos
+				}
+			}
+			if note := strings.LastIndex(out, "…"); note < lastCommand {
+				t.Errorf("truncation note came before the last command:\n%s", out)
+			}
+			if !strings.Contains(out, "probe help") {
+				t.Errorf("short help omits the full-help route:\n%s", out)
+			}
+			if tt.budget == 8 && strings.Contains(out, "--root-flag") {
+				t.Errorf("flags were rendered after the over-budget command list:\n%s", out)
+			}
+		})
+	}
+}
+
+func TestConciseGlobalHelpFitsItsBudgetWhenCommandsFit(t *testing.T) {
+	app := budgetApp()
+	app.Commands = app.Commands[:2]
+	for i := 0; i < 30; i++ {
+		app.Options = append(app.Options, Option{Flags: fmt.Sprintf("--flag-%02d", i), Description: "A root flag."})
+	}
 	var concise, extended bytes.Buffer
 	app.RenderGlobal(Options{Writer: &concise, Width: 80, Concise: true})
 	app.RenderGlobal(Options{Writer: &extended, Width: 80})
