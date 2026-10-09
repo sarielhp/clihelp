@@ -4,6 +4,8 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.55] - 2026-10-08
+
 ### Changed
 - **Install registers wrappers; nothing is pasted into a startup file.** `__clihelp wrapper` printed two commented-out lines for the user to paste after `compinit` — a `compdef`/`complete` line and an entry in the Alt-H registry spelled in its wire format (`mt:1`). Writing the integration file now looks on `$PATH` for executables whose second line is `# clihelp-wraps: <app> …` and registers each one there: `complete -F` in bash, a `compdef` that waits for `compinit` in zsh, `complete --wraps` in fish, and the Alt-H registry in all three. The verb now prints how to save the script and to run `install` again; `uninstall` removes the registrations with the file. `GenShellIntegration` stays a pure generator and does not look at `$PATH`.
 - **The shell is the one being typed into, not the login shell.** `$SHELL` names the login shell, so a user who works in fish with zsh as a login shell was given zsh lines, and `install` with no shell named set up zsh. The interactive shell that started the program now decides (on systems with `/proc`); a shell running a script or a `-c` string does not count, so a dotfiles script under bash still installs for `$SHELL`.

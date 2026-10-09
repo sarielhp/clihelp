@@ -10,7 +10,7 @@ Generate a wrapper script with preset arguments
 ## Usage
 
 ```
-podctl completion wrap [--completion-from <path>] <name> [<args>...]
+podctl completion wrap [--completion-from <path>] <name> [--] [<args>...]
 ```
 
 ## Parameters
