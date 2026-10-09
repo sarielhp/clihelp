@@ -40,10 +40,14 @@ working against the library.** Check this document before writing it.
 ### 1. Which command runs
 
 - **Reads:** the argument list; `App.Commands`, `Command.Subcommands`,
-  `Command.Name`, `Command.Aliases`; `App.Shortcuts`; `App.AbbrevCommands`; and
+  `Command.Name`, `Command.Aliases`, `Command.NoAbbrev`; `App.Shortcuts`;
+  `App.AbbrevCommands`; and
   the *arity of every flag*, so that `--out file build` knows `file` is `--out`'s
   value and `build` is the command.
-- **Undeclared:** exact names and aliases only; no abbreviation.
+- **Undeclared:** exact names and aliases only; no abbreviation — except that a
+  line carrying a help flag (`-h`, `--help`, `-H`) may name a visible command by a
+  unique prefix, since showing its page runs nothing. A command marked
+  `NoAbbrev` is never selected by a prefix, on either path.
 - **Cost of getting it wrong:** resolution stopping early, so the command name
   becomes a positional argument, help prints, and the program exits 0. Six
   distinct instances of that were fixed in v0.3.23; all six looked like success

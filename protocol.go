@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -296,6 +298,14 @@ func (a *App) clihelpWrapper(args []string) error {
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		switch {
+		case len(positional) > 0:
+			// Everything after the name is the wrapped program's: "wrapper mt
+			// tui -2" rejected -2 as an option of this verb, and an older parser
+			// silently dropped it, so the wrapper ran "tui" without it.
+			positional = append(positional, arg)
+		case arg == "--":
+			positional = append(positional, args[i+1:]...)
+			i = len(args)
 		case arg == "--completion-from":
 			if i+1 >= len(args) {
 				return fmt.Errorf("%s wrapper: --completion-from requires a path or command argument", protoClihelp)
@@ -311,10 +321,12 @@ func (a *App) clihelpWrapper(args []string) error {
 		}
 	}
 
-	return executeWrapperGen(a, fromPath, positional, a.stdout(), a.stderr())
+	return executeWrapperGen(a, fromPath, positional, false, a.stdout(), a.stderr())
 }
 
-func executeWrapperGen(app *App, fromPath string, positional []string, stdout, stderr io.Writer) error {
+// visible says the call came through the visible "completion wrap" rather
+// than "__clihelp wrapper", so that the advice repeats the form the user typed.
+func executeWrapperGen(app *App, fromPath string, positional []string, visible bool, stdout, stderr io.Writer) error {
 	var name string
 	var wrapped []string
 
@@ -322,6 +334,9 @@ func executeWrapperGen(app *App, fromPath string, positional []string, stdout, s
 		targetPath, defaultName, err := resolveWrapperTarget(fromPath)
 		if err != nil {
 			return err
+		}
+		if sameFileAsOutput(stdout, targetPath) {
+			return fmt.Errorf("%s wrapper: the output is %s itself, which the shell emptied before this program could read it; write to another file and move it over", protoClihelp, targetPath)
 		}
 		f, err := os.Open(targetPath)
 		if err != nil {
@@ -345,7 +360,7 @@ func executeWrapperGen(app *App, fromPath string, positional []string, stdout, s
 		}
 	} else {
 		if len(positional) == 0 {
-			return fmt.Errorf("usage: %s wrapper [--completion-from <path>] <name> [<args>...]", protoClihelp)
+			return fmt.Errorf("usage: %s wrapper [--completion-from <path>] <name> [--] [<args>...]", protoClihelp)
 		}
 		name, wrapped = positional[0], positional[1:]
 	}
@@ -353,7 +368,7 @@ func executeWrapperGen(app *App, fromPath string, positional []string, stdout, s
 	if err := GenWrapperScript(app, name, wrapped, stdout); err != nil {
 		return err
 	}
-	printWrapperRegistration(stderr, app, name, wrapped)
+	printWrapperRegistration(stderr, app, name, fromPath, positional, visible)
 	return nil
 }
 
@@ -449,38 +464,103 @@ func GenWrapperScript(app *App, name string, args []string, w io.Writer) error {
 	return err
 }
 
-// printWrapperRegistration prints the one line that tells a shell to complete
-// name the way it completes the wrapped program. No shell will call a completion
-// function for a name it was never told about, so this line is unavoidable —
-// it is the same shape as git's __git_complete.
-func printWrapperRegistration(w io.Writer, app *App, name string, args []string) {
-	fn := strings.ReplaceAll(appName(app), "-", "_")
-	target := appName(app)
-	if len(args) > 0 {
-		target += " " + strings.Join(args, " ")
+// printWrapperRegistration tells the user how to finish: save the script where
+// the shell finds it, and run install again. The integration file registers
+// every marked wrapper it finds on $PATH (see wrapper_discovery.go), so there
+// is nothing to paste into a startup file.
+//
+// It used to print the registration lines themselves, commented out, for the
+// user to paste after compinit — in the shell named by $SHELL, which is the
+// login shell and not necessarily the one being typed into.
+func printWrapperRegistration(w io.Writer, app *App, name, fromPath string, positional []string, visible bool) {
+	setup := appName(app) + " " + protoClihelp
+	gen := setup + " wrapper"
+	if visible {
+		setup = appName(app) + " completion"
+		gen = setup + " wrap"
 	}
+	dest, overSource := wrapperDestination(name, fromPath)
+	if fromPath != "" {
+		gen += " --completion-from " + displayPath(fromPath)
+	}
+	for i, arg := range positional {
+		// The visible command parses flags anywhere, so a preset flag needs
+		// the "--" that the __clihelp verb does without.
+		if i == 1 && visible && slices.ContainsFunc(positional[1:], func(a string) bool { return strings.HasPrefix(a, "-") }) {
+			gen += " --"
+		}
+		gen += " " + escapeShellArg(arg)
+	}
+	fmt.Fprintf(w, "\nSave this as an executable named %s on your PATH, for example:\n", name)
+	if overSource {
+		// Redirecting straight into the file being read empties it before
+		// the program can read it, so the example goes through a new file.
+		tmp := dest + ".new"
+		fmt.Fprintf(w, "    %s > %s && chmod +x %s && mv %s %s\n", gen, tmp, tmp, tmp, dest)
+	} else {
+		fmt.Fprintf(w, "    %s > %s && chmod +x %s\n", gen, dest, dest)
+	}
+	fmt.Fprintf(w, "Then run %q: it finds %s on your PATH and registers it\n", setup+" install", name)
+	fmt.Fprintf(w, "for tab completion and Alt-H.\n")
+}
 
-	// Two registrations, because there are two mechanisms: the shell's completion
-	// table, and the Alt-H dispatcher's registry. Without the second the wrapper's
-	// own __explain branch is unreachable from a keystroke, which is what made the
-	// documented behaviour impossible.
-	// The registry entry carries the protocol the wrapper's __explain speaks;
-	// see the key-binding snippets for the format.
-	entry := fmt.Sprintf("%s:%d", name, explainProtocolVersion)
-	lines := map[string]string{
-		"bash": fmt.Sprintf("complete -F _%s_complete %s\n#   _clihelp_apps=\"${_clihelp_apps:-} %s \"", fn, name, entry),
-		"zsh":  fmt.Sprintf("compdef _%s %s\n#   _clihelp_apps=\"${_clihelp_apps:-} %s \"", fn, name, entry),
-		"fish": fmt.Sprintf("complete -c %s --wraps %s\n#   contains -- %s $_clihelp_apps; or set -g _clihelp_apps $_clihelp_apps %s", name, escapeShellArg(target), entry, entry),
+// wrapperDestination suggests where the wrapper goes, and whether that is the
+// script it was read from: beside that script, or else into the user's own bin
+// directory on $PATH.
+func wrapperDestination(name, fromPath string) (dest string, overSource bool) {
+	if fromPath != "" {
+		path := fromPath
+		if resolved, _, err := resolveWrapperTarget(fromPath); err == nil {
+			path = resolved
+		}
+		if filepath.Base(path) == name {
+			return displayPath(path), true
+		}
+		return displayPath(filepath.Join(filepath.Dir(path), name)), false
 	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "~/.local/bin/" + name, false
+	}
+	// The conventional places first: the first home directory on $PATH is as
+	// likely to be some tool's private bin as the user's own.
+	path := filepath.SplitList(os.Getenv("PATH"))
+	for _, want := range []string{filepath.Join(home, "bin"), filepath.Join(home, ".local", "bin")} {
+		if slices.Contains(path, want) {
+			return displayPath(filepath.Join(want, name)), false
+		}
+	}
+	for _, dir := range path {
+		if strings.HasPrefix(dir, home+string(filepath.Separator)) {
+			return displayPath(filepath.Join(dir, name)), false
+		}
+	}
+	return "~/.local/bin/" + name, false
+}
 
-	fmt.Fprintf(w, "\n# Put %s somewhere on your PATH, then register it with your shell,\n", name)
-	fmt.Fprintf(w, "# after the completion script for %s has been loaded:\n", appName(app))
-	shell := detectShell()
-	if line, ok := lines[shell]; ok {
-		fmt.Fprintf(w, "#   %s\n", line)
-		return
+// displayPath quotes path for a shell, writing the home directory as an
+// unquoted "~" so that the line stays short and still expands.
+func displayPath(path string) string {
+	home, err := os.UserHomeDir()
+	if err == nil && home != "" {
+		if rest, ok := strings.CutPrefix(path, home+string(filepath.Separator)); ok {
+			return "~/" + escapeShellArg(rest)
+		}
 	}
-	for _, s := range supportedShells {
-		fmt.Fprintf(w, "#   %-5s %s\n", s+":", lines[s])
+	return escapeShellArg(path)
+}
+
+// sameFileAsOutput reports whether w is the file at path — the shell has
+// already emptied it when "--completion-from X > X" reaches this program.
+func sameFileAsOutput(w io.Writer, path string) bool {
+	f, ok := w.(*os.File)
+	if !ok {
+		return false
 	}
+	out, err := f.Stat()
+	if err != nil || !out.Mode().IsRegular() {
+		return false
+	}
+	in, err := os.Stat(path)
+	return err == nil && os.SameFile(in, out)
 }

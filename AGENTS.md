@@ -203,6 +203,10 @@ a redirecting caller sees it, and that caller wants it.
 | `autorefresh.go` | `AutoRefreshIntegration`: the only unattended writer, allowed to refresh and never to create |
 | `preserve_unix.go`, `preserve_other.go` | Ownership preservation for the atomic replace (POSIX), and its no-op elsewhere |
 | `wrapper_parse.go` | Read-only parser that extracts the preset arguments from an existing wrapper script (`__clihelp wrapper --completion-from`) |
+| `wrapper_discovery.go` | Finds the marked wrappers of this program on `$PATH` and writes their completion and Alt-H registration into the installed integration file |
+| `wrapper_discovery_test.go` | Wrapper discovery, preset arguments that look like flags, the `--completion-from X > X` guard, and interactive-shell detection |
+| `wrapper_live_test.go` | A wrapper on `$PATH`, one install, then real bash, zsh and fish completing through it |
+| `noabbrev_test.go` | `Command.NoAbbrev`: a prefix never selects the command, on the run, help and Alt-H paths |
 | `atomicwrite.go` | `writeFileAtomically` — symlink-resolving, fsynced, owner-preserving replace |
 | `shell.go` | `resolveShell` — the one answer to "which shell, and can we write for it?" |
 | `versions.go` | Every version number stamped into a generated artifact, in one place |

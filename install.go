@@ -59,6 +59,13 @@ func IntegrationPath(app *App, shell string) (string, error) {
 // carrying the version marker, the completion script, and — unless keys is
 // false — the Alt-H key bindings.
 func GenShellIntegration(app *App, shell string, keys bool, w io.Writer) error {
+	return genShellIntegration(app, shell, keys, nil, w)
+}
+
+// genShellIntegration is GenShellIntegration plus the registration of wrappers,
+// which only the installed file carries: what is on $PATH is the installer's
+// business, not a generator's.
+func genShellIntegration(app *App, shell string, keys bool, wrappers []foundWrapper, w io.Writer) error {
 	if app == nil {
 		return errors.New("shell integration: app is nil")
 	}
@@ -89,6 +96,7 @@ func GenShellIntegration(app *App, shell string, keys bool, w io.Writer) error {
 			return err
 		}
 	}
+	genWrapperRegistrations(appName(app), shell, keys, wrappers, &body)
 
 	header := fmt.Sprintf(`# %[1]s shell integration for %[2]s — tab completion%[4]s.
 # %[3]s: %[5]s keys=%[6]s
@@ -135,7 +143,7 @@ func integrationIsCurrent(path string) bool {
 // hand, and create a startup file that never existed.
 func writeIntegrationFile(app *App, shell string, keys bool, target string) error {
 	var body bytes.Buffer
-	if err := GenShellIntegration(app, shell, keys, &body); err != nil {
+	if err := genShellIntegration(app, shell, keys, discoverWrappers(appName(app)), &body); err != nil {
 		return err
 	}
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {

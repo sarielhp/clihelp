@@ -178,7 +178,7 @@ func completionWrapSubcommand() Command {
 	return Command{
 		Name:        "wrap",
 		Description: "Generate a wrapper script with preset arguments",
-		UsageLine:   "completion wrap [--completion-from <path>] <name> [<args>...]",
+		UsageLine:   "completion wrap [--completion-from <path>] <name> [--] [<args>...]",
 		Examples: []Example{
 			{Line: "completion wrap pd deploy", Description: "Generate wrapper 'pd' for '<app> deploy'"},
 			{Line: "completion wrap --completion-from ~/bin/mt", Description: "Inspect existing script and generate wrapper"},
@@ -192,7 +192,7 @@ func completionWrapSubcommand() Command {
 		},
 		Args: MinimumNArgs(0),
 		Run: func(ctx *Context) error {
-			return executeWrapperGen(ctx.App, fromPath, ctx.Args, ctx.Stdout, ctx.Stderr)
+			return executeWrapperGen(ctx.App, fromPath, ctx.Args, true, ctx.Stdout, ctx.Stderr)
 		},
 	}
 }

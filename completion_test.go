@@ -260,7 +260,7 @@ func TestCompletionCommand(t *testing.T) {
 	if !strings.Contains(outBuf.String(), "# clihelp-wraps: myapp deploy") {
 		t.Errorf("expected wrapper script in stdout, got: %s", outBuf.String())
 	}
-	if !strings.Contains(errBuf.String(), "complete -F _myapp_complete mywrap") {
+	if !strings.Contains(errBuf.String(), "myapp completion install") {
 		t.Errorf("expected registration on stderr, got: %s", errBuf.String())
 	}
 }

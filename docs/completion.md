@@ -237,28 +237,32 @@ The generator is `clihelp.GenManPage(app, w)` if you want to drive it yourself.
 
 A wrapper script — `pd` running `myapp deploy "$@"` — is opaque to every shell, so completion for it has to be arranged. Shell *aliases* mostly do not: fish turns `alias pd='myapp deploy'` into a `--wraps` function and zsh expands aliases before completing, so both already work. Bash is the exception.
 
-`__clihelp wrapper` (or `myapp completion wrap` when `CompletionCommand()` is mounted) writes a wrapper that answers clihelp's protocol on behalf of the program it wraps, so completion and Alt-H keep working through it:
+`__clihelp wrapper` (or `myapp completion wrap` when `CompletionCommand()` is mounted) writes a wrapper that answers clihelp's protocol on behalf of the program it wraps, so completion and Alt-H keep working through it. Everything after the wrapper's name is passed to the program, flags included:
 
 ```console
-$ myapp __clihelp wrapper pd deploy > ~/.local/bin/pd && chmod +x ~/.local/bin/pd
+$ myapp __clihelp wrapper pd deploy -v > ~/bin/pd && chmod +x ~/bin/pd
 
-# Put pd somewhere on your PATH, then register it with your shell,
-# after the completion script for myapp has been loaded:
-#   complete -F _myapp_complete pd
+Save this as an executable named pd on your PATH, for example:
+    myapp __clihelp wrapper pd deploy -v > ~/bin/pd && chmod +x ~/bin/pd
+Then run "myapp __clihelp install": it finds pd on your PATH and registers it
+for tab completion and Alt-H.
+$ myapp __clihelp install
 ```
 
-If you already have a simple handwritten script (e.g. `~/bin/mt` running `myapp -2 tui "$@"`), pass `--completion-from` to inspect it and extract preset arguments without retyping them:
+The visible command parses its own flags, so it takes a preset flag after `--`: `myapp completion wrap pd -- deploy -v`.
+
+If you already have a simple handwritten script (e.g. `~/bin/mt` running `myapp -2 tui "$@"`), pass `--completion-from` to inspect it and extract preset arguments without retyping them. Write to a new file and move it over: `> ~/bin/mt` would empty the script before it could be read.
 
 ```console
-$ myapp __clihelp wrapper --completion-from ~/bin/mt > ~/.local/bin/mt && chmod +x ~/.local/bin/mt
+$ myapp __clihelp wrapper --completion-from ~/bin/mt > ~/bin/mt.new && chmod +x ~/bin/mt.new && mv ~/bin/mt.new ~/bin/mt
 ```
 
-The script carries a `# clihelp-wraps: myapp deploy` marker in its second line — the convention pyenv and asdf use for their shims, so that a wrapper can be recognised and followed without being executed.
+The script carries a `# clihelp-wraps: myapp deploy -v` marker in its second line — the convention pyenv and asdf use for their shims, so that a wrapper can be recognised and followed without being executed.
 
 Two things worth knowing:
 
-- **The registration line is unavoidable.** No shell calls a completion function for a name it was never told about; git ships `__git_complete` for exactly this reason. In fish, `complete -c pd --wraps 'myapp deploy'` does the whole job on its own.
-- **Alt-H does not expand a wrapper.** The wrapper answers `__explain` with the line as typed, then the help for the wrapped command: rewriting `pd prod` into `myapp deploy prod` would replace something deliberately typed short. For Alt-H to reach the wrapper at all, its name has to be in the dispatcher's registry — `__clihelp wrapper` prints that line next to the completion one.
+- **Registration is the integration file's job.** No shell calls a completion function for a name it was never told about. `install` looks on `$PATH` for executables carrying this program's marker and registers each one in the file it writes — `complete -F` in bash, `compdef` (after `compinit`) in zsh, `complete --wraps` in fish, plus the Alt-H registry — so nothing goes into a startup file by hand. Run `install` again after adding or removing a wrapper; `uninstall` removes the registrations with the file.
+- **Alt-H does not expand a wrapper.** The wrapper answers `__explain` with the line as typed, then the help for the wrapped command: rewriting `pd prod` into `myapp deploy prod` would replace something deliberately typed short. For Alt-H to reach the wrapper at all, its name has to be in the dispatcher's registry, which is where `install` puts it.
 
 ---
 

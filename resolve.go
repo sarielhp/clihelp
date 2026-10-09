@@ -177,6 +177,9 @@ func matchAbbrevCommand(currentCommands []Command, arg string) (*Command, error)
 	}
 	matches := filterCommandsByPrefix(currentCommands, arg)
 	if len(matches) == 1 {
+		if matches[0].NoAbbrev {
+			return nil, nil // it asked to be typed in full; the word is the parent's
+		}
 		return matches[0], nil
 	}
 	if len(matches) > 1 {
@@ -195,6 +198,38 @@ func matchAbbrevCommand(currentCommands []Command, arg string) (*Command, error)
 		return nil, errors.New(buf.String())
 	}
 	return nil, nil
+}
+
+// uniquePrefixMatch returns the one visible command that arg abbreviates, or nil
+// when none or several do. It does not consult App.AbbrevCommands: its callers
+// only show a page or name a suggestion, and never run what it returns.
+func uniquePrefixMatch(cmds []Command, arg string) *Command {
+	if arg == "" || strings.HasPrefix(arg, "-") {
+		return nil
+	}
+	if matches := filterCommandsByPrefix(cmds, arg); len(matches) == 1 {
+		return matches[0]
+	}
+	return nil
+}
+
+// asksForHelp reports whether args, up to a "--", carry one of the built-in help
+// flags. A help request may then name its command by a unique prefix even with
+// App.AbbrevCommands off: "app w -H" can only mean the one command starting with
+// "w", and showing its page runs nothing.
+func (a *App) asksForHelp(args []string) bool {
+	names := a.helpFlagNames()
+	for _, arg := range args {
+		if arg == "--" {
+			return false
+		}
+		for _, name := range names {
+			if arg == name {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // findSubcommandPaths names the deep commands called target, for the "did you
@@ -338,7 +373,13 @@ func (a *App) checkUnknownCommand(currentCmd *Command, path []string, currentCom
 		if suggestions := a.findSubcommandPaths(arg); len(suggestions) > 0 {
 			return formatSubcommandSuggestions(arg, parentName, suggestions)
 		}
-		if suggestion := suggestCommand(arg, currentCommands); suggestion != "" {
+		suggestion := ""
+		if cmd := uniquePrefixMatch(currentCommands, arg); cmd != nil {
+			suggestion = cmd.Name
+		} else {
+			suggestion = suggestCommand(arg, currentCommands)
+		}
+		if suggestion != "" {
 			return fmt.Errorf("%w: unknown command %q for %q. Did you mean %q?", ErrUsage, arg, parentName, suggestion)
 		}
 		// With nothing close enough to suggest, the user is left holding a
@@ -580,6 +621,11 @@ func (a *App) resolveCommandPath(args []string, currentCommands []Command) (reso
 		matched, err := a.matchCommandOrShortcut(currentCommands, arg, res.cmd == nil)
 		if err != nil {
 			return res, err
+		}
+		if matched == nil && a.asksForHelp(args[idx+1:]) {
+			if m := uniquePrefixMatch(currentCommands, arg); m != nil && !m.NoAbbrev {
+				matched = m
+			}
 		}
 		if matched == nil {
 			if err := a.checkUnknownCommand(res.cmd, res.path, currentCommands, arg); err != nil {

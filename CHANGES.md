@@ -4,6 +4,19 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- **Install registers wrappers; nothing is pasted into a startup file.** `__clihelp wrapper` printed two commented-out lines for the user to paste after `compinit` — a `compdef`/`complete` line and an entry in the Alt-H registry spelled in its wire format (`mt:1`). Writing the integration file now looks on `$PATH` for executables whose second line is `# clihelp-wraps: <app> …` and registers each one there: `complete -F` in bash, a `compdef` that waits for `compinit` in zsh, `complete --wraps` in fish, and the Alt-H registry in all three. The verb now prints how to save the script and to run `install` again; `uninstall` removes the registrations with the file. `GenShellIntegration` stays a pure generator and does not look at `$PATH`.
+- **The shell is the one being typed into, not the login shell.** `$SHELL` names the login shell, so a user who works in fish with zsh as a login shell was given zsh lines, and `install` with no shell named set up zsh. The interactive shell that started the program now decides (on systems with `/proc`); a shell running a script or a `-c` string does not count, so a dotfiles script under bash still installs for `$SHELL`.
+- **A help request may name its command by a unique prefix.** With `AbbrevCommands` off, `app w -H` was "unknown command" although only `write` starts with `w`. When the line carries `-h`, `--help` or `-H`, a unique prefix of a visible command now resolves to show that page; without a help flag nothing runs, but the error now suggests the command the prefix abbreviates (`w` was offered `ss`).
+
+### Added
+- **`Command.NoAbbrev`: a command that only its full name selects.** Abbreviation was all or nothing, so an application with one dangerous command had to give it up everywhere — mail_cli turned `AbbrevCommands` off because `spam de` (a message ID) became `spam delete`, which empties the Spam folder. A command marked `NoAbbrev` is selected only by its name or an alias: a prefix that only it matches is left to the parent (a positional argument, or an unknown-command error that suggests the full name), Alt-H does not expand it, and the help-flag prefix does not reach it. A prefix it shares with another command is still ambiguous, so marking one command never makes another the unique match by elimination.
+
+### Fixed
+- **`wrapper mt tui -2` keeps `-2`.** Arguments after the wrapper name belong to the wrapped program, but the verb rejected `-2` as its own option — and before that dropped it silently, generating a wrapper that ran `tui` without it. Everything after the name is now passed through; `--` also ends the verb's options, which is how the visible `completion wrap` takes such arguments (`completion wrap mt -- -2 tui`).
+- **`wrapper --completion-from X > X` says what happened.** The shell empties `X` before the program can read it, which was reported as a script with no invocation in it; the verb now names the cause, and its example writes through a new file.
+
+
 ## [0.3.54] - 2026-10-06
 
 ### Changed

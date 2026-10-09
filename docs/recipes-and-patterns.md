@@ -342,6 +342,15 @@ app := &clihelp.App{
 - `podctl se` resolves to `podctl serve`
 - `podctl s` returns a clear error: `ambiguous command "s": matching "serve", "status"`
 
+A command whose accidental run costs something can opt out with `NoAbbrev: true`: only its full name or an alias selects it. A prefix that only it matches is left to the parent — a positional argument if the parent takes them, an unknown-command error (with the full name suggested) if not — and Alt-H does not expand it. Prefixes it shares with other commands are still reported as ambiguous.
+
+```go
+{Name: "spam", Args: clihelp.MinimumNArgs(0), Run: markSpam, Subcommands: []clihelp.Command{
+	// "spam de" marks message "de" as spam; it does not empty the folder.
+	{Name: "empty", Aliases: []string{"delete"}, NoAbbrev: true, Run: emptySpam},
+}}
+```
+
 ---
 
 ## Tiered Help, Extended Documentation & Preformatted Notes

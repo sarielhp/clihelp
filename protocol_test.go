@@ -127,8 +127,8 @@ func TestWrapperRegistrationLineGoesToStderr(t *testing.T) {
 	if strings.Contains(res.Stdout, "complete -F") {
 		t.Errorf("the registration line must not land in the script:\n%s", res.Stdout)
 	}
-	if !strings.Contains(res.Stderr, "complete -F _bare_complete bd") {
-		t.Errorf("stderr should carry the registration line, got: %q", res.Stderr)
+	if !strings.Contains(res.Stderr, "bare __clihelp install") {
+		t.Errorf("stderr should say how to register the wrapper, got: %q", res.Stderr)
 	}
 }
 
@@ -411,22 +411,6 @@ func TestGeneratedWrapperPassesArgumentsThrough(t *testing.T) {
 	}
 }
 
-// The wrapper's __explain branch answers the Alt-H protocol, but nothing ever
-// added the wrapper's name to the dispatcher's registry — so the branch was
-// unreachable from a keystroke, and the documentation described behaviour that
-// could not occur.
-func TestWrapperRegistrationRegistersWithTheDispatcher(t *testing.T) {
-	t.Setenv("SHELL", "/bin/bash")
-	res := runProto(t, bareApp(), "__clihelp", "wrapper", "pd", "build")
-	res.AssertNoError(t)
-	if !strings.Contains(res.Stderr, "_clihelp_apps") {
-		t.Errorf("the registration advice does not add the wrapper to the Alt-H registry:\n%s", res.Stderr)
-	}
-	if !strings.Contains(res.Stderr, "complete -F") {
-		t.Errorf("the completion registration went missing:\n%s", res.Stderr)
-	}
-}
-
 func TestWrapperRejectsANameItCannotSafelyEmit(t *testing.T) {
 	for _, name := range []string{"", "-w", "a/b", "..", "w;id", "w$(id)", "w\nid"} {
 		var b strings.Builder
@@ -520,14 +504,15 @@ func TestClihelpWrapperFromFlag(t *testing.T) {
 		res.AssertNoError(t)
 		res.AssertStdoutContains(t, "# clihelp-wraps: bare build -v")
 		res.AssertStdoutContains(t, `__clihelp_target='bare build -v'`)
-		res.AssertStderrContains(t, "complete -F _bare_complete my-shim")
+		// Through a new file: "> my-shim" would empty the script before it is read.
+		res.AssertStderrContains(t, "my-shim.new && chmod +x")
 	})
 
 	t.Run("override wrapper name", func(t *testing.T) {
 		res := runProto(t, app, "__clihelp", "wrapper", "--completion-from", shim, "custom-name")
 		res.AssertNoError(t)
 		res.AssertStdoutContains(t, `__clihelp_target='bare build -v'`)
-		res.AssertStderrContains(t, "complete -F _bare_complete custom-name")
+		res.AssertStderrContains(t, "> "+filepath.Join(dir, "custom-name")+" && chmod +x")
 	})
 
 	t.Run("rejects contradictory positional arguments", func(t *testing.T) {

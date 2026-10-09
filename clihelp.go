@@ -154,13 +154,20 @@ type OptionsValidator func(opts Flags) error
 
 // Command represents an executable command or category node.
 type Command struct {
-	Name              string
-	Aliases           []string
-	Description       string
-	LongDescription   string
-	UsageLine         string
-	Group             string
-	Hidden            bool
+	Name            string
+	Aliases         []string
+	Description     string
+	LongDescription string
+	UsageLine       string
+	Group           string
+	Hidden          bool
+	// NoAbbrev makes the command reachable only by its full name or an alias,
+	// even when App.AbbrevCommands is on: a prefix that only it matches does not
+	// select it, and the word is left to the parent — as a positional argument,
+	// or an unknown-command error. Mark the commands whose accidental run costs
+	// something, such as one that deletes; a prefix that also matches another
+	// command is still reported as ambiguous.
+	NoAbbrev          bool
 	PersistentOptions []Option
 	Options           []Option
 	Subcommands       []Command

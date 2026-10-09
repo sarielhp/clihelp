@@ -149,3 +149,42 @@ func TestEmptyHelpTopicIsAnError(t *testing.T) {
 		}
 	}
 }
+
+// A help request names its command by a unique prefix even with AbbrevCommands
+// off: "mail_cli w -H" can only mean "write", and showing a page runs nothing.
+// Without a help flag the prefix still does not run anything, but the error
+// names the command it abbreviates — "w" used to be suggested "ss".
+func TestHelpRequestResolvesAUniquePrefix(t *testing.T) {
+	newApp := func() *App {
+		return &App{Name: "mc", ExtendedHelpFlag: true, Commands: []Command{
+			{Name: "write", Description: "Write a message.", Run: nopRun},
+			{Name: "ss", Description: "Something short.", Run: nopRun},
+			{Name: "deploy", Description: "Deploy.", Run: nopRun},
+			{Name: "debug", Description: "Debug.", Run: nopRun},
+			{Name: "wipe", Description: "Wipe.", Hidden: true, Run: nopRun},
+		}}
+	}
+	for _, tt := range []struct {
+		name    string
+		args    []string
+		stdout  string
+		errText string
+	}{
+		{"concise", []string{"w", "-h"}, "mc write", ""},
+		{"extended", []string{"w", "-H"}, "mc write", ""},
+		{"long flag", []string{"wr", "--help"}, "mc write", ""},
+		{"no help flag", []string{"w"}, "", `Did you mean "write"?`},
+		{"help flag after --", []string{"w", "--", "-h"}, "", `Did you mean "write"?`},
+		{"ambiguous", []string{"de", "-h"}, "", `unknown command "de"`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			res := testExecute(newApp(), tt.args)
+			if tt.errText != "" {
+				res.AssertErrorContains(t, tt.errText)
+				return
+			}
+			res.AssertNoError(t)
+			res.AssertStdoutContains(t, tt.stdout)
+		})
+	}
+}
