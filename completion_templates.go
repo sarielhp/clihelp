@@ -31,10 +31,14 @@ _%[2]s_complete() {
     # Candidates are data: add them literally. compgen -W would expand them,
     # running any command substitution a candidate happens to contain.
     COMPREPLY=()
-    local line cand
+    local line cand hint=
     while IFS= read -r line; do
         [[ -z $line ]] && continue
         cand="${line%%%%	*}"
+        if [[ $cand == __hint__ ]]; then
+            hint="${line#*	}"
+            continue
+        fi
         # Quote for insertion: bash puts a COMPREPLY entry on the command line
         # verbatim, so a candidate containing a space became two arguments the
         # moment it was completed. zsh and fish quote theirs.
@@ -44,6 +48,22 @@ _%[2]s_complete() {
     if declare -F __ltrim_colon_completions >/dev/null 2>&1; then
         __ltrim_colon_completions "$cur"
     fi
+    if (( ${#COMPREPLY[@]} == 0 )) && [[ -n $hint ]]; then
+        _%[2]s_hint "$hint"
+    fi
+}
+
+# A hint is the program's answer when it has no candidates: what the word should
+# look like. Filenames, which "-o default" would offer, would contradict it. bash
+# has no message area, so the hint is printed below the line and the prompt
+# redrawn after it, as cobra's ActiveHelp does. That needs ${PS1@P} (bash 4.4),
+# the cursor at the end of the line, and readline to be the caller.
+_%[2]s_hint() {
+    compopt +o default 2>/dev/null
+    [[ -n ${COMP_TYPE:-} ]] || return 0
+    (( BASH_VERSINFO[0] * 100 + BASH_VERSINFO[1] >= 404 )) || return 0
+    [[ ${COMP_POINT:-0} -eq ${#COMP_LINE} ]] || return 0
+    printf '\n%%s\n%%s%%s' "$1" "${PS1@P}" "$COMP_LINE" >&2
 }
 complete -o default -F _%[2]s_complete %[1]s
 `
@@ -78,8 +98,13 @@ _%[2]s() {
         output=(${(f)"$(${binary_cmd} __complete "${words_to_pass[@]}" 2>/dev/null)"})
     fi
 
+    local hint=
     for line in "${output[@]}"; do
         if [[ -z "$line" ]]; then
+            continue
+        fi
+        if [[ "$line" == __hint__$'\t'* ]]; then
+            hint="${line#*	}"
             continue
         fi
         if [[ "$line" == *$'\t'* ]]; then
@@ -102,10 +127,18 @@ _%[2]s() {
     if (( ${#completions} )); then
         compadd -a completions
     fi
+    (( ${#completions} + ${#completions_with_descriptions} )) && return
+    # A hint says what the word should look like, so it replaces the files
+    # fallback rather than joining it. % starts a prompt escape in a message,
+    # so it is doubled.
+    if [[ -n $hint ]]; then
+        _message -r "${hint//\%%/%%%%}"
+        return
+    fi
     # The program had nothing to offer, so complete filenames — which is what the
     # bash script's "complete -o default" does. Without this an argument that is
     # a path could not be completed at all under zsh.
-    (( ${#completions} + ${#completions_with_descriptions} )) || _files
+    _files
 }
 
 # Autoloaded from $fpath this file *is* the completion function and has to call
@@ -136,7 +169,7 @@ fi
 // fishCompletionTemplate is the generated fish completion script; see GenFishCompletion.
 const fishCompletionTemplate = `# fish completion for %[1]s
 # clihelp-completion-version: %[3]d
-function __fish_%[2]s_complete
+function __fish_%[2]s_answer
     set -l cmd (commandline -opc) (commandline -ct)
     test (count $cmd) -gt 1; and set -e cmd[1]
     # Resolution errors — an ambiguous or unknown half-typed line, which is what
@@ -145,13 +178,34 @@ function __fish_%[2]s_complete
     %[1]s __complete $cmd 2>/dev/null
 end
 
+# The candidates, without the hint line. A hint is shown only when there is
+# nothing else to offer, below the line with the prompt redrawn — fish's own
+# __fish_echo, which its Alt-L listing uses — and only to a person: a scripted
+# "complete -C" has no prompt to redraw.
+function __fish_%[2]s_complete
+    set -l hint
+    set -l found 0
+    for line in (__fish_%[2]s_answer)
+        if string match -q -- '__hint__	*' $line
+            set hint (string replace -- '__hint__	' '' $line)
+        else
+            echo $line
+            set found 1
+        end
+    end
+    if test $found -eq 0; and test -n "$hint"; and status is-interactive; and functions -q __fish_echo
+        __fish_echo echo $hint
+    end
+end
+
 # __fish_%[2]s_needs_files reruns the completer only to ask whether it had
 # anything to say. fish has no "files if nothing else matched" mode, so the two
 # rules below reconstruct one: -f keeps filenames out of the program's own
 # candidates, and -F offers them when there are none. Before this, -f alone meant
-# an argument that is a path could not be completed at all.
+# an argument that is a path could not be completed at all. A hint counts as
+# something to say: it describes the word, and files beside it would contradict it.
 function __fish_%[2]s_needs_files
-    test (count (__fish_%[2]s_complete)) -eq 0
+    test (count (__fish_%[2]s_answer)) -eq 0
 end
 
 complete -c %[1]s -f -a '(__fish_%[2]s_complete)'

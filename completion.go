@@ -36,6 +36,31 @@ func emitCandidate(w io.Writer, candidate, description string) {
 	fmt.Fprintf(w, "%s\t%s\n", sanitizeCompletionField(candidate), completionDescription(description))
 }
 
+// CompletionHint returns an entry a completion callback (Option.Complete,
+// Param.Complete) can put among its candidates to tell the user what the word
+// should look like — "a folder is named with %, as in %wu" — when there is
+// nothing to offer. The shell shows it only when no candidate matches, below
+// the command line, and offers no filenames in its place. It is never inserted.
+func CompletionHint(text string) string {
+	return protoHint + "\t" + text
+}
+
+// emitCompleterResult writes one entry a completion callback returned: a
+// candidate, or a hint, which keeps its whole text — a description is cut to
+// its first sentence and a menu's width, and a hint is not in a menu.
+func emitCompleterResult(w io.Writer, res string) {
+	// A callback may return "value\tdescription"; the first tab is the field
+	// boundary, any later one is not.
+	cand, desc, _ := strings.Cut(res, "\t")
+	if cand == protoHint {
+		if text := strings.TrimSpace(sanitizeCompletionField(desc)); text != "" {
+			fmt.Fprintf(w, "%s\t%s\n", protoHint, text)
+		}
+		return
+	}
+	emitCandidate(w, cand, desc)
+}
+
 // completionDescriptionWidth caps a candidate's description. zsh and fish print
 // it beside the candidate in a menu that is as wide as the terminal; a
 // paragraph there pushes the candidates apart and wraps over several rows.
@@ -100,10 +125,7 @@ func completePrevFlagValue(w io.Writer, activeOptions []Option, prevWord, toComp
 		}
 		if matched {
 			for _, res := range opt.Complete(toComplete) {
-				// A callback may return "value\tdescription"; the first tab is
-				// the field boundary, any later one is not.
-				cand, desc, _ := strings.Cut(res, "\t")
-				emitCandidate(w, cand, desc)
+				emitCompleterResult(w, res)
 			}
 			return true
 		}
@@ -138,6 +160,10 @@ func completeFlagInlineValue(w io.Writer, activeOptions []Option, toComplete str
 		if opt.Complete != nil {
 			for _, res := range opt.Complete(toComplete[eq+1:]) {
 				value, _, _ := strings.Cut(res, "\t")
+				if value == protoHint {
+					emitCompleterResult(w, res) // a hint is not a value to glue on
+					continue
+				}
 				emitCandidate(w, namePart+"="+value, opt.Description)
 			}
 		} else {
@@ -276,8 +302,7 @@ func completePositional(w io.Writer, cmd *Command, n int, toComplete string) {
 		return
 	}
 	for _, res := range p.Complete(toComplete) {
-		cand, desc, _ := strings.Cut(res, "\t")
-		emitCandidate(w, cand, desc)
+		emitCompleterResult(w, res)
 	}
 }
 

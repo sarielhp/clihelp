@@ -4,6 +4,10 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **Completion hints: `CompletionHint`.** A completion callback with nothing to offer could only return nothing, and the shell then offered filenames — the wrong answer in a position that takes a label, where what the user needed to hear was "write it as %name". A callback can now return `clihelp.CompletionHint(text)` among its entries. When no candidate matches, zsh shows it on its message line, and fish and bash print it below the command line and redraw the prompt (fish through its own `__fish_echo`; bash 4.4 or later, cursor at the end of the line); no shell offers files beside it, and it is never inserted. In the `__complete` protocol it is the record `__hint__<TAB>text`. The completion scripts change, so `completionScriptVersion` is 7 and installed scripts are refreshed.
+
+
 ## [0.3.55] - 2026-10-08
 
 ### Changed

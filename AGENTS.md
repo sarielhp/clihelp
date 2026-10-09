@@ -221,6 +221,7 @@ a redirecting caller sees it, and that caller wants it.
 | `completion_zsh_test.go` | Live Zsh tab-completion integration and dynamic callback tests |
 | `completion_fish_test.go` | Live Fish tab-completion integration and dynamic callback tests |
 | `completion_install_test.go` | Shell detection, installation, script version markers, and completion descriptions |
+| `completion_hint_test.go` | `CompletionHint`: the `__hint__` record, and each shell showing it in place of candidates and files |
 | `install_test.go` | Shell-integration install/uninstall, startup-file editing, refresh, and concurrency |
 | `ownership_test.go` | That nothing overwrites or deletes a file clihelp did not write |
 | `atomicwrite_test.go` | Symlinked dotfiles and the atomic-replace contract |

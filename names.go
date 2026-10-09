@@ -113,4 +113,7 @@ const (
 	protoComplete = "__complete"
 	protoExplain  = "__explain"
 	protoClihelp  = "__clihelp"
+	// protoHint names a record of the __complete answer that is a message,
+	// not a candidate; see CompletionHint.
+	protoHint = "__hint__"
 )

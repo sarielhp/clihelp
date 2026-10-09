@@ -379,6 +379,29 @@ clihelp.Command{
 - **Unknown flags:** Unrecognized flags before a positional argument cannot be classified for arity and are counted as single positional words.
 - **SubcommandEntries:** `Complete` and `Variadic` are ignored on `Command.SubcommandEntries`, which are display entries rather than argument slots (enforced by `Audit`).
 
+#### Hints: saying what the word should look like
+
+A callback with nothing to offer can say why instead. Put `clihelp.CompletionHint(text)` among the returned entries:
+
+```go
+Complete: func(toComplete string) []string {
+    if toComplete != "" && !strings.HasPrefix(toComplete, "%") {
+        return []string{clihelp.CompletionHint("a folder is named with %, as in %" + toComplete)}
+    }
+    return folderRefs(toComplete)
+},
+```
+
+When no candidate matches, the shell shows the hint below the command line and offers no filenames in its place; it is never inserted. With candidates to show, the hint stays out of the way.
+
+| Shell | How it is shown |
+|-------|-----------------|
+| zsh | its own message line (`_message`) |
+| fish | printed below the line, prompt redrawn (fish's `__fish_echo`, as its Alt-L listing does); only in an interactive shell |
+| bash | printed below the line, prompt redrawn, as cobra's ActiveHelp does; needs bash 4.4 and the cursor at the end of the line, otherwise only the files fallback is suppressed |
+
+In the `__complete` protocol a hint is the record `__hint__<TAB>text`; names starting with `__` are clihelp's.
+
 ---
 
 ## Testing Shell Completions
