@@ -116,4 +116,8 @@ const (
 	// protoHint names a record of the __complete answer that is a message,
 	// not a candidate; see CompletionHint.
 	protoHint = "__hint__"
+	// hintsEnv is set by a completion script that reads hint records. Without
+	// it a hint is dropped, so that a script that predates them -- or one
+	// written by hand -- never offers "__hint__" as a candidate.
+	hintsEnv = "CLIHELP_COMPLETE_HINTS"
 )

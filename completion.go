@@ -41,6 +41,10 @@ func emitCandidate(w io.Writer, candidate, description string) {
 // should look like — "a folder is named with %, as in %wu" — when there is
 // nothing to offer. The shell shows it only when no candidate matches, below
 // the command line, and offers no filenames in its place. It is never inserted.
+//
+// Only the scripts this library generates are sent hints; they say so through
+// CLIHELP_COMPLETE_HINTS. Any other caller of __complete sees no candidates,
+// exactly as if the callback had returned nothing.
 func CompletionHint(text string) string {
 	return protoHint + "\t" + text
 }
@@ -53,6 +57,9 @@ func emitCompleterResult(w io.Writer, res string) {
 	// boundary, any later one is not.
 	cand, desc, _ := strings.Cut(res, "\t")
 	if cand == protoHint {
+		if os.Getenv(hintsEnv) != "1" {
+			return // the caller does not know the record, and would offer it as a word
+		}
 		if text := strings.TrimSpace(sanitizeCompletionField(desc)); text != "" {
 			fmt.Fprintf(w, "%s\t%s\n", protoHint, text)
 		}

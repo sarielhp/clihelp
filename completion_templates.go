@@ -26,7 +26,9 @@ _%[2]s_complete() {
     # split at every character of COMP_WORDBREAKS, so "--unit=" arrived as three
     # words and a colon-bearing argument as three more.
     local out
-    out=$( "${words[0]}" __complete "${words[@]:1:cword-1}" "$cur" 2>/dev/null ) || return
+    # CLIHELP_COMPLETE_HINTS says this script reads __hint__ records; see
+    # CompletionHint.
+    out=$( CLIHELP_COMPLETE_HINTS=1 "${words[0]}" __complete "${words[@]:1:cword-1}" "$cur" 2>/dev/null ) || return
 
     # Candidates are data: add them literally. compgen -W would expand them,
     # running any command substitution a candidate happens to contain.
@@ -93,9 +95,9 @@ _%[2]s() {
         # so anything spliced in unquoted is re-parsed as shell code, and $words
         # holds the command line the user has typed verbatim. Without the quoting
         # flag, a line containing $(...) executes when Tab is pressed.
-        output=(${(f)"$(_call_program %[1]s ${(q)binary_cmd} __complete ${(q)words_to_pass[@]} 2>/dev/null)"})
+        output=(${(f)"$(_call_program %[1]s CLIHELP_COMPLETE_HINTS=1 ${(q)binary_cmd} __complete ${(q)words_to_pass[@]} 2>/dev/null)"})
     else
-        output=(${(f)"$(${binary_cmd} __complete "${words_to_pass[@]}" 2>/dev/null)"})
+        output=(${(f)"$(CLIHELP_COMPLETE_HINTS=1 ${binary_cmd} __complete "${words_to_pass[@]}" 2>/dev/null)"})
     fi
 
     local hint=
@@ -175,6 +177,8 @@ function __fish_%[2]s_answer
     # Resolution errors — an ambiguous or unknown half-typed line, which is what
     # a partial command line usually is — go nowhere, as they already do in bash.
     # Printed, they land on top of the user's prompt mid-edit.
+    # Says this script reads __hint__ records; see CompletionHint.
+    set -lx CLIHELP_COMPLETE_HINTS 1
     %[1]s __complete $cmd 2>/dev/null
 end
 

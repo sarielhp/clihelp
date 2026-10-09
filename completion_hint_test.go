@@ -36,7 +36,21 @@ func hintApp() *App {
 	}}}
 }
 
+// A script that does not read hint records — one written by hand, or generated
+// before hints existed — would offer "__hint__" as a candidate, so it is not
+// sent one: fish's autoload found exactly such a script in a real setup and
+// inserted the word.
+func TestCompletionHintGoesOnlyToScriptsThatAskForIt(t *testing.T) {
+	t.Setenv(hintsEnv, "")
+	res := testExecute(hintApp(), []string{"__complete", "open", "wu"})
+	res.AssertNoError(t)
+	if res.Stdout != "" {
+		t.Errorf("a caller that did not ask for hints got %q", res.Stdout)
+	}
+}
+
 func TestCompletionHintIsAProtocolRecord(t *testing.T) {
+	t.Setenv(hintsEnv, "1")
 	app := hintApp()
 	app.Commands[0].Options[0].Complete = hintFolders
 	long := strings.Repeat("long ", 30) + "end. And a second sentence."
