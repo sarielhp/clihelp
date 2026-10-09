@@ -402,6 +402,16 @@ When no candidate matches, the shell shows the hint below the command line and o
 
 In the `__complete` protocol a hint is the record `__hint__<TAB>text`; names starting with `__` are clihelp's. It is sent only to a caller that sets `CLIHELP_COMPLETE_HINTS=1`, which the generated scripts do: a script written by hand, or generated before hints existed, would offer `__hint__` as a word to insert, so it sees no candidates instead.
 
+**A custom fish Tab binding.** A binding that probes with `complete -C` before deciding what Tab does — say, opening an fzf file picker when there are no candidates — would open it over the hint. The fish script sets the global `__clihelp_hint` while it shows one, and the probe has already shown it, so such a binding clears the variable before probing and does nothing more when it comes back set:
+
+```fish
+set -e __clihelp_hint
+set -l matches (complete -C (commandline -c))
+if test -z "$matches"; and set -q __clihelp_hint
+    return  # the program explained what the word should look like
+end
+```
+
 ---
 
 ## Testing Shell Completions

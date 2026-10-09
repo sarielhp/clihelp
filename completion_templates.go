@@ -197,8 +197,17 @@ function __fish_%[2]s_complete
             set found 1
         end
     end
-    if test $found -eq 0; and test -n "$hint"; and status is-interactive; and functions -q __fish_echo
-        __fish_echo echo $hint
+    # __clihelp_hint is left for a Tab binding that probes with "complete -C"
+    # before deciding what to do — an fzf fallback when there are no candidates
+    # opened its file picker over the hint. Such a binding should do nothing
+    # more while it is set: the probe has already shown the hint.
+    if test $found -eq 0; and test -n "$hint"
+        set -g __clihelp_hint $hint
+        if status is-interactive; and functions -q __fish_echo
+            __fish_echo echo $hint
+        end
+    else
+        set -e __clihelp_hint
     end
 end
 

@@ -4,6 +4,10 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **fish: `__clihelp_hint` for Tab bindings that probe first.** A binding that runs `complete -C` to decide what Tab does — an fzf file picker when there are no candidates is a common one — saw no candidates where there was a hint, and opened the picker over it. The fish script now sets the global `__clihelp_hint` while it shows a hint and clears it otherwise; such a binding clears it before probing and stops when it comes back set (see `docs/completion.md`). `completionScriptVersion` is 9.
+
+
 ## [0.3.57] - 2026-10-08
 
 ### Fixed

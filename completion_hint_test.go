@@ -221,12 +221,20 @@ _hintcli
 		out := runIn(t, dir, "fish", "--no-config", "-c", `
 source `+script+`
 set -l bare (complete -C "hintcli open wu")
+echo "HINT AFTER BARE: [$__clihelp_hint]"
 set -l sigil (complete -C "hintcli open %w")
+set -q __clihelp_hint; and echo "HINT LEFT OVER"
 echo "BARE: [$bare]"
 echo "SIGIL: [$sigil]"
 `)
 		// fish sorts the candidates.
-		wantLines(t, out, "BARE: []", "SIGIL: [%work\tfolder %wuna\tfolder]")
+		// __clihelp_hint tells a Tab binding that probes with "complete -C" that
+		// the probe has shown a hint, so it does not open a file picker over it.
+		wantLines(t, out, "BARE: []", "SIGIL: [%work\tfolder %wuna\tfolder]",
+			"HINT AFTER BARE: [a folder is named with %, as in %wu]")
+		if strings.Contains(out, "HINT LEFT OVER") {
+			t.Errorf("__clihelp_hint outlived the completion that set it:\n%s", out)
+		}
 		if strings.Contains(out, "__hint__") || strings.Contains(out, "wufile") {
 			t.Errorf("the hint leaked into the candidates, or files were offered:\n%s", out)
 		}
