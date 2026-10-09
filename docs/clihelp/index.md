@@ -38,7 +38,7 @@ has_children: true
 
 ## Version
 
-0.3.58
+0.3.59
 
 ## About
 
