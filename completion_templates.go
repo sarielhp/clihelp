@@ -58,14 +58,19 @@ _%[2]s_complete() {
 # A hint is the program's answer when it has no candidates: what the word should
 # look like. Filenames, which "-o default" would offer, would contradict it. bash
 # has no message area, so the hint is printed below the line and the prompt
-# redrawn after it, as cobra's ActiveHelp does. That needs ${PS1@P} (bash 4.4),
-# the cursor at the end of the line, and readline to be the caller.
+# redrawn after it, as cobra's ActiveHelp does. That needs ${PS1@P} (bash 4.4)
+# and readline to be the caller. The line is redrawn whole, which leaves the
+# cursor at its end; when it was not there, tput moves it back to where
+# readline believes it is, and without tput the hint is not drawn.
 _%[2]s_hint() {
     compopt +o default 2>/dev/null
     [[ -n ${COMP_TYPE:-} ]] || return 0
     (( BASH_VERSINFO[0] * 100 + BASH_VERSINFO[1] >= 404 )) || return 0
-    [[ ${COMP_POINT:-0} -eq ${#COMP_LINE} ]] || return 0
-    printf '\n%%s\n%%s%%s' "$1" "${PS1@P}" "$COMP_LINE" >&2
+    local back=$(( ${#COMP_LINE} - ${COMP_POINT:-${#COMP_LINE}} )) left=
+    if (( back > 0 )); then
+        left=$(tput cub "$back" 2>/dev/null) || return 0
+    fi
+    printf '\n%%s\n%%s%%s%%s' "$1" "${PS1@P}" "$COMP_LINE" "$left" >&2
 }
 complete -o default -F _%[2]s_complete %[1]s
 `

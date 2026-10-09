@@ -4,6 +4,9 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- **bash shows a completion hint with the cursor anywhere in the line.** It was drawn only with the cursor at the end, because redrawing the line leaves the cursor there and readline would then insert typing at the wrong place. The script now moves the cursor back with `tput cub`; without `tput` it draws no hint, as before. `completionScriptVersion` is 10.
+
 ## [0.3.58] - 2026-10-08
 
 ### Added

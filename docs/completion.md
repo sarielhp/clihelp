@@ -398,7 +398,7 @@ When no candidate matches, the shell shows the hint below the command line and o
 |-------|-----------------|
 | zsh | its own message line (`_message`) |
 | fish | printed below the line, prompt redrawn (fish's `__fish_echo`, as its Alt-L listing does); only in an interactive shell |
-| bash | printed below the line, prompt redrawn, as cobra's ActiveHelp does; needs bash 4.4 and the cursor at the end of the line, otherwise only the files fallback is suppressed |
+| bash | printed below the line, prompt redrawn, as cobra's ActiveHelp does, with the cursor put back where it was; needs bash 4.4 (and `tput` when the cursor is not at the end of the line), otherwise only the files fallback is suppressed |
 
 In the `__complete` protocol a hint is the record `__hint__<TAB>text`; names starting with `__` are clihelp's. It is sent only to a caller that sets `CLIHELP_COMPLETE_HINTS=1`, which the generated scripts do: a script written by hand, or generated before hints existed, would offer `__hint__` as a word to insert, so it sees no candidates instead.
 
