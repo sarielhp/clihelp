@@ -5,7 +5,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/sarielhp/clihelp"
@@ -14,20 +13,9 @@ import (
 
 func main() {
 	app := buildApp()
-
-	if os.Getenv("CLIHELP_GEN") != "" {
-		changed, err := doc.RenderMarkdown(app, doc.MarkdownOptions{Dir: "docs/mail_cli_fake"})
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "generate docs: %v\n", err)
-			os.Exit(1)
-		}
-		if changed {
-			fmt.Fprintln(os.Stderr, "processed under docs/mail_cli_fake/")
-		} else {
-			fmt.Fprintln(os.Stderr, "docs up to date.")
-		}
-		return
-	}
+	cmd := doc.MarkdownCommand(doc.MarkdownOptions{Dir: "docs/mail_cli_fake"})
+	cmd.Hidden = true
+	app.Commands = append(app.Commands, cmd)
 
 	if len(os.Args) > 1 {
 		if err := app.Execute(os.Args[1:]); err != nil {

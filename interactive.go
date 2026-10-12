@@ -4,11 +4,20 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"strings"
 
 	"github.com/spf13/pflag"
+	"golang.org/x/term"
 )
+
+// terminalInput checks the input itself: redirected output and custom writers
+// say nothing about whether a reader can answer a prompt.
+func terminalInput(in io.Reader) bool {
+	f, ok := in.(*os.File)
+	return ok && term.IsTerminal(int(f.Fd()))
+}
 
 // getMissingRequiredFlags returns all Option.Required flags that have not been
 // set. An option set through any of its spellings counts as set: pflag keeps a

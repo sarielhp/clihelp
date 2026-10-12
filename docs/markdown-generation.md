@@ -1,90 +1,82 @@
-# GitHub Markdown Documentation Generation
+# Markdown Documentation Generation
 
-`clihelp` includes a built-in markdown documentation generator that produces an interlinked, navigable GitHub Markdown documentation tree for your CLI application.
+The `github.com/sarielhp/clihelp/doc` subpackage generates a documentation site
+from the same declarations that drive terminal help and completion.
 
----
+## Mount a documentation command
 
-## Table of Contents
-
-- [Overview](#overview)
-- [How to Integrate](#how-to-integrate)
-- [SHA-256 Change Detection](#sha-256-change-detection)
-- [CI / Pre-Commit Workflow](#ci--pre-commit-workflow)
-
----
-
-## Overview
-
-Calling `doc.RenderMarkdown(app, doc.MarkdownOptions{})` (from subpackage `github.com/sarielhp/clihelp/doc`) generates:
-- An `index.md` listing commands, global flags, and version information.
-- Dedicated `.md` pages for every command and subcommand, displaying `Command.LongDescription` (preferring it over `Command.Description`).
-- Automatically formats `Note.Raw` blocks inside Markdown fenced code blocks (```) to preserve formatting.
-- Navigable relative links between parents, children, and peer commands.
-
----
-
-## How to Integrate
-
-Add a gated bootstrap check to your application's `main()`:
+Add the supplied command to your application's command tree:
 
 ```go
-package main
-
-import (
-    "fmt"
-    "os"
-
-    "github.com/sarielhp/clihelp"
-    "github.com/sarielhp/clihelp/doc"
-)
-
-func main() {
-    app := &clihelp.App{ /* ... */ }
-
-    // Run: CLIHELP_GEN=1 go run .
-    if os.Getenv("CLIHELP_GEN") != "" {
-        changed, err := doc.RenderMarkdown(app, doc.MarkdownOptions{
-            Dir: "docs/clihelp",
-        })
-        if err != nil {
-            fmt.Fprintf(os.Stderr, "error generating docs: %v\n", err)
-            os.Exit(1)
-        }
-        if changed {
-            fmt.Println("Documentation updated in docs/clihelp/")
-        }
-        return
-    }
-
-    if err := app.Execute(os.Args[1:]); err != nil {
-        app.PrintError(err)
-        os.Exit(1)
-    }
+app := &clihelp.App{
+    Name: "mycli",
+    Commands: []clihelp.Command{
+        // Your application's commands ...
+        doc.MarkdownCommand(doc.MarkdownOptions{Dir: "docs/clihelp"}),
+    },
 }
 ```
 
----
-
-## SHA-256 Change Detection
-
-The generator computes a SHA-256 hash of your command hierarchy and writes a sidecar `.clihelp-hash` file in the output directory.
-
-- If the command tree has not changed *and every page it stands for is still on disk*, regeneration is skipped. Deleting a generated page brings it back on the next run.
-- The sidecar also records the names of the pages that were generated. Only those are pruned when they stop corresponding to a command: a file the generator never wrote is left alone, so pointing `Dir` at a directory that already holds documentation is safe.
-- The `.clihelp-hash` file is automatically added to `.gitignore` inside the output directory so it does not clutter git status.
-
----
-
-## CI / Pre-Commit Workflow
-
-Add documentation generation to your build script or CI workflow:
+Then generate pages explicitly:
 
 ```bash
-# Generate markdown documentation
-CLIHELP_GEN=1 go run ./example
-
-# Commit and push
-git add -A docs/clihelp
-git commit -m "docs: update CLI help pages"
-git push
+mycli docs
+mycli docs --output docs/reference
 ```
+
+The default directory is `docs/clihelp` when `Dir` is empty. Reports go to the
+application's stderr; stdout stays empty. The command can be renamed, hidden, or
+mounted beneath a developer command. Help and argument errors generate no files.
+
+The command runs ordinary application lifecycle hooks. If those hooks initialize
+network clients or load writable configuration, skip that setup for documentation
+generation. Command declarations should be constructible without initializing
+the services their handlers will eventually use.
+
+## Call the generator directly
+
+Build tools and application-specific documentation commands can call:
+
+```go
+changed, err := doc.RenderMarkdown(app, doc.MarkdownOptions{
+    Dir: "docs/clihelp",
+})
+```
+
+Calling the generator explicitly enables generation, including in an empty
+directory. It does not read `CLIHELP_GEN` and prints no reports. `changed` reports
+whether a generation pass ran; the caller decides how to report that result.
+Ordinary startup should call it only when regeneration is intended.
+
+Earlier versions required `CLIHELP_GEN` or an existing hash file. Applications
+may retain their own environment gate during migration, but the library no longer
+uses that variable to decide whether a requested generation should happen.
+
+## Generated pages and caching
+
+The site contains an `index.md`, a `nav.md`, and pages for visible commands and
+subcommands. Pages use `LongDescription` when present and include parameters,
+flags, examples, and notes. Links connect parents, children, and navigation.
+
+The generator hashes the rendered pages and records their names in a
+`.clihelp-hash` sidecar. Matching content with all expected pages present skips
+regeneration. Deleting a generated page makes the next call restore it. The
+sidecar is added to the output directory's `.gitignore`.
+
+Only previously generated pages that no longer correspond to commands are
+pruned. Unrelated files are left alone; output filenames for current commands
+are reserved for generated documentation.
+
+## CI and releases
+
+Run the mounted command before checking or committing generated documentation:
+
+```bash
+go run ./example docs
+git diff --exit-code -- docs/clihelp
+```
+
+Keep drift tests comparing generated pages with committed documentation.
+Application-specific artifacts, such as a source-package inventory, can be
+generated by an application command that composes `RenderMarkdown` with its own
+tooling; they are outside the help generator's scope.

@@ -401,16 +401,34 @@ func TestRequiredFlagConstraints(t *testing.T) {
 	resNoTTY := testExecute(app, []string{"export"})
 	resNoTTY.AssertErrorContains(t, "required flag(s)")
 
-	// 3. Verify interactive fallback prompts on stderr and constructs tip
+	// 3. Supplying writers and input bytes does not make stdin a terminal.
 	app.InteractiveFallback = true
 	// Input 1 for format (text input: "json"), Input 2 for force (select choice 1: "true")
 	stdinBuf := bytes.NewBufferString("json\n1\n")
-	resTTY := testExecuteWithStdin(app, []string{"export"}, stdinBuf)
-	resTTY.AssertNoError(t)
-	resTTY.AssertStderrContains(t, "Enter value for required flag --format")
-	resTTY.AssertStderrContains(t, "select a value for required flag --force")
-	resTTY.AssertStderrContains(t, "💡 Tip: Next time, you can run this directly with:")
-	resTTY.AssertStderrContains(t, "testapp export --force --format json")
+	resRedirected := testExecuteWithStdin(app, []string{"export"}, stdinBuf)
+	resRedirected.AssertErrorContains(t, "required flag(s)")
+	if stdinBuf.Len() != len("json\n1\n") {
+		t.Fatal("nonterminal input was consumed by a prompt")
+	}
+
+	// 4. Exercise the prompt's values and equivalent-command tip directly.
+	fs, _, err := app.setupFlagSet(&app.Commands[0], nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var prompt bytes.Buffer
+	missing := getMissingRequiredFlags(fs, app.Commands[0].Options)
+	if err := promptForMissing(fs, missing, stdinBuf, &prompt); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Enter value for required flag --format", "select a value for required flag --force"} {
+		if !strings.Contains(prompt.String(), want) {
+			t.Errorf("prompt missing %q: %s", want, prompt.String())
+		}
+	}
+	if got := constructCommand(app, []string{"export"}, fs, nil); got != "testapp export --force --format json" {
+		t.Errorf("equivalent command = %q", got)
+	}
 
 	if format != "json" {
 		t.Errorf("expected format to be 'json', got %q", format)

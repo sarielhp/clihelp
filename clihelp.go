@@ -284,7 +284,8 @@ type App struct {
 	// fatih/color's own switch is global and decided from stdout at package
 	// init, and mutating it per render was removed because it raced.
 	NoColor bool
-	// InteractiveFallback enables prompting for missing inputs/flags interactively.
+	// InteractiveFallback prompts for missing required flags only when Stdin
+	// (or os.Stdin when unset) is a terminal. Custom writers do not enable it.
 	InteractiveFallback bool
 	// AutoRefreshIntegration when true keeps an already-installed shell
 	// integration and man page current on every ordinary run: a generated file

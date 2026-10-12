@@ -259,6 +259,9 @@ func buildPersistentOptions(globals *GlobalOptions) []clihelp.Option {
 
 func buildApp() *clihelp.App {
 	var globals GlobalOptions
+	docsCmd := doc.MarkdownCommand(doc.MarkdownOptions{Dir: "docs/clihelp"})
+	docsCmd.Description += "."
+	docsCmd.UsageLine = "podctl docs [flags]"
 
 	app := &clihelp.App{
 		Name:                      "podctl",
@@ -281,6 +284,7 @@ func buildApp() *clihelp.App {
 			buildDeployCommand(),
 			buildStatusCommand(),
 			clihelp.CompletionCommand(),
+			docsCmd,
 			buildDeepTree(),
 		},
 	}
@@ -297,21 +301,6 @@ func buildApp() *clihelp.App {
 
 func main() {
 	app := buildApp()
-
-	// Developer bootstrap: CLIHELP_GEN=1 generates documentation markdown
-	if os.Getenv("CLIHELP_GEN") != "" {
-		changed, gerr := doc.RenderMarkdown(app, doc.MarkdownOptions{Dir: "docs/clihelp"})
-		if gerr != nil {
-			fmt.Fprintf(os.Stderr, "generate docs: %v\n", gerr)
-			os.Exit(1)
-		}
-		if changed {
-			fmt.Fprintln(os.Stderr, "processed under docs/clihelp/")
-		} else {
-			fmt.Fprintln(os.Stderr, "docs up to date.")
-		}
-		return
-	}
 
 	// Execute application lifecycle
 	if err := app.Execute(os.Args[1:]); err != nil {

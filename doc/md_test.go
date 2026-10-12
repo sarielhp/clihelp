@@ -36,14 +36,14 @@ func TestRenderMarkdownRoundTrip(t *testing.T) {
 		t.Errorf("expected .clihelp-hash: %v", err)
 	}
 
-	// Re-run with same content but WITHOUT CLIHELP_GEN — should be unchanged
+	// Re-run with the same content: the cache should avoid rewriting it.
 	t.Setenv("CLIHELP_GEN", "")
 	changed, err = RenderMarkdown(app, MarkdownOptions{Dir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if changed {
-		t.Error("expected changed=false on unchanged re-run without CLIHELP_GEN")
+		t.Error("expected changed=false on unchanged re-run")
 	}
 
 	// Modify the app tree so hash changes
@@ -68,24 +68,17 @@ func TestRenderMarkdownRoundTrip(t *testing.T) {
 
 func TestRenderMarkdownWithoutEnv(t *testing.T) {
 	dir := t.TempDir()
-	// No CLIHELP_GEN set
+	t.Setenv("CLIHELP_GEN", "")
 	app := testApp()
 	changed, err := RenderMarkdown(app, MarkdownOptions{Dir: dir})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if changed {
-		t.Error("expected changed=false when CLIHELP_GEN is not set and dir is empty")
+	if !changed {
+		t.Error("explicit generation must work without CLIHELP_GEN")
 	}
-	// No .md files should have been created
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".md") {
-			t.Errorf("unexpected .md file created: %s", e.Name())
-		}
+	if _, err := os.Stat(filepath.Join(dir, "index.md")); err != nil {
+		t.Fatalf("index.md was not generated: %v", err)
 	}
 }
 

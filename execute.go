@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/fatih/color"
@@ -194,15 +193,7 @@ func (a *App) validateParsedFlags(fs *pflag.FlagSet, allOptions []Option, target
 	missing := getMissingRequiredFlags(fs, allOptions)
 	prompted := false
 	if len(missing) > 0 {
-		isTTY := false
-		if f, ok := a.stdout().(*os.File); ok && (int(f.Fd()) == 1 || int(f.Fd()) == 2) {
-			isTTY = true
-		}
-		if a.Stdout != nil || a.Stderr != nil {
-			isTTY = true
-		}
-
-		if a.InteractiveFallback && isTTY {
+		if a.InteractiveFallback && terminalInput(a.stdin()) {
 			if err := promptForMissing(fs, missing, a.stdin(), a.stderr()); err != nil {
 				return err
 			}

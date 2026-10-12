@@ -27,10 +27,6 @@ const markdownFormatVersion = 1
 // "generation is enabled here" flag and the record of the last generated state.
 const markdownHashName = ".clihelp-hash"
 
-// envGenDocs, when set, forces generation and bootstraps the hash file. It is
-// the explicit developer opt-in that a deployed environment will not provide.
-const envGenDocs = "CLIHELP_GEN"
-
 // defaultMarkdownDir is used when MarkdownOptions.Dir is empty.
 const defaultMarkdownDir = "docs/clihelp"
 
@@ -41,22 +37,19 @@ type MarkdownOptions struct {
 	Dir string
 }
 
-// RenderMarkdown generates GitHub-friendly markdown help pages for a. It owns
-// exactly the directory Dir: it writes one .md file per command plus an
-// index.md, prunes orphaned .md files it produced earlier (safe, it is the sole
-// owner of that directory), and never touches files outside it.
+// RenderMarkdown generates GitHub-friendly markdown help pages for a. Calling
+// it explicitly enables generation, including on the first run; no environment
+// variable is required. It emits no reports to stdout or stderr.
 //
-// Generation is gated so a deployed binary (which never sets the CLIHELP_GEN
-// environment variable) stays silent. The on-disk hash file both enables
-// generation and records the last generated state; when the usage tree is
-// unchanged the pass is a no-op. changed reports whether any generation pass
-// ran. A suggestion for committing the pages is printed to stderr only when
-// changed is true.
-//
-// Additive helper: the markdown materialized in Dir is not tracked by git (the
-// per-app dotfile is gitignored), so committing and pushing the generated pages
-// to the repository is a separate, ordinary `git add`/`commit`/`push` step.
+// It writes an index, navigation page, and one page per visible command under
+// Dir, pruning only obsolete pages recorded in its previous manifest. Unrelated
+// files are left alone. The hash sidecar caches the generated content: unchanged
+// trees with all expected pages present are skipped. changed reports whether a
+// generation pass ran. Callers choose when to invoke it and how to report changes.
 func RenderMarkdown(a *clihelp.App, o MarkdownOptions) (changed bool, err error) {
+	if a == nil {
+		return false, fmt.Errorf("generate markdown: application is nil")
+	}
 	dir := o.Dir
 	if dir == "" {
 		dir = defaultMarkdownDir
@@ -74,15 +67,9 @@ func RenderMarkdown(a *clihelp.App, o MarkdownOptions) (changed bool, err error)
 		return false, readErr
 	}
 
-	if os.Getenv(envGenDocs) == "" {
-		if errors.Is(readErr, fs.ErrNotExist) {
-			return false, nil // not bootstrapped / deployed
-		}
-		// The hash records what was generated, not what survived: a page deleted
-		// by hand used to leave the hash matching and the page missing for good.
-		if previous.hash == newHash && pagesPresent(dir, pages) {
-			return false, nil // up to date
-		}
+	// A missing page must be restored even when the cached hash matches.
+	if previous.hash == newHash && pagesPresent(dir, pages) {
+		return false, nil
 	}
 
 	if err := writeMarkdownPages(dir, pages, previous.pages); err != nil {
@@ -92,10 +79,6 @@ func RenderMarkdown(a *clihelp.App, o MarkdownOptions) (changed bool, err error)
 		return false, err
 	}
 	ensureHashIgnored(dir, hashPath)
-	fmt.Fprintf(os.Stderr,
-		"help pages generated under %s/\nNext step (choose one):\n"+
-			"  manual:    git add -A %s && git commit && git push\n"+
-			"  automated: add the above to a release workflow\n", dir, dir)
 	return true, nil
 }
 

@@ -168,11 +168,13 @@ working against the library.** Check this document before writing it.
 
 ### 10. Whether a required option may be prompted for
 
-- **Reads:** `Option.Required`, `App.InteractiveFallback`, and whether output is
+- **Reads:** `Option.Required`, `App.InteractiveFallback`, and whether input is
   a terminal.
 - **Behaviour:** a missing required flag is an error — unless
   `InteractiveFallback` is set *and* the session is interactive, in which case it
   is prompted for. A script therefore still fails rather than hanging.
+  Custom output writers do not make input interactive; redirected or buffered
+  input remains noninteractive even if it contains an answer.
 
 ### 11. What is written into the user's home directory
 

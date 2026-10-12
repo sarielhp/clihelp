@@ -4,6 +4,15 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **`doc.MarkdownCommand`** supplies a mountable `docs` command with an `--output` directory override and reports through the application's stderr.
+
+### Changed
+- **`doc.RenderMarkdown` is explicit and silent.** Calling it generates pages on the first run without `CLIHELP_GEN`; unchanged trees remain cached. The examples and release tooling use the documentation command.
+
+### Fixed
+- **Interactive fallback checks stdin.** Redirected or buffered input cannot trigger a required-option prompt merely because output uses a custom writer. Terminal input still prompts when output is redirected.
+
 ## [0.3.59] - 2026-10-08
 
 ### Fixed

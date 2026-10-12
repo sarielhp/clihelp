@@ -79,14 +79,14 @@ fi
 # version changes. Nothing used to regenerate it at release, which left the docs
 # one version behind every time. Regenerate before the check, so the check sees
 # the tree that is about to be committed.
-if ! CLIHELP_GEN=1 CLIHELP_NO_AUTO_COMPLETION=1 go run ./example > "$log" 2>&1; then
+if ! CLIHELP_NO_AUTO_COMPLETION=1 go run ./example docs > "$log" 2>&1; then
     restore
     trap - ERR
     echo "bump aborted at $new: regenerating docs/clihelp failed. Version files restored." >&2
     tail -n 25 "$log" >&2
     exit 1
 fi
-if ! CLIHELP_GEN=1 CLIHELP_NO_AUTO_COMPLETION=1 go run ./example/mail_cli_fake >> "$log" 2>&1; then
+if ! CLIHELP_NO_AUTO_COMPLETION=1 go run ./example/mail_cli_fake docs >> "$log" 2>&1; then
     restore
     trap - ERR
     echo "bump aborted at $new: regenerating docs/mail_cli_fake failed. Version files restored." >&2

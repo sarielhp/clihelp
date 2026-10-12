@@ -68,6 +68,22 @@ Lifecycle hooks allow you to structure global pre-flight checks (like loading co
 | `Command.PostRun` | Command | `func(ctx *clihelp.Context) error` | Command-level cleanup or resource release |
 | `App.AfterRun` | Application | `func(ctx *clihelp.Context) error` | Global teardown, telemetry flush, log sync |
 
+Initialize logging and load configuration in `BeforeRun` when they depend on
+flags: their targets already contain parsed values there. This avoids a second
+scan of `os.Args` that could misread flag values, repeated options, or `--`.
+Construct declarations around a session whose configuration and services can be
+initialized later. Use the parsed read-only or dry-run value to choose a
+configuration loader that does not write corrections.
+
+Explicit help, built-in version requests, completion, and setup protocols can
+return before these hooks. A mounted documentation command runs normal hooks;
+skip setup for it when generating pages should not require runtime configuration.
+Completion callbacks should load any needed data without writes.
+
+`AfterRun` and `PostRun` are success hooks, not guaranteed cleanup: errors abort
+the remaining pipeline. Defer resource cleanup at the execution boundary or
+within the handler that acquires the resource.
+
 ### Lifecycle Example
 
 ```go
