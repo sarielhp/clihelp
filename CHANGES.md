@@ -4,6 +4,8 @@ All notable changes to `clihelp` will be documented in this file.
 
 ## [Unreleased]
 
+## [0.3.60] - 2026-10-12
+
 ### Added
 - **`doc.MarkdownCommand`** supplies a mountable `docs` command with an `--output` directory override and reports through the application's stderr.
 
